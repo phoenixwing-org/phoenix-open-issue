@@ -1,0 +1,67 @@
+# TODO & 点检追踪
+
+> 用 Open Issue List 管理 Open Issue List 自身的开发。吃自己的狗粮。
+
+## 当前版本：v0.1 原型
+
+### 点检项
+
+| # | 日期 | 描述 | 状态 | 负责人 |
+|---|------|------|------|--------|
+| 1 | 2026-06-30 | 原型完成：core + server (Express/SQLite) + web (Vue3/Element Plus) | ✅ done | — |
+| 2 | 2026-06-30 | 7 张表建表 + 种子数据 | ✅ done | — |
+| 3 | 2026-06-30 | Auth (JWT) + 6 组 CRUD API | ✅ done | — |
+| 4 | 2026-06-30 | Ribbon 布局 + 7 个页面 + 4 个对话框 | ✅ done | — |
+| 5 | 2026-06-30 | 点检时间线 + 逾期红色高亮 | ✅ done | — |
+| 6 | 2026-06-30 | 推送验证 + 成员重叠算法 | ✅ done | — |
+| 7 | 2026-06-30 | 文档：README / architecture / API | ✅ done | — |
+
+---
+
+## v0.2 改进
+
+### 待办
+
+| # | 日期 | 描述 | 状态 | 负责人 |
+|---|------|------|------|--------|
+| 8 | - | 推送时支持选择具体 Issue（目前推送全部） | pending | |
+| 9 | - | 推送后在目标列表创建 Issue 副本 | pending | |
+| 10 | - | Issue 拖拽排序（前端 el-table + SortableJS） | pending | |
+| 11 | - | 列表归属组织节点（org_unit_id 筛选） | pending | |
+| 12 | - | 用户头像上传 | pending | |
+| 13 | - | 密码修改 | pending | |
+| 14 | - | 响应式适配移动端 | pending | |
+
+---
+
+## v0.3 npm 发布
+
+| # | 日期 | 描述 | 状态 | 负责人 |
+|---|------|------|------|--------|
+| 15 | - | 注册 npm `@phoenix-wing` scope | pending | |
+| 16 | - | 发布 `@phoenix-wing/open-issue-core` | pending | |
+| 17 | - | 拆分 UI 组件为独立包 `@phoenix-wing/open-issue-ui` | pending | |
+| 18 | - | 发布到 npm | pending | |
+
+---
+
+## v1.0 cool-admin 迁移
+
+| # | 日期 | 描述 | 状态 | 负责人 |
+|---|------|------|------|--------|
+| 19 | - | SQLite → PostgreSQL (TypeORM) | pending | |
+| 20 | - | Express Router → Midway.js @Controller | pending | |
+| 21 | - | 表加 FK 约束 + Entity @ManyToOne/@OneToMany | pending | |
+| 22 | - | 前端打包为 cool-admin 插件模块 | pending | |
+| 23 | - | 集成 cool-admin 用户/权限系统 | pending | |
+
+---
+
+## 其他 phoenix npm 包规划
+
+| 包名 | 说明 | 状态 |
+|------|------|------|
+| `@phoenix-wing/caa-dialog-core` | CAA 对话框解析/生成算法 | 代码在 desk-tools，待抽离 |
+| `@phoenix-wing/caa-dialog-ui` | CAA 对话框编辑器 Vue3 组件 | 代码在 desk-tools，待抽离 |
+| `@phoenix-wing/code-sort` | 代码排序工具 | 待开发 |
+| `@phoenix-wing/rename-tool` | 搜索替换改名工具 | 代码在 desk-tools，待抽离 |

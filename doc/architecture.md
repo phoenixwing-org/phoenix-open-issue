@@ -1,0 +1,123 @@
+# 架构文档
+
+## 总体架构
+
+```
+┌─────────────────────────────────────────────────┐
+│                    Browser                       │
+│              http://localhost:5173               │
+└──────────────────┬──────────────────────────────┘
+                   │  REST API (/api/*)
+                   │  JWT Bearer Token
+┌──────────────────▼──────────────────────────────┐
+│              Express Server (:3001)              │
+│  ┌────────────┐  ┌────────────┐  ┌───────────┐  │
+│  │ Controller │→│  Service   │→│   SQLite   │  │
+│  │  (路由层)   │  │ (业务逻辑)  │  │ better-sql │  │
+│  └────────────┘  └─────┬──────┘  └───────────┘  │
+│                        │                         │
+│          ┌─────────────▼──────────┐              │
+│          │   packages/core        │              │
+│          │  (类型 + 算法)          │              │
+│          └────────────────────────┘              │
+└─────────────────────────────────────────────────┘
+```
+
+## 分层职责
+
+### Controller 层
+- 处理 HTTP 请求/响应
+- 参数提取和校验
+- 调用 Service 层
+- 不包含业务逻辑
+
+### Service 层
+- 核心业务逻辑
+- 调用 core 包算法
+- 数据库操作（手写 SQL via better-sqlite3）
+- 权限校验、级联删除
+- 事务管理
+
+### Core 包 (`packages/core`)
+- 纯函数，零依赖
+- 类型定义（所有接口和枚举）
+- 算法实现：
+  - `push.ts` — 推送验证、成员重叠计算
+  - `permission.ts` — 列表访问权限、角色判断
+  - `scheduling.ts` — 点检逾期判断、周期计算
+
+## 数据库设计
+
+### 原则
+- **无外键约束**：ID 字段只存文本值，关系正确性由 Service 层保证
+- **手动级联删除**：删 List → 删 Members → 删 Issues → 删 Checkpoints
+- **审计保留**：PushRecord 不级联删除
+
+### 表结构（7 张表）
+
+| 表名 | 用途 | 关键字段 |
+|------|------|---------|
+| `users` | 用户 | id, username, password_hash, org_unit_id |
+| `org_units` | 组织单元（树形） | id, name, unit_type, parent_id |
+| `issue_lists` | 议题列表 | id, name, list_type, owner_id, org_unit_id |
+| `issue_list_members` | 列表-用户关联 | id, list_id, user_id, role |
+| `issues` | 议题 | id, list_id, title, status, priority, sort_order |
+| `checkpoints` | 点检项（时间线） | id, issue_id, checkpoint_date, description, responsible_user_id |
+| `push_records` | 推送记录（审计） | id, from_list_id, to_list_id, issue_id, pushed_by |
+
+## 前端架构
+
+### 布局层次
+```
+AppShell.vue
+├── AppToolbar.vue        (品牌 + 用户区 + Ribbon 折叠按钮)
+├── RibbonShell.vue       (可折叠工具按钮栏)
+├── <router-view>         (页面内容区)
+└── StatusBar.vue         (底部状态栏)
+```
+
+### 路由表
+| 路径 | 页面 | 说明 |
+|------|------|------|
+| `/login` | LoginView | 登录/注册（无需认证） |
+| `/dashboard` | DashboardView | 仪表盘，列表卡片概览 |
+| `/lists` | ListIndexView | 列表管理表格 |
+| `/lists/:id` | ListDetailView | Issue 表格 + 成员 + 推送 |
+| `/issues/:id` | IssueDetailView | Issue 详情 + 点检时间线 |
+| `/org` | OrgTreeView | 组织架构树 |
+| `/push-history` | PushHistoryView | 推送记录 |
+
+### 数据流
+```
+Pinia Store ↔ API (Axios) ↔ Express Server ↔ SQLite
+```
+
+### States 覆盖
+每个组件覆盖以下状态：
+- **Loading**：`v-loading` 或 `el-skeleton`
+- **Empty**：`el-empty` 无数据提示
+- **Error**：`el-alert` + 错误消息（Axios 拦截器自动 toast）
+- **Edge**：未登录 → 跳转 /login；权限不足 → 403 提示
+
+## 互联网部署
+
+原型阶段支持两种方式：
+
+### 局域网测试
+```bash
+# 前后端均监听 0.0.0.0
+pnpm dev:server   # → http://0.0.0.0:3001
+pnpm dev:web      # → http://0.0.0.0:5173
+# 其他人访问: http://<你的IP>:5173
+```
+
+### 外网测试
+```bash
+# 方式1：localtunnel 临时暴露
+npx localtunnel --port 5173
+
+# 方式2：Cloudflare Tunnel
+cloudflared tunnel --url http://localhost:5173
+
+# 方式3：Nginx/Caddy 反代 + 服务器部署
+```

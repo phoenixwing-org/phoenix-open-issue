@@ -1,0 +1,20 @@
+{
+  "name": "phoenix-open-issue",
+  "private": true,
+  "description": "Open Issue List 管理 Web 应用 — 多列表协作、组织层级推送、点检追踪",
+  "scripts": {
+    "dev:core": "pnpm -C packages/core build --watch",
+    "dev:server": "pnpm -C packages/server dev",
+    "dev:web": "pnpm -C packages/web dev",
+    "dev": "concurrently -n core,server,web -c blue,green,magenta \"pnpm dev:core\" \"pnpm dev:server\" \"pnpm dev:web\"",
+    "build:core": "pnpm -C packages/core build",
+    "build:server": "pnpm -C packages/server build",
+    "build:web": "pnpm -C packages/web build",
+    "build": "pnpm build:core && pnpm build:server && pnpm build:web",
+    "seed": "pnpm -C packages/server seed"
+  },
+  "packageManager": "pnpm@9.15.9",
+  "devDependencies": {
+    "concurrently": "^9.1.2"
+  }
+}

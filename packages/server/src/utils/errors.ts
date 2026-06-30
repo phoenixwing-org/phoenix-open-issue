@@ -1,0 +1,37 @@
+export class AppError extends Error {
+  constructor(
+    public statusCode: number,
+    message: string,
+  ) {
+    super(message)
+    this.name = 'AppError'
+  }
+}
+
+export class NotFoundError extends AppError {
+  constructor(resource: string) {
+    super(404, `${resource} 不存在`)
+    this.name = 'NotFoundError'
+  }
+}
+
+export class ForbiddenError extends AppError {
+  constructor(message = '无权限执行此操作') {
+    super(403, message)
+    this.name = 'ForbiddenError'
+  }
+}
+
+export class UnauthorizedError extends AppError {
+  constructor(message = '请先登录') {
+    super(401, message)
+    this.name = 'UnauthorizedError'
+  }
+}
+
+export class ConflictError extends AppError {
+  constructor(message: string) {
+    super(409, message)
+    this.name = 'ConflictError'
+  }
+}

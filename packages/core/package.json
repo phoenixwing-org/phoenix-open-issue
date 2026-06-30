@@ -1,0 +1,21 @@
+{
+  "name": "@phoenix-wing/open-issue-core",
+  "version": "0.1.0",
+  "description": "Open Issue List — 核心类型定义与算法",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "build:watch": "tsc --watch"
+  },
+  "devDependencies": {
+    "typescript": "~5.7.2"
+  }
+}
