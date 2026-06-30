@@ -1,10 +1,16 @@
+export type PushStatus = 'pending' | 'accepted' | 'rejected'
+
 export interface PushRecord {
   id: string
-  from_list_id: string
-  to_list_id: string
-  issue_id: string
-  pushed_by: string
-  pushed_at: string
+  fromListId: string
+  toListId: string
+  issueId: string
+  pushedBy: string
+  pushedAt: string
+  status: PushStatus
+  handledBy: string | null
+  handledAt: string | null
+  rejectReason: string | null
   note: string
 }
 

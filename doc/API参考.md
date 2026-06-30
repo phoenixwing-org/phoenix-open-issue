@@ -4,6 +4,8 @@ Base URL: `http://localhost:3001/api`
 
 认证方式：`Authorization: Bearer <token>`（除标注 `[public]` 外均需）
 
+> 字段命名：API JSON 全部使用 camelCase。数据库列保持 snake_case，Service 层做映射。
+
 ---
 
 ## Auth
@@ -13,7 +15,7 @@ Base URL: `http://localhost:3001/api`
 
 ```json
 // Request
-{ "username": "alice", "password": "123456", "display_name": "Alice" }
+{ "username": "alice", "password": "123456", "displayName": "Alice" }
 
 // Response 201
 { "token": "eyJ...", "user": { "id": "uuid", "username": "alice", ... } }
@@ -33,7 +35,7 @@ Base URL: `http://localhost:3001/api`
 
 ```json
 // Response 200
-{ "id": "uuid", "username": "admin", "display_name": "管理员", ... }
+{ "id": "uuid", "username": "admin", "displayName": "管理员", ... }
 ```
 
 ### GET /users
@@ -48,7 +50,7 @@ Base URL: `http://localhost:3001/api`
 
 ```json
 // Response 200
-[{ "id": "uuid", "name": "研发部", "unit_type": "division", "parent_id": null, "children": [...] }]
+[{ "id": "uuid", "name": "研发部", "unitType": "division", "parentId": null, "children": [...] }]
 ```
 
 ### GET /org-units/:id
@@ -57,7 +59,7 @@ Base URL: `http://localhost:3001/api`
 ### POST /org-units
 ```json
 // Request
-{ "name": "前端组", "unit_type": "group", "parent_id": "uuid" }
+{ "name": "前端组", "unitType": "group", "parentId": "uuid" }
 ```
 
 ### PUT /org-units/:id
@@ -67,7 +69,7 @@ Base URL: `http://localhost:3001/api`
 ```
 
 ### DELETE /org-units/:id
-删除组织节点（自动解除子节点 parent_id）。
+删除组织节点（自动解除子节点 parentId）。
 
 ### GET /org-units/:id/users
 获取组织节点下的用户列表。
@@ -81,7 +83,7 @@ Base URL: `http://localhost:3001/api`
 
 ```json
 // Response 200
-[{ "id": "uuid", "name": "2026年7月点检", "list_type": "monthly", "owner_id": "uuid", ... }]
+[{ "id": "uuid", "name": "2026年7月点检", "listType": "monthly", "ownerId": "uuid", ... }]
 ```
 
 ### POST /lists
@@ -89,7 +91,7 @@ Base URL: `http://localhost:3001/api`
 
 ```json
 // Request
-{ "name": "2026年7月点检", "list_type": "monthly", "description": "月度常规检查" }
+{ "name": "2026年7月点检", "listType": "monthly", "description": "月度常规检查" }
 ```
 
 ### GET /lists/:id
@@ -111,7 +113,7 @@ Base URL: `http://localhost:3001/api`
 
 ```json
 // Response 200
-[{ "id": "uuid", "user_id": "uuid", "username": "zhangsan", "role": "editor", ... }]
+[{ "id": "uuid", "userId": "uuid", "username": "zhangsan", "role": "editor", ... }]
 ```
 
 ### POST /lists/:id/members
@@ -119,7 +121,7 @@ Base URL: `http://localhost:3001/api`
 
 ```json
 // Request
-{ "user_id": "uuid", "role": "editor" }
+{ "userId": "uuid", "role": "editor" }
 ```
 
 ### DELETE /lists/:id/members/:userId
@@ -175,7 +177,7 @@ Query: ?status=open&priority=high&search=关键词&page=1&size=50
 
 ```json
 // Request
-{ "issue_ids": ["uuid1", "uuid3", "uuid2"] }
+{ "issueIds": ["uuid1", "uuid3", "uuid2"] }
 ```
 
 ---
@@ -187,13 +189,13 @@ Query: ?status=open&priority=high&search=关键词&page=1&size=50
 
 ```json
 // Response 200
-[{ "id": "uuid", "checkpoint_date": "2026-06-24", "description": "已走流程到采购", "status": "done", "responsible_user_id": "uuid", ... }]
+[{ "id": "uuid", "checkpointDate": "2026-06-24", "description": "已走流程到采购", "status": "done", "responsibleUserId": "uuid", ... }]
 ```
 
 ### POST /issues/:issueId/checkpoints
 ```json
 // Request
-{ "checkpoint_date": "2026-07-05", "description": "草拟规范文档", "responsible_user_id": "uuid" }
+{ "checkpointDate": "2026-07-05", "description": "草拟规范文档", "responsibleUserId": "uuid" }
 ```
 
 ### PUT /checkpoints/:id

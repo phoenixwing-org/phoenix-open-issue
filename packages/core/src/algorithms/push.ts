@@ -1,25 +1,17 @@
-import type { PushValidationResult, MemberRole } from '../types/index.js'
+import type { PushValidationResult } from '../types/index.js'
 
 interface MemberLike {
-  user_id: string
-  role: MemberRole
+  userId: string
+  role: string
 }
 
-/**
- * 计算两个列表成员的交集
- */
 export function resolveOverlap(fromMembers: MemberLike[], toMembers: MemberLike[]): string[] {
-  const toSet = new Set(toMembers.map(m => m.user_id))
+  const toSet = new Set(toMembers.map(m => m.userId))
   return fromMembers
-    .map(m => m.user_id)
+    .map(m => m.userId)
     .filter(uid => toSet.has(uid))
 }
 
-/**
- * 验证推送是否可行
- *
- * 规则：源列表和目标列表必须有至少 1 个共同成员
- */
 export function validatePush(params: {
   fromMembers: MemberLike[]
   toMembers: MemberLike[]
@@ -40,12 +32,18 @@ export function validatePush(params: {
   }
 }
 
-/**
- * 检查推送发起者在目标列表中的角色是否允许推送
- * viewer 也可以在满足成员重叠的前提下推送
- */
-export function canPushToList(userRole: MemberRole | null, overlapExists: boolean): boolean {
+export function canPushToList(userRole: string | null, overlapExists: boolean): boolean {
   if (!userRole) return false
   if (!overlapExists) return false
   return true
+}
+
+export function canHandlePush(
+  userId: string,
+  push: { toListId: string; status: string },
+  targetListMembers: MemberLike[],
+): boolean {
+  if (push.status !== 'pending') return false
+  const member = targetListMembers.find(m => m.userId === userId)
+  return member?.role === 'owner' || member?.role === 'admin'
 }

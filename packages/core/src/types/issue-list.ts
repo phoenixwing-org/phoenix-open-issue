@@ -1,39 +1,36 @@
-/** Issue List 类型 */
 export type ListType = 'yearly' | 'monthly' | 'project' | 'custom'
 
-/** 成员在列表中的角色 */
-export type MemberRole = 'owner' | 'editor' | 'viewer'
+export type MemberRole = 'owner' | 'admin' | 'editor' | 'reporter' | 'viewer'
 
 export interface IssueList {
   id: string
   name: string
   description: string
-  list_type: ListType
-  owner_id: string
-  org_unit_id: string | null
-  created_at: string
-  updated_at: string
+  listType: ListType
+  ownerId: string
+  orgUnitId: string | null
+  createdAt: string
+  updatedAt: string
 }
 
 export interface IssueListMember {
   id: string
-  list_id: string
-  user_id: string
+  listId: string
+  userId: string
   role: MemberRole
-  joined_at: string
+  joinedAt: string
 }
 
-/** 成员信息（带用户公开数据） */
 export interface MemberWithUser extends IssueListMember {
   username: string
-  display_name: string | null
+  displayName: string | null
 }
 
 export interface CreateListInput {
   name: string
   description?: string
-  list_type: ListType
-  org_unit_id?: string
+  listType: ListType
+  orgUnitId?: string
 }
 
 export interface UpdateListInput {

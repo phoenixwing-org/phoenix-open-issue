@@ -6,72 +6,83 @@ export function runSchema(db: Database.Database): void {
       id TEXT PRIMARY KEY,
       username TEXT NOT NULL UNIQUE,
       email TEXT,
-      password_hash TEXT NOT NULL,
-      display_name TEXT,
-      org_unit_id TEXT,
-      created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now'))
+      passwordHash TEXT NOT NULL,
+      displayName TEXT,
+      orgUnitId TEXT,
+      createdAt TEXT DEFAULT (datetime('now')),
+      updatedAt TEXT DEFAULT (datetime('now'))
     );
 
-    CREATE TABLE IF NOT EXISTS org_units (
+    CREATE TABLE IF NOT EXISTS orgUnits (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
-      unit_type TEXT NOT NULL CHECK(unit_type IN ('group','department','division')),
-      parent_id TEXT,
-      created_at TEXT DEFAULT (datetime('now'))
+      unitType TEXT NOT NULL CHECK(unitType IN ('group','department','division')),
+      parentId TEXT,
+      createdAt TEXT DEFAULT (datetime('now'))
     );
 
-    CREATE TABLE IF NOT EXISTS issue_lists (
+    CREATE TABLE IF NOT EXISTS issueLists (
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       description TEXT DEFAULT '',
-      list_type TEXT NOT NULL CHECK(list_type IN ('yearly','monthly','project','custom')),
-      owner_id TEXT NOT NULL,
-      org_unit_id TEXT,
-      created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now'))
+      listType TEXT NOT NULL CHECK(listType IN ('yearly','monthly','project','custom')),
+      ownerId TEXT NOT NULL,
+      orgUnitId TEXT,
+      createdAt TEXT DEFAULT (datetime('now')),
+      updatedAt TEXT DEFAULT (datetime('now'))
     );
 
-    CREATE TABLE IF NOT EXISTS issue_list_members (
+    CREATE TABLE IF NOT EXISTS issueListMembers (
       id TEXT PRIMARY KEY,
-      list_id TEXT NOT NULL,
-      user_id TEXT NOT NULL,
-      role TEXT NOT NULL DEFAULT 'editor' CHECK(role IN ('owner','editor','viewer')),
-      joined_at TEXT DEFAULT (datetime('now'))
+      listId TEXT NOT NULL,
+      userId TEXT NOT NULL,
+      role TEXT NOT NULL DEFAULT 'editor' CHECK(role IN ('owner','admin','editor','reporter','viewer')),
+      joinedAt TEXT DEFAULT (datetime('now'))
     );
 
     CREATE TABLE IF NOT EXISTS issues (
       id TEXT PRIMARY KEY,
-      list_id TEXT NOT NULL,
+      listId TEXT NOT NULL,
       title TEXT NOT NULL,
       description TEXT DEFAULT '',
-      status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open','in_progress','resolved','closed')),
+      status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open','in_progress','resolved','closed','cancelled')),
       priority TEXT NOT NULL DEFAULT 'medium' CHECK(priority IN ('low','medium','high','critical')),
-      sort_order INTEGER DEFAULT 0,
-      created_by TEXT NOT NULL,
-      created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now'))
+      severity TEXT NOT NULL DEFAULT 'minor' CHECK(severity IN ('fatal','major','minor','trivial')),
+      reporterId TEXT,
+      assigneeId TEXT,
+      dueDate TEXT,
+      completedAt TEXT,
+      closeReason TEXT CHECK(closeReason IN ('completed','cancelled','duplicate','transferred','unreproducible')),
+      closedBy TEXT,
+      sortOrder INTEGER DEFAULT 0,
+      createdBy TEXT NOT NULL,
+      createdAt TEXT DEFAULT (datetime('now')),
+      updatedAt TEXT DEFAULT (datetime('now'))
     );
 
     CREATE TABLE IF NOT EXISTS checkpoints (
       id TEXT PRIMARY KEY,
-      issue_id TEXT NOT NULL,
-      checkpoint_date TEXT NOT NULL,
+      issueId TEXT NOT NULL,
+      checkpointDate TEXT NOT NULL,
       description TEXT NOT NULL,
       status TEXT DEFAULT 'pending' CHECK(status IN ('pending','done','skipped')),
-      responsible_user_id TEXT,
-      sort_order INTEGER DEFAULT 0,
-      created_at TEXT DEFAULT (datetime('now')),
-      updated_at TEXT DEFAULT (datetime('now'))
+      responsibleUserId TEXT,
+      sortOrder INTEGER DEFAULT 0,
+      createdAt TEXT DEFAULT (datetime('now')),
+      updatedAt TEXT DEFAULT (datetime('now'))
     );
 
-    CREATE TABLE IF NOT EXISTS push_records (
+    CREATE TABLE IF NOT EXISTS pushRecords (
       id TEXT PRIMARY KEY,
-      from_list_id TEXT NOT NULL,
-      to_list_id TEXT NOT NULL,
-      issue_id TEXT NOT NULL,
-      pushed_by TEXT NOT NULL,
-      pushed_at TEXT DEFAULT (datetime('now')),
+      fromListId TEXT NOT NULL,
+      toListId TEXT NOT NULL,
+      issueId TEXT NOT NULL,
+      pushedBy TEXT NOT NULL,
+      pushedAt TEXT DEFAULT (datetime('now')),
+      status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','accepted','rejected')),
+      handledBy TEXT,
+      handledAt TEXT,
+      rejectReason TEXT,
       note TEXT DEFAULT ''
     );
   `)
