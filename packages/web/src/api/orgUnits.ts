@@ -12,7 +12,7 @@ export function createOrgUnit(data: { name: string; unitType: string; parentId?:
   return request.post('/org-units', data)
 }
 
-export function updateOrgUnit(id: string, data: { name: string }) {
+export function updateOrgUnit(id: string, data: { name?: string; parentId?: string | null; unitType?: string }) {
   return request.put(`/org-units/${id}`, data)
 }
 

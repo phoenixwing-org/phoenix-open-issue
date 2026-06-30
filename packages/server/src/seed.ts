@@ -9,6 +9,12 @@ export function seedDatabase(force = false): string[] {
   // 已有数据且非强制 → 跳过
   const existingUsers = db.prepare('SELECT COUNT(*) as c FROM users').get() as { c: number }
   if (existingUsers.c > 0 && !force) {
+    // 即使跳过用户数据，也补建字典（兼容旧 DB 升级）
+    const dictCount = db.prepare('SELECT COUNT(*) as c FROM dict').get() as { c: number }
+    if (dictCount.c === 0) {
+      seedDict()  // 函数在后文定义
+      db.exec("UPDATE users SET approved = 1 WHERE approved = 0") // 已有用户也批准
+    }
     console.log('🌱 Database already has data, skipping seed.')
     logs.push('数据库已有数据，跳过')
     return logs
@@ -23,6 +29,7 @@ export function seedDatabase(force = false): string[] {
     db.exec('DELETE FROM issueLists')
     db.exec('DELETE FROM users')
     db.exec('DELETE FROM orgUnits')
+    db.exec('DELETE FROM dict')
     logs.push('已清空旧数据')
   }
 
@@ -164,6 +171,40 @@ console.log('   📋 后端组 2026年7月点检 — 2 issues (李四+admin)')
 console.log('   📋 质量部 Q3 审核问题 — 1 issue 8D (admin+李四)')
 console.log('')
 console.log('   🧪 测试推送: admin 登录 → 点「后端组 7月点检」→ 收到 1 条待审批推送')
+
+// ═══════ 数据字典 ═══════
+function seedDict() {
+  const dictDefaults: { g: string; items: { v: string; l: string }[] }[] = [
+    { g: 'issueCategory', items: [
+      { v: 'appearance', l: '外观' }, { v: 'dimension', l: '尺寸' }, { v: 'function', l: '功能' },
+      { v: 'process', l: '过程' }, { v: 'safety', l: '安全' }, { v: 'other', l: '其他' },
+    ]},
+    { g: 'detectionPhase', items: [
+      { v: 'incoming', l: '来料检验' }, { v: 'in_process', l: '过程检验' }, { v: 'final', l: '终检' },
+      { v: 'customer', l: '客户反馈' }, { v: 'audit', l: '审核发现' }, { v: 'supplier', l: '供应商端' },
+    ]},
+    { g: 'orgUnitType', items: [
+      { v: 'group', l: '小组' }, { v: 'department', l: '科室' }, { v: 'division', l: '部' },
+    ]},
+    { g: 'severity', items: [
+      { v: 'fatal', l: '致命' }, { v: 'major', l: '严重' }, { v: 'minor', l: '轻微' }, { v: 'trivial', l: '一般' },
+    ]},
+    { g: 'closeReason', items: [
+      { v: 'completed', l: '已完成' }, { v: 'cancelled', l: '已取消' }, { v: 'duplicate', l: '重复' },
+      { v: 'transferred', l: '已转交' }, { v: 'unreproducible', l: '不可复现' },
+    ]},
+  ]
+  let dictCount = 0
+  for (const dg of dictDefaults) {
+    for (const di of dg.items) {
+      db.prepare('INSERT OR IGNORE INTO dict (id, groupName, value, label, sortOrder) VALUES (?, ?, ?, ?, ?)')
+        .run(uuid(), dg.g, di.v, di.l, dictCount++)
+    }
+  }
+  console.log(`  📚 ${dictCount} dict entries seeded`)
+}
+seedDict()
+// ═══════ ═══════ ═══════
 
   logs.push('创建 3 用户: admin / zhangsan / lisi (密码: 123456)')
   logs.push('创建 3 列表: 前端组点检, 后端组点检, 质量部Q3审核')

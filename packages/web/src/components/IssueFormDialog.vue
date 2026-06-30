@@ -1,8 +1,12 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
+import { useDictStore } from '@/stores/dict'
+
+const dict = useDictStore()
 
 const props = defineProps<{
   allUsers: Array<{ id: string; username: string; displayName: string | null }>
+  initial?: Record<string, any> | null   // 编辑模式：预填数据
 }>()
 const emit = defineEmits<{
   confirm: [data: {
@@ -13,38 +17,17 @@ const emit = defineEmits<{
   close: []
 }>()
 
-const title = ref('')
-const description = ref('')
-const priority = ref('medium')
-const severity = ref('minor')
-const category = ref('')
-const detectionPhase = ref('')
-const reporterId = ref('')
-const assigneeId = ref('')
-const dueDate = ref('')
+onMounted(() => dict.load())
 
-const severityOptions = [
-  { value: 'fatal', label: '致命 🔴' },
-  { value: 'major', label: '严重 🟠' },
-  { value: 'minor', label: '一般 🟡' },
-  { value: 'trivial', label: '轻微 🟢' },
-]
-const categoryOptions = [
-  { value: 'appearance', label: '外观' },
-  { value: 'dimension', label: '尺寸' },
-  { value: 'function', label: '功能' },
-  { value: 'process', label: '过程' },
-  { value: 'safety', label: '安全' },
-  { value: 'other', label: '其他' },
-]
-const detectionPhaseOptions = [
-  { value: 'incoming', label: '来料检验' },
-  { value: 'in_process', label: '过程检验' },
-  { value: 'final', label: '终检' },
-  { value: 'customer', label: '客户反馈' },
-  { value: 'audit', label: '审核发现' },
-  { value: 'supplier', label: '供应商端' },
-]
+const title = ref(props.initial?.title || '')
+const description = ref(props.initial?.description || '')
+const priority = ref(props.initial?.priority || 'medium')
+const severity = ref(props.initial?.severity || 'minor')
+const category = ref(props.initial?.category || '')
+const detectionPhase = ref(props.initial?.detectionPhase || '')
+const reporterId = ref(props.initial?.reporterId || '')
+const assigneeId = ref(props.initial?.assigneeId || '')
+const dueDate = ref(props.initial?.dueDate || '')
 
 function submit() {
   if (!title.value.trim()) return
@@ -63,7 +46,7 @@ function submit() {
 </script>
 
 <template>
-  <el-dialog :model-value="true" title="新建 Issue" width="560px" @close="emit('close')">
+  <el-dialog :model-value="true" :title="props.initial ? '编辑 Issue' : '新建 Issue'" width="560px" @close="emit('close')">
     <el-form label-position="top" @submit.prevent="submit">
       <!-- 基本信息 -->
       <el-form-item label="标题" required>
@@ -75,14 +58,14 @@ function submit() {
         <el-col :span="12">
           <el-form-item label="严重度">
             <el-select v-model="severity" style="width:100%">
-              <el-option v-for="o in severityOptions" :key="o.value" :label="o.label" :value="o.value" />
+              <el-option v-for="o in dict.getOptions('severity')" :key="o.value" :label="o.label" :value="o.value" />
             </el-select>
           </el-form-item>
         </el-col>
         <el-col :span="12">
           <el-form-item label="问题分类">
             <el-select v-model="category" placeholder="选择分类" clearable style="width:100%">
-              <el-option v-for="o in categoryOptions" :key="o.value" :label="o.label" :value="o.value" />
+              <el-option v-for="o in dict.getOptions('issueCategory')" :key="o.value" :label="o.label" :value="o.value" />
             </el-select>
           </el-form-item>
         </el-col>
@@ -93,7 +76,7 @@ function submit() {
         <el-col :span="12">
           <el-form-item label="发现阶段">
             <el-select v-model="detectionPhase" placeholder="选择阶段" clearable style="width:100%">
-              <el-option v-for="o in detectionPhaseOptions" :key="o.value" :label="o.label" :value="o.value" />
+              <el-option v-for="o in dict.getOptions('detectionPhase')" :key="o.value" :label="o.label" :value="o.value" />
             </el-select>
           </el-form-item>
         </el-col>

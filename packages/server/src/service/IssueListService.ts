@@ -8,8 +8,12 @@ export class IssueListService {
   getMyLists(userId: string): IssueList[] {
     const db = getDb()
     return db.prepare(`
-      SELECT DISTINCT l.* FROM issueLists l
+      SELECT DISTINCT l.*,
+        (SELECT COUNT(*) FROM issueListMembers WHERE listId = l.id) as memberCount,
+        u.displayName as ownerName
+      FROM issueLists l
       LEFT JOIN issueListMembers m ON m.listId = l.id
+      LEFT JOIN users u ON u.id = l.ownerId
       WHERE (l.ownerId = ? OR m.userId = ?) AND l.archived = 0
       ORDER BY l.updatedAt DESC
     `).all(userId, userId) as IssueList[]
@@ -17,12 +21,22 @@ export class IssueListService {
 
   getAllLists(): IssueList[] {
     const db = getDb()
-    return db.prepare('SELECT * FROM issueLists WHERE archived = 0 ORDER BY updatedAt DESC').all() as IssueList[]
+    return db.prepare(`
+      SELECT l.*, (SELECT COUNT(*) FROM issueListMembers WHERE listId = l.id) as memberCount,
+        u.displayName as ownerName
+      FROM issueLists l LEFT JOIN users u ON u.id = l.ownerId
+      WHERE l.archived = 0 ORDER BY l.updatedAt DESC
+    `).all() as IssueList[]
   }
 
   getArchivedLists(): IssueList[] {
     const db = getDb()
-    return db.prepare('SELECT * FROM issueLists WHERE archived = 1 ORDER BY updatedAt DESC').all() as IssueList[]
+    return db.prepare(`
+      SELECT l.*, (SELECT COUNT(*) FROM issueListMembers WHERE listId = l.id) as memberCount,
+        u.displayName as ownerName
+      FROM issueLists l LEFT JOIN users u ON u.id = l.ownerId
+      WHERE l.archived = 1 ORDER BY l.updatedAt DESC
+    `).all() as IssueList[]
   }
 
   archiveList(id: string, archived: boolean, userId: string): IssueList {

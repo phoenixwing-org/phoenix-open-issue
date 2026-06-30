@@ -6,7 +6,11 @@ import { getCheckpoints, createCheckpoint, updateCheckpoint, deleteCheckpoint } 
 import { getAllUsers } from '@/api/auth'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import CheckpointFormDialog from '@/components/CheckpointFormDialog.vue'
+import IssueFormDialog from '@/components/IssueFormDialog.vue'
 import PushDialog from '@/views/push/PushDialog.vue'
+import { useDictStore } from '@/stores/dict'
+
+const dict = useDictStore()
 import type { Checkpoint } from '@phoenix-wing/open-issue-core'
 import { isOverdue } from '@phoenix-wing/open-issue-core'
 
@@ -19,6 +23,7 @@ const checkpoints = ref<Checkpoint[]>([])
 const allUsers = ref<any[]>([])
 const showCpForm = ref(false)
 const showPush = ref(false)
+const showEdit = ref(false)
 
 const statusLabel: Record<string, string> = { open: '待处理', in_progress: '进行中', resolved: '已解决', closed: '已关闭', cancelled: '已取消' }
 const statusTag: Record<string, string | undefined> = { open: 'info', in_progress: 'warning', resolved: 'success', closed: undefined, cancelled: 'danger' }
@@ -33,6 +38,7 @@ const cpStatusLabel: Record<string, string> = { pending: '待处理', done: '已
 const cpStatusColor: Record<string, string> = { pending: '#909399', done: '#67c23a', skipped: '#e6a23c' }
 
 onMounted(async () => {
+  dict.load()
   await issueStore.fetchIssue(issueId)
   await loadCheckpoints()
   const res = await getAllUsers()
@@ -81,6 +87,12 @@ function formatDate(d: string | null): string {
   return d.slice(0, 10)
 }
 
+async function onEditIssue(data: any) {
+  await issueStore.updateIssue(issueId, data)
+  showEdit.value = false
+  ElMessage.success('Issue 已更新')
+}
+
 function goBack() {
   router.back()
 }
@@ -93,9 +105,14 @@ function goBack() {
         <el-button link @click="goBack"><el-icon><ArrowLeft /></el-icon> 返回</el-button>
         <h2 v-if="issueStore.currentIssue">{{ issueStore.currentIssue.title }}</h2>
       </div>
-      <el-button v-if="issueStore.currentIssue" type="warning" size="small" @click="showPush = true">
-        <el-icon><Promotion /></el-icon> 推送
-      </el-button>
+      <div style="display:flex;gap:8px">
+        <el-button v-if="issueStore.currentIssue" size="small" @click="showEdit = true">
+          <el-icon><Edit /></el-icon> 编辑
+        </el-button>
+        <el-button v-if="issueStore.currentIssue" type="warning" size="small" @click="showPush = true">
+          <el-icon><Promotion /></el-icon> 推送
+        </el-button>
+      </div>
     </div>
 
     <div v-if="issueStore.currentIssue" class="issue-detail">
@@ -111,7 +128,7 @@ function goBack() {
       <el-descriptions title="基本信息" :column="2" border size="small" class="detail-desc-block">
         <el-descriptions-item label="严重度">
           <el-tag :type="severityTag[issueStore.currentIssue.severity]" size="small" effect="dark">
-            {{ severityLabel[issueStore.currentIssue.severity] }}
+            {{ dict.getLabel('severity', issueStore.currentIssue.severity) }}
           </el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="优先级">
@@ -120,10 +137,10 @@ function goBack() {
           </el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="问题分类">
-          {{ categoryLabel[issueStore.currentIssue.category] || '—' }}
+          {{ dict.getLabel('issueCategory', issueStore.currentIssue.category) || '—' }}
         </el-descriptions-item>
         <el-descriptions-item label="发现阶段">
-          {{ detectionPhaseLabel[issueStore.currentIssue.detectionPhase] || '—' }}
+          {{ dict.getLabel('detectionPhase', issueStore.currentIssue.detectionPhase) || '—' }}
         </el-descriptions-item>
       </el-descriptions>
 
@@ -212,6 +229,13 @@ function goBack() {
       @confirm="onCreateCp"
       @close="showCpForm = false"
     />
+    <IssueFormDialog
+      v-if="showEdit"
+      :all-users="allUsers"
+      :initial="issueStore.currentIssue"
+      @confirm="onEditIssue"
+      @close="showEdit = false"
+    />
     <PushDialog
       v-if="showPush && issueStore.currentIssue"
       :list-id="issueStore.currentIssue.listId"
@@ -239,4 +263,7 @@ function goBack() {
 .cp-responsible { font-size: 0.78rem; color: #909399; }
 .cp-desc { font-size: 0.9rem; color: #303133; margin-bottom: 8px; }
 .cp-actions { display: flex; gap: 8px; }
+@media (max-width: 768px) {
+  .page-head { flex-direction: column; align-items: flex-start; gap: 8px; }
+}
 </style>

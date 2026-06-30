@@ -4,6 +4,9 @@ import { useRoute, useRouter } from 'vue-router'
 import { useIssueListStore } from '@/stores/issueLists'
 import { useIssueStore } from '@/stores/issues'
 import { useSettingsStore } from '@/stores/settings'
+import { useDictStore } from '@/stores/dict'
+
+const dict = useDictStore()
 import { getMembers, addMember, removeMember } from '@/api/issueLists'
 import { getAllUsers } from '@/api/auth'
 import { getCheckpointsByList } from '@/api/checkpoints'
@@ -46,19 +49,8 @@ const statusTag: Record<string, string | undefined> = {
   open: 'info', in_progress: 'warning', resolved: 'success', closed: undefined, cancelled: 'danger',
 }
 
-const severityLabel: Record<string, string> = {
-  fatal: '致命', major: '严重', minor: '一般', trivial: '轻微',
-}
 const severityTag: Record<string, string | undefined> = {
   fatal: 'danger', major: 'warning', minor: 'info', trivial: undefined,
-}
-
-const categoryLabel: Record<string, string> = {
-  appearance: '外观', dimension: '尺寸', function: '功能', process: '过程', safety: '安全', other: '其他',
-}
-
-const detectionPhaseLabel: Record<string, string> = {
-  incoming: '来料检验', in_process: '过程检验', final: '终检', customer: '客户反馈', audit: '审核发现', supplier: '供应商端',
 }
 
 const priorityLabel: Record<string, string> = { low: '低', medium: '中', high: '高', critical: '紧急' }
@@ -76,6 +68,7 @@ const userMap = computed<Record<string, string>>(() => {
 })
 
 onMounted(async () => {
+  dict.load()
   await listStore.fetchList(listId.value)
   await loadData()
 })
@@ -224,6 +217,16 @@ function formatDate(d: string | null) {
   if (!d) return '—'
   return d.slice(0, 10)
 }
+
+function colWidth(key: string, fallback: number): number {
+  return settings.colWidths[key] || fallback
+}
+function onColResize(newWidth: number, _old: number, col: any) {
+  if (col.props?.label) {
+    const key = col.props.label
+    settings.colWidths[key] = newWidth
+  }
+}
 </script>
 
 <template>
@@ -246,10 +249,10 @@ function formatDate(d: string | null) {
         <el-option v-for="(l, v) in statusLabel" :key="v" :label="l" :value="v" />
       </el-select>
       <el-select v-model="severityFilter" placeholder="严重度" clearable size="small" style="width:100px">
-        <el-option v-for="(l, v) in severityLabel" :key="v" :label="l" :value="v" />
+        <el-option v-for="o in dict.getOptions('severity')" :key="o.value" :label="o.label" :value="o.value" />
       </el-select>
       <el-select v-model="categoryFilter" placeholder="分类" clearable size="small" style="width:100px">
-        <el-option v-for="(l, v) in categoryLabel" :key="v" :label="l" :value="v" />
+        <el-option v-for="o in dict.getOptions('issueCategory')" :key="o.value" :label="o.label" :value="o.value" />
       </el-select>
       <span v-if="viewMode === 'timeline'" style="font-size:0.8rem;color:#909399;display:inline-flex;align-items:center;gap:4px">
         显示最近
@@ -295,45 +298,46 @@ function formatDate(d: string | null) {
     <el-table
       :data="filteredIssues"
       v-loading="issueStore.loading"
-      stripe
+      stripe border
       size="small"
       @row-click="(row: any) => goIssue(row.id)"
+      @header-dragend="onColResize"
       style="cursor:pointer"
       highlight-current-row
     >
       <el-table-column type="index" label="#" width="45" align="center" fixed="left" />
       <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip fixed="left" />
-      <el-table-column prop="issueNo" label="编号" width="145" />
-      <el-table-column label="严重度" width="75" align="center">
+      <el-table-column prop="issueNo" label="编号" :width="colWidth('编号', 145)" resizable />
+      <el-table-column label="严重度" :width="colWidth('严重度', 75)" resizable align="center">
         <template #default="{ row }">
           <el-tag :type="severityTag[row.severity]" size="small" effect="dark">
-            {{ severityLabel[row.severity] || row.severity }}
+            {{ dict.getLabel('severity', row.severity) || row.severity }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="优先级" width="75" align="center">
+      <el-table-column label="优先级" :width="colWidth('优先级', 75)" resizable align="center">
         <template #default="{ row }">
           <el-tag :type="priorityTag[row.priority]" size="small">{{ priorityLabel[row.priority] || row.priority }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column v-if="viewMode === 'complex'" label="分类" width="85">
+      <el-table-column v-if="viewMode === 'complex'" label="分类" :width="colWidth('分类', 85)" resizable>
         <template #default="{ row }">
-          <span v-if="row.category" class="cell-text">{{ categoryLabel[row.category] || row.category }}</span>
+          <span v-if="row.category" class="cell-text">{{ dict.getLabel('issueCategory', row.category) || row.category }}</span>
           <span v-else class="cell-na">—</span>
         </template>
       </el-table-column>
-      <el-table-column v-if="viewMode === 'complex'" label="发现阶段" width="100">
+      <el-table-column v-if="viewMode === 'complex'" label="发现阶段" :width="colWidth('发现阶段', 100)" resizable>
         <template #default="{ row }">
-          <span v-if="row.detectionPhase" class="cell-text">{{ detectionPhaseLabel[row.detectionPhase] }}</span>
+          <span v-if="row.detectionPhase" class="cell-text">{{ dict.getLabel('detectionPhase', row.detectionPhase) }}</span>
           <span v-else class="cell-na">—</span>
         </template>
       </el-table-column>
-      <el-table-column v-if="viewMode === 'complex'" label="提出人" width="80">
+      <el-table-column v-if="viewMode === 'complex'" label="提出人" :width="colWidth('提出人', 80)" resizable>
         <template #default="{ row }">
           {{ userMap[row.reporterId] || '—' }}
         </template>
       </el-table-column>
-      <el-table-column label="责任人" width="80">
+      <el-table-column label="责任人" :width="colWidth('责任人', 80)" resizable>
         <template #default="{ row }">
           <el-tag v-if="row.assigneeId && userMap[row.assigneeId]" size="small" type="warning" effect="plain">
             {{ userMap[row.assigneeId] }}
@@ -539,5 +543,10 @@ function formatDate(d: string | null) {
     padding-top: 8px;
     padding-bottom: 8px;
   }
+}
+@media (max-width: 768px) {
+  .page-head { flex-direction: column; align-items: flex-start; gap: 8px; }
+  .head-actions { flex-wrap: wrap; }
+  .filters { flex-wrap: wrap; }
 }
 </style>

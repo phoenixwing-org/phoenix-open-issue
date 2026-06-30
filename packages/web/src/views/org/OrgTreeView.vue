@@ -1,7 +1,10 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { useOrgUnitStore } from '@/stores/orgUnits'
-import { getOrgUnitUsers, createOrgUnit, deleteOrgUnit } from '@/api/orgUnits'
+import { useDictStore } from '@/stores/dict'
+
+const dict = useDictStore()
+import { getOrgUnitUsers, createOrgUnit, deleteOrgUnit, updateOrgUnit } from '@/api/orgUnits'
 import { approveUser, updateUserOrg, updateUser } from '@/api/auth'
 import { ElMessage, ElMessageBox } from 'element-plus'
 
@@ -23,7 +26,7 @@ function flattenUnits(nodes: any[], depth = 0): any[] {
   return result
 }
 
-onMounted(() => store.fetchTree())
+onMounted(() => { store.fetchTree(); dict.load() })
 
 async function onNodeClick(data: any) {
   selectedUnit.value = data
@@ -89,6 +92,34 @@ async function onSaveUser() {
   }
 }
 
+const editingUnit = ref(false)
+const editUnitName = ref('')
+const editUnitType = ref('')
+const editUnitParentId = ref<string | null>(null)
+
+function onEditUnit() {
+  if (!selectedUnit.value) return
+  editUnitName.value = selectedUnit.value.name
+  editUnitType.value = selectedUnit.value.unitType
+  editUnitParentId.value = selectedUnit.value.parentId
+  editingUnit.value = true
+}
+
+async function onSaveUnit() {
+  if (!selectedUnit.value) return
+  await updateOrgUnit(selectedUnit.value.id, {
+    name: editUnitName.value,
+    parentId: editUnitParentId.value,
+    unitType: editUnitType.value,
+  })
+  ElMessage.success('已更新')
+  editingUnit.value = false
+  store.fetchTree()
+  // 刷新选中的节点
+  const res = await getOrgUnitUsers(selectedUnit.value.id)
+  unitUsers.value = res.data
+}
+
 async function onDelete(id: string, name: string) {
   await ElMessageBox.confirm(`确定删除「${name}」？`, '确认', { type: 'warning' })
   await deleteOrgUnit(id)
@@ -132,10 +163,34 @@ const unitTypeColor: Record<string, string> = { group: '#67c23a', department: '#
 
       <div class="org-detail-panel">
         <template v-if="selectedUnit">
-          <h3>{{ selectedUnit.name }}</h3>
-          <el-tag size="small" :color="unitTypeColor[selectedUnit.unitType]" style="color:#fff;border:none">
-            {{ unitTypeLabel[selectedUnit.unitType] }}
-          </el-tag>
+          <!-- 查看模式 -->
+          <template v-if="!editingUnit">
+            <h3>{{ selectedUnit.name }}</h3>
+            <el-tag size="small" :color="unitTypeColor[selectedUnit.unitType]" style="color:#fff;border:none">
+              {{ unitTypeLabel[selectedUnit.unitType] }}
+            </el-tag>
+            <el-button size="small" style="margin-left:8px" @click="onEditUnit">编辑</el-button>
+          </template>
+          <!-- 编辑模式 -->
+          <el-form v-else label-position="top" size="small">
+            <el-form-item label="名称">
+              <el-input v-model="editUnitName" />
+            </el-form-item>
+            <el-form-item label="类型">
+              <el-select v-model="editUnitType">
+                <el-option v-for="o in dict.getOptions('orgUnitType')" :key="o.value" :label="o.label" :value="o.value" />
+              </el-select>
+            </el-form-item>
+            <el-form-item label="上级节点">
+              <el-select v-model="editUnitParentId" clearable placeholder="无（根节点）">
+                <el-option v-for="org in flattenUnits(store.tree)" :key="org.id" :label="'　'.repeat(org._depth) + org.name" :value="org.id" />
+              </el-select>
+            </el-form-item>
+            <div>
+              <el-button type="primary" size="small" @click="onSaveUnit">保存</el-button>
+              <el-button size="small" @click="editingUnit = false">取消</el-button>
+            </div>
+          </el-form>
 
           <div class="unit-users" style="margin-top:16px">
             <h4>成员 ({{ unitUsers.length }})</h4>
@@ -170,9 +225,7 @@ const unitTypeColor: Record<string, string> = { group: '#67c23a', department: '#
         </el-form-item>
         <el-form-item label="类型">
           <el-select v-model="newUnitType">
-            <el-option label="小组" value="group" />
-            <el-option label="科室" value="department" />
-            <el-option label="部" value="division" />
+            <el-option v-for="o in dict.getOptions('orgUnitType')" :key="o.value" :label="o.label" :value="o.value" />
           </el-select>
         </el-form-item>
         <el-form-item label="上级节点">
@@ -223,4 +276,10 @@ const unitTypeColor: Record<string, string> = { group: '#67c23a', department: '#
 .user-list { display: flex; flex-direction: column; gap: 8px; }
 .user-item { display: flex; align-items: center; gap: 8px; }
 .user-email { font-size: 0.8rem; color: #c0c4cc; }
+@media (max-width: 768px) {
+  .org-layout { flex-direction: column; }
+  .org-tree-panel { width: 100%; }
+  .org-detail-panel { min-height: 0; }
+  .user-item { flex-wrap: wrap; }
+}
 </style>

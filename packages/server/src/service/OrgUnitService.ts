@@ -23,9 +23,10 @@ export class OrgUnitService {
     return db.prepare('SELECT * FROM orgUnits WHERE id = ?').get(id) as OrgUnit
   }
 
-  update(id: string, name: string): OrgUnit {
+  update(id: string, data: { name?: string; parentId?: string | null; unitType?: string }): OrgUnit {
     const db = getDb()
-    db.prepare('UPDATE orgUnits SET name = ? WHERE id = ?').run(name, id)
+    db.prepare('UPDATE orgUnits SET name = COALESCE(?, name), parentId = COALESCE(?, parentId), unitType = COALESCE(?, unitType) WHERE id = ?')
+      .run(data.name ?? null, data.parentId ?? null, data.unitType ?? null, id)
     return db.prepare('SELECT * FROM orgUnits WHERE id = ?').get(id) as OrgUnit
   }
 

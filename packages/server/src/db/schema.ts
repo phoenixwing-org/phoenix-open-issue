@@ -5,6 +5,7 @@ export function runSchema(db: Database.Database): void {
   const migrations = [
     `ALTER TABLE users ADD COLUMN approved INTEGER NOT NULL DEFAULT 1`,
     `ALTER TABLE issueLists ADD COLUMN archived INTEGER NOT NULL DEFAULT 0`,
+    // 移除字典字段的 CHECK 约束（SQLite 不支持直接 DROP CHECK，重建表太复杂，用 dict 校验）`,
   ]
   for (const sql of migrations) {
     try { db.exec(sql) } catch { /* column already exists */ }
@@ -59,12 +60,12 @@ export function runSchema(db: Database.Database): void {
       title TEXT NOT NULL,
       description TEXT DEFAULT '',
       status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open','in_progress','resolved','closed','cancelled')),
-      closeReason TEXT CHECK(closeReason IN ('completed','cancelled','duplicate','transferred','unreproducible')),
+      closeReason TEXT,
       closedBy TEXT,
       priority TEXT NOT NULL DEFAULT 'medium' CHECK(priority IN ('low','medium','high','critical')),
-      severity TEXT NOT NULL DEFAULT 'minor' CHECK(severity IN ('fatal','major','minor','trivial')),
-      category TEXT CHECK(category IN ('appearance','dimension','function','process','safety','other')),
-      detectionPhase TEXT CHECK(detectionPhase IN ('incoming','in_process','final','customer','audit','supplier')),
+      severity TEXT NOT NULL DEFAULT 'minor',
+      category TEXT,
+      detectionPhase TEXT,
       reporterId TEXT,
       assigneeId TEXT,
       dueDate TEXT,
@@ -106,6 +107,16 @@ export function runSchema(db: Database.Database): void {
       handledAt TEXT,
       rejectReason TEXT,
       note TEXT DEFAULT ''
+    );
+
+    CREATE TABLE IF NOT EXISTS dict (
+      id TEXT PRIMARY KEY,
+      groupName TEXT NOT NULL,
+      value TEXT NOT NULL,
+      label TEXT NOT NULL,
+      sortOrder INTEGER DEFAULT 0,
+      enabled INTEGER DEFAULT 1,
+      createdAt TEXT DEFAULT (datetime('now'))
     );
   `)
 }

@@ -6,6 +6,7 @@ import { IssueController } from '../controller/IssueController.js'
 import { CheckpointController } from '../controller/CheckpointController.js'
 import { PushController } from '../controller/PushController.js'
 import { SeedController } from '../controller/SeedController.js'
+import { DictController } from '../controller/DictController.js'
 import { authMiddleware } from '../middleware/auth.js'
 
 // Express 5 Router 泛型为空即可，res 类型由 Response 提供
@@ -18,6 +19,7 @@ const issueCtrl = new IssueController()
 const cpCtrl = new CheckpointController()
 const pushCtrl = new PushController()
 const seedCtrl = new SeedController()
+const dictCtrl = new DictController()
 
 // wrap -- 将 Promise 或同步 Controller 转为 Express handler
 function wrap(fn: (req: any, res: any) => void) {
@@ -35,6 +37,12 @@ function wrap(fn: (req: any, res: any) => void) {
 }
 
  router.post('/seed', authMiddleware, wrap((req, res) => seedCtrl.run(req, res)))
+// ---- Dict ----
+ router.get('/dict/:groupName', authMiddleware, wrap((req, res) => dictCtrl.getByGroup(req, res)))
+ router.get('/dict', authMiddleware, wrap((req, res) => dictCtrl.getAll(req, res)))
+ router.post('/dict', authMiddleware, wrap((req, res) => dictCtrl.create(req, res)))
+ router.put('/dict/:id', authMiddleware, wrap((req, res) => dictCtrl.update(req, res)))
+ router.delete('/dict/:id', authMiddleware, wrap((req, res) => dictCtrl.delete(req, res)))
 // ---- Auth ----
 router.post('/auth/register', wrap((req, res) => authCtrl.register(req, res)))
 router.post('/auth/login', wrap((req, res) => authCtrl.login(req, res)))

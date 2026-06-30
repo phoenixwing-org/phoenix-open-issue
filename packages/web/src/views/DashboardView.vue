@@ -107,6 +107,10 @@ async function onResetDemo() {
           <div class="card-body">
             <h3>{{ list.name }}</h3>
             <p v-if="list.description">{{ list.description }}</p>
+            <div class="card-info">
+              <span v-if="(list as any).ownerName">👤 {{ (list as any).ownerName }}</span>
+              <span>👥 {{ (list as any).memberCount || 0 }} 人</span>
+            </div>
           </div>
           <div class="card-meta">
             {{ new Date(list.updatedAt).toLocaleDateString('zh-CN') }}
@@ -200,6 +204,13 @@ async function onResetDemo() {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.card-info {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+  font-size: 0.75rem;
+  color: #909399;
 }
 .card-meta {
   display: flex;

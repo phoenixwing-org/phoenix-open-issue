@@ -23,7 +23,7 @@ export class OrgUnitController {
   }
 
   update(req: Request, res: Response): void {
-    const unit = orgUnitService.update(req.params.id, req.body.name)
+    const unit = orgUnitService.update(req.params.id, req.body)
     res.json(unit)
   }
 

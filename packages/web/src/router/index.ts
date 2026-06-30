@@ -52,6 +52,11 @@ const router = createRouter({
           component: () => import('@/views/push/PushHistoryView.vue'),
         },
         {
+          path: 'settings',
+          name: 'settings',
+          component: () => import('@/views/SettingsView.vue'),
+        },
+        {
           path: 'test-runner',
           name: 'testRunner',
           component: () => import('@/views/TestRunnerView.vue'),

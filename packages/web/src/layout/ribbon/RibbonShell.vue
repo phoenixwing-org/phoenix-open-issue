@@ -22,6 +22,7 @@ const groups = [
   {
     label: '工具',
     tools: [
+      { label: '设置', icon: 'Setting', action: () => router.push('/settings') },
       { label: '单元测试', icon: 'Monitor', action: () => router.push('/test-runner') },
     ],
   },
