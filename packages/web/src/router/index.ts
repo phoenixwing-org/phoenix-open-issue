@@ -51,6 +51,11 @@ const router = createRouter({
           name: 'pushHistory',
           component: () => import('@/views/push/PushHistoryView.vue'),
         },
+        {
+          path: 'test-runner',
+          name: 'testRunner',
+          component: () => import('@/views/TestRunnerView.vue'),
+        },
       ],
     },
   ],

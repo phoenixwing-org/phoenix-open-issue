@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 
-const props = defineProps<{ initial?: { name: string; description: string; list_type: string } }>()
-const emit = defineEmits<{ confirm: [data: { name: string; list_type: string; description?: string }]; close: [] }>()
+const props = defineProps<{ initial?: { name: string; description: string; listType: string } }>()
+const emit = defineEmits<{ confirm: [data: { name: string; listType: string; description?: string }]; close: [] }>()
 
 const name = ref(props.initial?.name || '')
-const listType = ref(props.initial?.list_type || 'custom')
+const listType = ref(props.initial?.listType || 'custom')
 const description = ref(props.initial?.description || '')
 
 function submit() {
   if (!name.value.trim()) return
-  emit('confirm', { name: name.value, list_type: listType.value, description: description.value })
+  emit('confirm', { name: name.value, listType: listType.value, description: description.value })
 }
 </script>
 

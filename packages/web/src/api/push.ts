@@ -15,3 +15,15 @@ export function getListPushHistory(listId: string) {
 export function getMyPushHistory() {
   return request.get('/push/history')
 }
+
+export function getIncomingPushes(listId: string) {
+  return request.get(`/lists/${listId}/incoming-pushes`)
+}
+
+export function handlePush(recordId: string, action: 'accepted' | 'rejected', rejectReason?: string) {
+  return request.patch(`/push/${recordId}/handle`, { action, rejectReason })
+}
+
+export function runSeed(force = false) {
+  return request.post('/seed' + (force ? '?force=true' : ''))
+}

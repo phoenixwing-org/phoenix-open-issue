@@ -4,7 +4,11 @@ export function getCheckpoints(issueId: string) {
   return request.get(`/issues/${issueId}/checkpoints`)
 }
 
-export function createCheckpoint(issueId: string, data: { checkpoint_date: string; description: string; responsible_user_id?: string }) {
+export function getCheckpointsByList(listId: string) {
+  return request.get(`/lists/${listId}/checkpoints`)
+}
+
+export function createCheckpoint(issueId: string, data: { checkpointDate: string; description: string; responsibleUserId?: string }) {
   return request.post(`/issues/${issueId}/checkpoints`, data)
 }
 

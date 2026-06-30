@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
+import { ElMessage } from 'element-plus'
 import * as api from '@/api/issues'
 import type { Issue } from '@phoenix-wing/open-issue-core'
 
@@ -15,6 +16,8 @@ export const useIssueStore = defineStore('issues', () => {
       const res = await api.getIssues(listId, params)
       issues.value = res.data.items
       total.value = res.data.total
+    } catch (e: any) {
+      // 拦截器已弹错误，此处仅阻止向上抛
     } finally {
       loading.value = false
     }
@@ -26,10 +29,15 @@ export const useIssueStore = defineStore('issues', () => {
     return res.data as Issue
   }
 
-  async function createIssue(listId: string, data: { title: string; description?: string; priority?: string }) {
+  async function createIssue(listId: string, data: {
+    title: string; description?: string; priority?: string
+    severity?: string; category?: string; detectionPhase?: string
+    reporterId?: string; assigneeId?: string; dueDate?: string
+  }) {
     const res = await api.createIssue(listId, data)
     issues.value.push(res.data)
     total.value++
+    ElMessage.success('Issue 创建成功')
     return res.data as Issue
   }
 
@@ -38,6 +46,7 @@ export const useIssueStore = defineStore('issues', () => {
     const idx = issues.value.findIndex(i => i.id === id)
     if (idx >= 0) issues.value[idx] = res.data
     if (currentIssue.value?.id === id) currentIssue.value = res.data
+    ElMessage.success('Issue 已更新')
     return res.data as Issue
   }
 
@@ -46,6 +55,7 @@ export const useIssueStore = defineStore('issues', () => {
     const idx = issues.value.findIndex(i => i.id === id)
     if (idx >= 0) issues.value[idx] = res.data
     if (currentIssue.value?.id === id) currentIssue.value = res.data
+    ElMessage.success('状态已更新')
     return res.data as Issue
   }
 
@@ -54,6 +64,7 @@ export const useIssueStore = defineStore('issues', () => {
     issues.value = issues.value.filter(i => i.id !== id)
     total.value--
     if (currentIssue.value?.id === id) currentIssue.value = null
+    ElMessage.success('已删除')
   }
 
   async function reorder(listId: string, issueIds: string[]) {

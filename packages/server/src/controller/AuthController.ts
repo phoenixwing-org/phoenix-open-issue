@@ -24,4 +24,24 @@ export class AuthController {
     const users = authService.getAllUsers()
     res.json(users)
   }
+
+  getPendingUsers(_req: Request, res: Response): void {
+    const users = authService.getPendingUsers()
+    res.json(users)
+  }
+
+  approveUser(req: Request, res: Response): void {
+    const user = authService.approveUser(req.params.userId, req.body.approved)
+    res.json(user)
+  }
+
+  updateUserOrg(req: Request, res: Response): void {
+    const user = authService.updateUserOrg(req.params.userId, req.body.orgUnitId)
+    res.json(user)
+  }
+
+  updateUser(req: Request, res: Response): void {
+    const user = authService.updateUser(req.params.userId, req.body)
+    res.json(user)
+  }
 }

@@ -24,4 +24,15 @@ export class PushController {
     const records = pushService.getMyPushHistory(req.user!.userId)
     res.json(records)
   }
+
+  getIncomingPushes(req: Request, res: Response): void {
+    const records = pushService.getIncomingPushes(req.params.listId)
+    res.json(records)
+  }
+
+  handlePush(req: Request, res: Response): void {
+    const { action, rejectReason } = req.body
+    const record = pushService.handlePush(req.params.id, action, req.user!.userId, rejectReason)
+    res.json(record)
+  }
 }

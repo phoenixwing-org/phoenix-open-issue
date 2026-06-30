@@ -4,7 +4,10 @@ import { useIssueListStore } from '@/stores/issueLists'
 import { previewPush, pushIssues } from '@/api/push'
 import { ElMessage } from 'element-plus'
 
-const props = defineProps<{ listId: string }>()
+const props = defineProps<{
+  listId: string
+  preselectedIssueIds?: string[]
+}>()
 const emit = defineEmits<{ close: [] }>()
 
 const listStore = useIssueListStore()
@@ -34,13 +37,14 @@ async function onPush() {
   if (!targetListId.value || !previewResult.value?.canPush) return
   loading.value = true
   try {
-    await pushIssues({
+    const res = await pushIssues({
       fromListId: props.listId,
       toListId: targetListId.value,
-      issueIds: [],  // TODO: 选择具体 Issue
+      issueIds: props.preselectedIssueIds || [],
       note: note.value,
     })
-    ElMessage.success('推送成功')
+    const count = res.data?.records?.length || 0
+    ElMessage.success(`已推送 ${count} 条 Issue，待目标列表负责人审批`)
     emit('close')
   } catch (e: any) {
     ElMessage.error(e.response?.data?.message || '推送失败')
@@ -53,6 +57,9 @@ async function onPush() {
 <template>
   <el-dialog model-value :title="'推送到其他列表'" width="500px" @close="emit('close')">
     <el-form label-position="top">
+      <el-alert v-if="!props.preselectedIssueIds?.length" title="未选择 Issue，将推送列表中的全部条目" type="info" :closable="false" style="margin-bottom:12px" />
+      <el-alert v-else :title="`将推送 ${props.preselectedIssueIds.length} 个 Issue`" type="info" :closable="false" style="margin-bottom:12px" />
+
       <el-form-item label="目标列表">
         <el-select v-model="targetListId" placeholder="选择目标列表" style="width:100%" @change="onPreview">
           <el-option v-for="l in targetLists" :key="l.id" :label="l.name" :value="l.id" />

@@ -8,7 +8,7 @@ export function getOrgUnit(id: string) {
   return request.get(`/org-units/${id}`)
 }
 
-export function createOrgUnit(data: { name: string; unit_type: string; parent_id?: string }) {
+export function createOrgUnit(data: { name: string; unitType: string; parentId?: string }) {
   return request.post('/org-units', data)
 }
 

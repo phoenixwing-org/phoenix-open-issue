@@ -10,6 +10,11 @@ export class CheckpointController {
     res.json(checkpoints)
   }
 
+  getByListId(req: Request, res: Response): void {
+    const grouped = cpService.getByListId(req.params.listId)
+    res.json(grouped)
+  }
+
   create(req: Request, res: Response): void {
     const cp = cpService.create(req.params.issueId, req.body, req.user!.userId)
     res.status(201).json(cp)

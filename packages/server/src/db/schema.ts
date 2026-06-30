@@ -1,6 +1,16 @@
 import type Database from 'better-sqlite3'
 
 export function runSchema(db: Database.Database): void {
+  // ---- 迁移：列增量添加 ----
+  const migrations = [
+    `ALTER TABLE users ADD COLUMN approved INTEGER NOT NULL DEFAULT 1`,
+    `ALTER TABLE issueLists ADD COLUMN archived INTEGER NOT NULL DEFAULT 0`,
+  ]
+  for (const sql of migrations) {
+    try { db.exec(sql) } catch { /* column already exists */ }
+  }
+
+  // ---- 建表 ----
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
       id TEXT PRIMARY KEY,
@@ -9,6 +19,7 @@ export function runSchema(db: Database.Database): void {
       passwordHash TEXT NOT NULL,
       displayName TEXT,
       orgUnitId TEXT,
+      approved INTEGER NOT NULL DEFAULT 0,
       createdAt TEXT DEFAULT (datetime('now')),
       updatedAt TEXT DEFAULT (datetime('now'))
     );
@@ -28,6 +39,7 @@ export function runSchema(db: Database.Database): void {
       listType TEXT NOT NULL CHECK(listType IN ('yearly','monthly','project','custom')),
       ownerId TEXT NOT NULL,
       orgUnitId TEXT,
+      archived INTEGER NOT NULL DEFAULT 0,
       createdAt TEXT DEFAULT (datetime('now')),
       updatedAt TEXT DEFAULT (datetime('now'))
     );
@@ -43,22 +55,32 @@ export function runSchema(db: Database.Database): void {
     CREATE TABLE IF NOT EXISTS issues (
       id TEXT PRIMARY KEY,
       listId TEXT NOT NULL,
+      issueNo TEXT NOT NULL DEFAULT '',
       title TEXT NOT NULL,
       description TEXT DEFAULT '',
       status TEXT NOT NULL DEFAULT 'open' CHECK(status IN ('open','in_progress','resolved','closed','cancelled')),
+      closeReason TEXT CHECK(closeReason IN ('completed','cancelled','duplicate','transferred','unreproducible')),
+      closedBy TEXT,
       priority TEXT NOT NULL DEFAULT 'medium' CHECK(priority IN ('low','medium','high','critical')),
       severity TEXT NOT NULL DEFAULT 'minor' CHECK(severity IN ('fatal','major','minor','trivial')),
+      category TEXT CHECK(category IN ('appearance','dimension','function','process','safety','other')),
+      detectionPhase TEXT CHECK(detectionPhase IN ('incoming','in_process','final','customer','audit','supplier')),
       reporterId TEXT,
       assigneeId TEXT,
       dueDate TEXT,
       completedAt TEXT,
-      closeReason TEXT CHECK(closeReason IN ('completed','cancelled','duplicate','transferred','unreproducible')),
-      closedBy TEXT,
+      containment TEXT DEFAULT '',
+      rootCause TEXT DEFAULT '',
+      correctiveAction TEXT DEFAULT '',
       sortOrder INTEGER DEFAULT 0,
       createdBy TEXT NOT NULL,
       createdAt TEXT DEFAULT (datetime('now')),
       updatedAt TEXT DEFAULT (datetime('now'))
     );
+
+    CREATE INDEX IF NOT EXISTS idx_issues_issueNo ON issues(listId, issueNo);
+    CREATE INDEX IF NOT EXISTS idx_issues_category ON issues(listId, category);
+    CREATE INDEX IF NOT EXISTS idx_issues_detectionPhase ON issues(listId, detectionPhase);
 
     CREATE TABLE IF NOT EXISTS checkpoints (
       id TEXT PRIMARY KEY,

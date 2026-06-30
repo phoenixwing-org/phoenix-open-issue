@@ -2,18 +2,18 @@
 import { ref } from 'vue'
 
 const props = defineProps<{ users: any[]; initial?: any }>()
-const emit = defineEmits<{ confirm: [data: { checkpoint_date: string; description: string; responsible_user_id?: string }]; close: [] }>()
+const emit = defineEmits<{ confirm: [data: { checkpointDate: string; description: string; responsibleUserId?: string }]; close: [] }>()
 
-const date = ref(props.initial?.checkpoint_date || new Date().toISOString().slice(0, 10))
+const date = ref(props.initial?.checkpointDate || new Date().toISOString().slice(0, 10))
 const desc = ref(props.initial?.description || '')
-const responsible = ref(props.initial?.responsible_user_id || '')
+const responsible = ref(props.initial?.responsibleUserId || '')
 
 function submit() {
   if (!desc.value.trim()) return
   emit('confirm', {
-    checkpoint_date: date.value,
+    checkpointDate: date.value,
     description: desc.value,
-    responsible_user_id: responsible.value || undefined,
+    responsibleUserId: responsible.value || undefined,
   })
 }
 </script>
@@ -29,7 +29,7 @@ function submit() {
       </el-form-item>
       <el-form-item label="负责人">
         <el-select v-model="responsible" placeholder="选择负责人" clearable style="width:100%">
-          <el-option v-for="u in props.users" :key="u.id" :label="u.display_name || u.username" :value="u.id" />
+          <el-option v-for="u in props.users" :key="u.id" :label="u.displayName || u.username" :value="u.id" />
         </el-select>
       </el-form-item>
     </el-form>

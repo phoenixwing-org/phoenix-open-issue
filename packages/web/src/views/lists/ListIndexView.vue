@@ -50,17 +50,16 @@ async function onDelete(id: string, name: string) {
           <el-link type="primary" @click="goDetail(row.id)">{{ row.name }}</el-link>
         </template>
       </el-table-column>
-      <el-table-column prop="list_type" label="类型" width="100">
-        <template #default="{ row }">{{ listTypeLabel[row.list_type] || row.list_type }}</template>
+      <el-table-column prop="listType" label="类型" width="100">
+        <template #default="{ row }">{{ listTypeLabel[row.listType] || row.listType }}</template>
       </el-table-column>
       <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
       <el-table-column label="创建时间" width="160">
-        <template #default="{ row }">{{ new Date(row.created_at).toLocaleString('zh-CN') }}</template>
+        <template #default="{ row }">{{ new Date(row.createdAt).toLocaleString('zh-CN') }}</template>
       </el-table-column>
       <el-table-column label="操作" width="160" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" size="small" @click="editTarget = row.id">编辑</el-button>
-          <el-button link type="danger" size="small" @click="onDelete(row.id, row.name)">删除</el-button>
         </template>
       </el-table-column>
       <template #empty>

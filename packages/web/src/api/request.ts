@@ -22,7 +22,10 @@ request.interceptors.response.use(
     if (error.response?.status === 401) {
       const auth = useAuthStore()
       auth.logout()
-      window.location.href = '/login'
+      // 如果不在登录页才跳转，避免刷掉登录错误提示
+      if (!window.location.pathname.startsWith('/login')) {
+        window.location.href = '/login'
+      }
       return Promise.reject(error)
     }
     ElMessage.error(msg)

@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { getMyPushHistory } from '@/api/push'
+import { useRouter } from 'vue-router'
+import { getMyPushHistory, handlePush } from '@/api/push'
+import { ElMessage, ElMessageBox } from 'element-plus'
 
+const router = useRouter()
 const records = ref<any[]>([])
 const loading = ref(false)
 
-onMounted(async () => {
+async function load() {
   loading.value = true
   try {
     const res = await getMyPushHistory()
@@ -13,7 +16,30 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
-})
+}
+
+onMounted(load)
+
+async function onAccept(recordId: string) {
+  await handlePush(recordId, 'accepted')
+  ElMessage.success('已接受推送')
+  load()
+}
+
+async function onReject(recordId: string) {
+  try {
+    await ElMessageBox.prompt('拒绝理由（可选）', '拒绝推送', { confirmButtonText: '确认拒绝' })
+      .then(async ({ value }) => {
+        await handlePush(recordId, 'rejected', value || undefined)
+        ElMessage.success('已拒绝推送')
+        load()
+      })
+  } catch { /* canceled */ }
+}
+
+function goList(listId: string) {
+  router.push(`/lists/${listId}`)
+}
 </script>
 
 <template>
@@ -22,14 +48,37 @@ onMounted(async () => {
       <h2>推送历史</h2>
     </div>
 
-    <el-table :data="records" v-loading="loading" stripe>
-      <el-table-column label="推送时间" width="170">
-        <template #default="{ row }">{{ new Date(row.pushed_at).toLocaleString('zh-CN') }}</template>
+    <el-table :data="records" v-loading="loading" stripe size="small">
+      <el-table-column label="时间" width="140">
+        <template #default="{ row }">{{ new Date(row.pushedAt).toLocaleString('zh-CN') }}</template>
       </el-table-column>
-      <el-table-column prop="from_list_id" label="源列表" width="240" show-overflow-tooltip />
-      <el-table-column prop="to_list_id" label="目标列表" width="240" show-overflow-tooltip />
-      <el-table-column prop="issue_id" label="Issue ID" width="240" show-overflow-tooltip />
-      <el-table-column prop="note" label="备注" min-width="150" show-overflow-tooltip />
+      <el-table-column label="状态" width="90" align="center">
+        <template #default="{ row }">
+          <el-tag v-if="row.status === 'pending'" type="warning" size="small">待审批</el-tag>
+          <el-tag v-else-if="row.status === 'accepted'" type="success" size="small">已接受</el-tag>
+          <el-tag v-else-if="row.status === 'rejected'" type="danger" size="small">已拒绝</el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="issueTitle" label="Issue" min-width="160" show-overflow-tooltip />
+      <el-table-column prop="fromListName" label="源列表" width="130" show-overflow-tooltip />
+      <el-table-column label="" width="30">
+        <template #default>→</template>
+      </el-table-column>
+      <el-table-column label="目标列表" width="160" show-overflow-tooltip>
+        <template #default="{ row }">
+          <el-link type="primary" @click="goList(row.toListId)">{{ row.toListName }}</el-link>
+        </template>
+      </el-table-column>
+      <el-table-column prop="note" label="备注" min-width="100" show-overflow-tooltip />
+      <el-table-column label="操作" width="140" fixed="right" v-if="records.some(r => r.status === 'pending')">
+        <template #default="{ row }">
+          <template v-if="row.status === 'pending'">
+            <el-button size="small" type="success" @click="onAccept(row.id)">接受</el-button>
+            <el-button size="small" type="danger" @click="onReject(row.id)">拒绝</el-button>
+          </template>
+          <span v-else class="cell-na">—</span>
+        </template>
+      </el-table-column>
       <template #empty><el-empty description="暂无推送记录" /></template>
     </el-table>
   </div>
@@ -38,4 +87,5 @@ onMounted(async () => {
 <style scoped>
 .page-head { margin-bottom: 16px; }
 .page-head h2 { font-size: 1.3rem; font-weight: 650; }
+.cell-na { color: #c0c4cc; }
 </style>

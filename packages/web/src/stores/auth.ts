@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { login as apiLogin, register as apiRegister, getMe } from '@/api/auth'
-import type { LoginResult, UserPublic } from '@phoenix-wing/open-issue-core'
+import type { LoginResult, UserPublic, RegisterResult } from '@phoenix-wing/open-issue-core'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('token') || '')
@@ -29,13 +29,15 @@ export const useAuthStore = defineStore('auth', () => {
     return data
   }
 
-  async function register(data: { username: string; password: string; display_name?: string }) {
+  async function register(data: { username: string; password: string; displayName?: string; orgUnitId?: string }) {
     const res = await apiRegister(data)
-    const result = res.data as LoginResult
-    token.value = result.token
-    user.value = result.user
-    localStorage.setItem('token', result.token)
-    localStorage.setItem('user', JSON.stringify(result.user))
+    const result = res.data as RegisterResult
+    if (!result.pending) {
+      token.value = result.token
+      user.value = result.user
+      localStorage.setItem('token', result.token!)
+      localStorage.setItem('user', JSON.stringify(result.user))
+    }
     return result
   }
 

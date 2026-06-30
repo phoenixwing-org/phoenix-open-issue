@@ -1,155 +1,223 @@
-# Issue 列设计讨论
+# Issue 列设计
 
-> 汽车行业 Open Issue List 参考 IATF 16949 / 8D 报告标准，对比当前 v0.1 原型列，设计扩展方案。
-
----
-
-## 当前 v0.1 原型 Issue 列（偏通用）
-
-| 字段 | 说明 |
-|------|------|
-| title | 标题 |
-| description | 描述（纯文本） |
-| status | open / in_progress / resolved / closed |
-| priority | low / medium / high / critical |
-| createdBy | 创建人 ID |
-| createdAt | 创建日期 |
-| updatedAt | 更新日期 |
-
-**不足**：缺提出人、责任人、完成日期、关闭理由、严重度、分类等汽车行业常用字段。
+> 汽车行业 Open Issue List 参考 IATF 16949 / 8D 报告标准，对标当前 v0.1 原型列，设计完整扩展方案。
 
 ---
 
-## 汽车行业常见列（参考 IATF 16949 / 8D）
+## 最终列定义（v0.2+ 已实现）
 
-### 第一层：基本信息（对标 + 展示格式）
+### 第一层：基本信息
 
-| 序号 | 中文 | 英文 | 类型 | 展示格式 | 说明 |
-|------|------|------|------|---------|------|
-| 1 | 问题编号 | issueNo | text | `ISS-2026-0001` | 可读编号，按列表自增 |
-| 2 | 标题 | title | text | 单行文本 | 已有 |
-| 3 | 提出人 | reporterId | FK→users | 头像+姓名 | 谁发现/提出的 |
-| 4 | 责任人 | assigneeId | FK→users | 头像+姓名 | 谁负责解决 |
-| 5 | 创建日期 | createdAt | datetime | `2026-06-30` | 已有 |
-| 6 | 计划完成日 | dueDate | date | `2026-07-15` | deadline |
-| 7 | 实际完成日 | completedAt | datetime | `2026-07-10` | 状态变为 resolved/closed 时记录 |
+| # | 中文 | 字段名 | 类型 | 展示 | 说明 |
+|---|------|--------|------|------|------|
+| 1 | 问题编号 | `issueNo` | TEXT | `ISS-2026-0001` | 可读编号，按列表+年度自增 |
+| 2 | 标题 | `title` | TEXT | 单行文本 | 必填 |
+| 3 | 描述 | `description` | TEXT | 多行文本 | 可选 |
 
-### 第二层：状态与关闭（对标）
+### 第二层：人员与日期
 
-| 序号 | 中文 | 英文 | 类型 | 展示格式 | 说明 |
-|------|------|------|------|---------|------|
-| 8 | 状态 | status | enum | 彩色标签 | 已有，建议改名 |
-| 9 | 关闭理由 | closeReason | enum | 灰色标签 | 完成/取消/重复/转其他/不可复现 |
-| 10 | 关闭确认人 | closedBy | FK→users | 姓名 | 谁点了关闭 |
+| # | 中文 | 字段名 | 类型 | 说明 |
+|---|------|--------|------|------|
+| 4 | 提出人 | `reporterId` | FK→users | 谁发现/提出的（区分于 createdBy） |
+| 5 | 责任人 | `assigneeId` | FK→users | 谁负责解决 |
+| 6 | 录入人 | `createdBy` | FK→users | 谁录入系统 |
+| 7 | 创建日期 | `createdAt` | DATETIME | 系统自动记录 |
+| 8 | 计划完成日 | `dueDate` | DATE (YYYY-MM-DD) | deadline |
+| 9 | 实际完成日 | `completedAt` | DATETIME | 状态变为 resolved/closed 时自动记录 |
 
-### 第三层：严重度与分类（对标）
+### 第三层：状态与关闭
 
-| 序号 | 中文 | 英文 | 类型 | 展示格式 | 说明 |
-|------|------|------|------|---------|------|
-| 11 | 严重度 | severity | enum | 红/橙/黄/绿标签 | 致命/严重/一般/轻微 |
-| 12 | 问题分类 | category | enum/text | 标签 | 外观/尺寸/功能/过程/安全/其他 |
-| 13 | 发现阶段 | detectionPhase | enum | 文本 | 来料/过程/终检/客户/审核 |
+| # | 中文 | 字段名 | 类型 | 枚举值 | 说明 |
+|---|------|--------|------|--------|------|
+| 10 | 状态 | `status` | ENUM | `open` `in_progress` `resolved` `closed` `cancelled` | 彩色标签 |
+| 11 | 优先级 | `priority` | ENUM | `low` `medium` `high` `critical` | — |
+| 12 | 关闭理由 | `closeReason` | ENUM | `completed` `cancelled` `duplicate` `transferred` `unreproducible` | 灰色标签 |
+| 13 | 关闭确认人 | `closedBy` | FK→users | — | 谁点了关闭 |
 
-### 第四层：8D 可选（按需扩展）
+### 第四层：严重度与分类（IATF 16949 标准）
 
-| 序号 | 中文 | 英文 | 类型 | 展示格式 | 说明 |
-|------|------|------|------|---------|------|
-| 14 | 临时措施 | containment | text | 文本 | D3 遏制措施描述 |
-| 15 | 根本原因 | rootCause | text | 文本 | D4 |
-| 16 | 永久纠正措施 | correctiveAction | text | 文本 | D5-D6 |
+| # | 中文 | 字段名 | 类型 | 枚举值 | IATF 16949 参考 |
+|---|------|--------|------|--------|-----------------|
+| 14 | 严重度 | `severity` | ENUM | 见下方详细定义 | 参考 FMEA 严重度等级 |
+| 15 | 问题分类 | `category` | ENUM | 见下方详细定义 | 参考 IATF 16949 缺陷分类 |
+| 16 | 发现阶段 | `detectionPhase` | ENUM | 见下方详细定义 | 参考 AIAG 检测来源 |
 
----
+### 第五层：8D 报告字段
 
-## 推荐方案：分阶段实施
+| # | 中文 | 字段名 | 类型 | 8D 步骤 | 说明 |
+|---|------|--------|------|---------|------|
+| 17 | 临时遏制措施 | `containment` | TEXT | D3 | 临时围堵/遏制措施描述 |
+| 18 | 根本原因 | `rootCause` | TEXT | D4 | 根本原因分析结果 |
+| 19 | 永久纠正措施 | `correctiveAction` | TEXT | D5-D6 | 永久纠正/预防措施 |
 
-### v0.2 必加（核心 6 字段）
+### 元数据
 
-```
-reporterId     TEXT    提出人（区分于 createdBy）
-assigneeId     TEXT    责任人
-dueDate        TEXT    计划完成日（YYYY-MM-DD）
-completedAt    TEXT    实际完成时间
-closeReason    TEXT    关闭理由：completed / cancelled / duplicate / transferred / unreproducible
-severity       TEXT    严重度：fatal / major / minor / trivial
-```
-
-### v0.3 选加
-
-```
-category         TEXT    问题分类（可自定义或枚举）
-detectionPhase   TEXT    发现阶段
-containment      TEXT    临时措施
-rootCause        TEXT    根本原因
-correctiveAction TEXT    纠正措施
-```
-
-### 状态值重命名建议
-
-| 旧值 | 新提议 | 说明 |
-|------|--------|------|
-| open | open | 待处理 ✓ |
-| in_progress | in_progress | 进行中 ✓ |
-| resolved | resolved | 已解决 ✓ |
-| closed | closed | 已关闭 ✓ |
-| — | cancelled | 已取消（新增） |
+| # | 中文 | 字段名 | 类型 | 说明 |
+|---|------|--------|------|------|
+| 20 | 排序 | `sortOrder` | INTEGER | 列表内拖拽排序 |
+| 21 | 更新时间 | `updatedAt` | DATETIME | 系统自动记录 |
 
 ---
 
-## 展示格式讨论
+## 枚举详细定义
+
+### IssueStatus — 状态
+
+| 值 | 中文 | 图标颜色 | 说明 |
+|----|------|---------|------|
+| `open` | 待处理 | ⚪ 灰 | 新建未开始 |
+| `in_progress` | 进行中 | 🟡 黄 | 正在处理 |
+| `resolved` | 已解决 | 🟢 绿 | 已完成，待确认关闭 |
+| `closed` | 已关闭 | 🔵 蓝 | 确认关闭 |
+| `cancelled` | 已取消 | ⚫ 深灰 | 不再需要处理 |
+
+**状态流转规则**（参考 IATF 16949 问题管理流程）：
+```
+open → in_progress → resolved → closed
+  ↓         ↓           ↓
+cancelled cancelled  cancelled
+```
+- `resolved` 转为 `closed` 时须填写 `closeReason` 和 `closedBy`
+- `closed` 和 `cancelled` 为终态，不可再流转（未来可加 reopen）
+
+### IssuePriority — 优先级
+
+| 值 | 中文 | 参考标准 |
+|----|------|---------|
+| `low` | 低 | 影响有限，无紧急要求 |
+| `medium` | 中 | 一般影响，常规处理 |
+| `high` | 高 | 显著影响，需优先处理 |
+| `critical` | 紧急 | 严重影响/安全问题，立即处理 |
+
+### Severity — 严重度（IATF 16949 FMEA 风格）
+
+| 值 | 中文 | 标签颜色 | 定义 | FMEA 严重度参考 |
+|----|------|---------|------|----------------|
+| `fatal` | 致命 🔴 | 红色 | 涉及安全/法规/停线，导致产品无法使用 | S=9-10 |
+| `major` | 严重 🟠 | 橙色 | 核心功能丧失，客户强烈不满 | S=7-8 |
+| `minor` | 一般 🟡 | 黄色 | 部分功能受影响，有降级方案 | S=4-6 |
+| `trivial` | 轻微 🟢 | 绿色 | 外观/体验瑕疵，不影响功能 | S=1-3 |
+
+### IssueCategory — 问题分类（IATF 16949 缺陷分类惯例）
+
+| 值 | 中文 | 说明 | 典型场景 |
+|----|------|------|---------|
+| `appearance` | 外观 | 表面/外观缺陷 | 划痕、色差、毛刺 |
+| `dimension` | 尺寸 | 尺寸/公差偏差 | 超差、配合不良 |
+| `function` | 功能 | 功能/性能失效 | 不工作、性能不达标 |
+| `process` | 过程 | 过程/流程问题 | 流程缺失、执行偏差 |
+| `safety` | 安全 | 安全隐患 | 安全相关项（须走安全审批） |
+| `other` | 其他 | 不在上述分类中 | 自定义 |
+
+### DetectionPhase — 发现阶段（AIAG / IATF 16949 检测来源）
+
+| 值 | 中文 | 说明 | 典型场景 |
+|----|------|------|---------|
+| `incoming` | 来料检验 | IQC / 供应商来料检测 | 原材料/外购件入库检查 |
+| `in_process` | 过程检验 | 制造过程/IPQC 检测 | 首件检验、巡检、自检 |
+| `final` | 终检/出厂 | 成品出厂检验 OQC | 发货前最终检查 |
+| `customer` | 客户反馈 | 客户/0公里/售后发现 | 0公里 PDI、售后投诉、客诉 |
+| `audit` | 审核发现 | 内部/外部审核 | 内审、外审、过程审核 VDA 6.3 |
+| `supplier` | 供应商端 | 供应商处发现 | 供应商过程异常、SQE 发现 |
+
+### CloseReason — 关闭理由
+
+| 值 | 中文 | 说明 |
+|----|------|------|
+| `completed` | 已完成 | 问题已解决，措施有效 |
+| `cancelled` | 已取消 | 不再需要处理 |
+| `duplicate` | 重复 | 与其他问题重复 |
+| `transferred` | 已转交 | 转至其他列表/部门处理 |
+| `unreproducible` | 不可复现 | 无法复现，暂关闭 |
+
+---
+
+## 与 Checkpoint 点检的关系
+
+**Checkpoint 不变**，仍然是 Issue 下的时间线节点。新增字段是 Issue 层面的属性元数据。
+
+```
+Issue (属性元数据 — 本次新增列)
+├── issueNo          ← 新增
+├── reporterId       ← 新增
+├── assigneeId       ← 新增
+├── dueDate          ← 新增
+├── completedAt      ← 新增
+├── closeReason      ← 新增
+├── severity         ← 新增
+├── category         ← 新增 (v0.3)
+├── detectionPhase   ← 新增 (v0.3)
+├── containment      ← 新增 (D3)
+├── rootCause        ← 新增 (D4)
+├── correctiveAction ← 新增 (D5-D6)
+└── Checkpoints (时间线节点 — 不变)
+    ├── 2026-06-24: 已走流程到采购 ✅
+    ├── 2026-06-28: 和乙方签订合同 ⏳
+    └── 2026-07-05: 设备到货验收 📅
+```
+
+---
+
+## 实施记录
+
+### v0.2（已实现）
+
+```
+issueNo           TEXT     可读编号 ISS-YYYY-NNNN（按列表+年度自增）
+title             TEXT     标题
+description       TEXT     描述
+status            ENUM     open | in_progress | resolved | closed | cancelled
+priority          ENUM     low | medium | high | critical
+severity          ENUM     fatal | major | minor | trivial
+reporterId        TEXT     提出人 FK→users
+assigneeId        TEXT     责任人 FK→users
+dueDate           TEXT     计划完成日 (YYYY-MM-DD)
+completedAt       TEXT     实际完成时间
+closeReason       ENUM     completed | cancelled | duplicate | transferred | unreproducible
+closedBy          TEXT     关闭确认人 FK→users
+sortOrder         INTEGER  排序
+createdBy         TEXT     录入人
+createdAt         TEXT     创建时间
+updatedAt         TEXT     更新时间
+```
+
+### v0.3（已实现）
+
+```
+category          ENUM     appearance | dimension | function | process | safety | other
+detectionPhase    ENUM     incoming | in_process | final | customer | audit | supplier
+containment       TEXT     D3 临时遏制措施
+rootCause         TEXT     D4 根本原因
+correctiveAction  TEXT     D5-D6 永久纠正措施
+```
+
+### 未来可选扩展
+
+```
+verificationMethod  TEXT     D7 效果验证方法
+preventionAction    TEXT     D7 预防再发生措施
+costOfQuality       TEXT     质量成本（内部失败/外部失败）
+linkedIssues        TEXT     关联 Issue ID 列表
+attachmentUrls      TEXT     附件链接（JSON 数组）
+```
+
+---
+
+## 展示格式设计（待前端实现）
 
 ### 简单表格（默认，快速浏览）
 
-适合屏幕空间有限、快速扫视。一 Issue 一行。
-
 ```
-┌────┬──────────┬──────┬──────┬──────────┬──────┬──────┬────────┐
-│ 编号│ 标题     │ 提出人│ 责任人│ 计划完成 │ 状态 │ 严重度│ 关闭理由│
-├────┼──────────┼──────┼──────┼──────────┼──────┼──────┼────────┤
-│ 1  │ 采购服务器│ 张三  │ 李四 │ 07-15   │ 🟡进行│ 🟠严重│ —      │
-│ 2  │ 部署 CI/CD│ 王五  │ 张三 │ 07-20   │ 🟢已完│ 🔴致命│ 完成   │
-│ 3  │ 代码审查  │ 李四  │ —    │ 08-01   │ ⚪待处│ 🟡一般│ —      │
-└────┴──────────┴──────┴──────┴──────────┴──────┴──────┴────────┘
+┌──────┬──────────┬────────┬────────┬──────────┬────────┬────────┬──────────┐
+│ 编号  │ 标题     │ 提出人  │ 责任人  │ 计划完成  │ 状态   │ 严重度  │ 分类     │
+├──────┼──────────┼────────┼────────┼──────────┼────────┼────────┼──────────┤
+│0001  │ 采购服务器│ 张三   │ 李四   │ 07-15    │ 🟡进行 │ 🟠严重  │ 过程     │
+│0002  │ 部署 CI  │ 王五   │ 赵六   │ 07-20    │ ⚪待处 │ 🔴致命  │ 功能     │
+│0003  │ 代码审查  │ 李四   │ —      │ 08-01    │ 🟢已解 │ 🟡一般  │ 过程     │
+└──────┴──────────┴────────┴────────┴──────────┴────────┴────────┴──────────┘
 ```
 
-### 复杂表格（3~4 行高，内嵌点检时间线）
-
-适合点检会议、需要一眼看到最近进展。每 Issue 占 3~4 行，右侧有时间线列。
-
-```
-┌────┬────────────────────────┬──────┬──────────────────────────────┐
-│ 编号│ Issue 信息              │ 状态 │ 最近点检（3 条）              │
-├────┼────────────────────────┼──────┼──────────────────────────────┤
-│    │ 采购服务器  🔴致命       │      │ ● 06-24 已走流程到采购  ✅    │
-│ 1  │ 👤张三  👷李四          │ 🟡   │ ● 06-28 和乙方签合同    ⏳    │
-│    │ ⏰截止 07-15            │ 进行中│ ○ 07-05 设备到货验收  📅    │
-│    │                        │      │          … 共 5 条           │
-├────┼────────────────────────┼──────┼──────────────────────────────┤
-│    │ 部署 CI/CD 环境  🔴致命  │      │ ● 07-01 环境调研完成  ✅    │
-│ 2  │ 👤王五  👷张三          │ 🟢   │ ● 07-03 Jenkins 部署  ⏳    │
-│    │ ⏰截止 07-20            │ 已解决│ ○ 07-10 全流程测试  📅    │
-│    │                        │      │          … 共 8 条           │
-├────┼────────────────────────┼──────┼──────────────────────────────┤
-│    │ 代码审查制度建立  🟡一般  │      │ ○ 07-05 草拟规范    📅    │
-│ 3  │ 👤李四  👷—             │ ⚪   │          … 共 1 条           │
-│    │ ⏰截止 08-01            │ 待处理│                              │
-│    │                        │      │                              │
-└────┴────────────────────────┴──────┴──────────────────────────────┘
-```
-
-### 点检时间线列设计
-
-右侧时间线列规则：
-
-- **显示最近 3 条**点检记录（不足 3 条则空白补齐）
-- 每条点检格式：`●/○ 日期 描述 状态图标`
-  - `●` 已完成的点检（done）
-  - `◐` 进行中的点检（pending，当天或之后）
-  - `○` 未开始的点检（pending，未来日期）
-  - `⚠` 逾期的点检（pending 且已过日期，红色高亮）
-- 最后一行显示 `… 共 N 条` 链接到完整时间线
-- 鼠标 hover 点检项可看到完整描述和负责人
-
-### 状态图标
+### 状态图标映射
 
 | 图标 | 含义 |
 |------|------|
@@ -158,40 +226,3 @@ correctiveAction TEXT    纠正措施
 | ⚠️ | pending 且已逾期（红底高亮） |
 | 📅 | 未来日期的点检计划 |
 | ❌ | skipped 已跳过 |
-
-### 两种表格切换
-
-前端提供 **简单/复杂** 切换按钮，用户按需选择：
-
-```
-[📋 简单] [📋📋 复杂]    ← 切换按钮在表格工具栏右上角
-```
-
-默认：Dashboard 用卡片视图，ListDetailView 默认用复杂表格，点检会议时更有用。
-
----
-
-## 与现有 Checkpoint 的关系
-
-**Checkpoint 不变**，仍然是 Issue 下的时间线节点（日期+描述+负责人）。新增字段是 Issue 层面的属性元数据。
-
-```
-Issue (属性元数据)
-├── reporterId, assigneeId
-├── dueDate, completedAt
-├── closeReason, severity, category
-└── Checkpoints (时间线节点)
-    ├── 06-24: 已走流程到采购 ✅
-    ├── 06-28: 和乙方签订合同 ⏳
-    └── 07-05: 设备到货验收
-```
-
----
-
-## 待确认问题
-
-1. **reporter vs createdBy**：一个人填写系统录入（createdBy），另一个人可能是实际提出人（reporter）。是否都需要？还是合并为一个？
-2. **closeReason 枚举值**：`completed | cancelled | duplicate | transferred | unreproducible` 这个列表是否合适？
-3. **severity 是否用 4 级**还是 5 级（加入 safety/安全级）？
-4. **category 是否预设枚举**（外观/尺寸/功能/过程/安全/其他）还是自由文本？
-5. **issueNo 编号是否需要**？还是直接用 UUID？

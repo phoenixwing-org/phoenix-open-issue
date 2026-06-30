@@ -25,5 +25,5 @@ export function deleteIssue(id: string) {
 }
 
 export function reorderIssues(listId: string, issueIds: string[]) {
-  return request.put(`/lists/${listId}/issues/reorder`, { issue_ids: issueIds })
+  return request.put(`/lists/${listId}/issues/reorder`, { issueIds })
 }

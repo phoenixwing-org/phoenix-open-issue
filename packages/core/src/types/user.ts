@@ -5,6 +5,7 @@ export interface User {
   passwordHash: string
   displayName: string | null
   orgUnitId: string | null
+  approved: number
   createdAt: string
   updatedAt: string
 }
@@ -16,6 +17,7 @@ export interface CreateUserInput {
   email?: string
   password: string
   displayName?: string
+  orgUnitId?: string
 }
 
 export interface LoginInput {
@@ -26,4 +28,10 @@ export interface LoginInput {
 export interface LoginResult {
   token: string
   user: UserPublic
+}
+
+export interface RegisterResult {
+  token: string | null
+  user: UserPublic
+  pending: boolean
 }

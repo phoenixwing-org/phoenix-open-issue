@@ -30,7 +30,7 @@ function logout() {
 
     <div class="toolbar-right">
       <span class="user-info" v-if="auth.user">
-        {{ auth.user.display_name || auth.user.username }}
+        {{ auth.user.displayName || auth.user.username }}
       </span>
       <el-button
         text

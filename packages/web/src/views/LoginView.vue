@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { getOrgTree } from '@/api/orgUnits'
 
 const router = useRouter()
 const route = useRoute()
@@ -11,20 +12,50 @@ const isRegister = ref(false)
 const username = ref('')
 const password = ref('')
 const displayName = ref('')
+const orgUnitId = ref('')
+const orgUnits = ref<any[]>([])
 const loading = ref(false)
 const error = ref('')
+const success = ref('')
+
+function flattenTree(nodes: any[], depth = 0): any[] {
+  const result: any[] = []
+  for (const n of nodes) {
+    result.push({ ...n, _depth: depth })
+    if (n.children) result.push(...flattenTree(n.children, depth + 1))
+  }
+  return result
+}
+
+onMounted(async () => {
+  try {
+    const res = await getOrgTree()
+    orgUnits.value = flattenTree(res.data)
+  } catch { /* ignore */ }
+})
 
 async function submit() {
   error.value = ''
+  success.value = ''
   loading.value = true
   try {
     if (isRegister.value) {
-      await auth.register({ username: username.value, password: password.value, display_name: displayName.value })
+      const result = await auth.register({
+        username: username.value, password: password.value,
+        displayName: displayName.value, orgUnitId: orgUnitId.value || undefined,
+      })
+      if ((result as any).pending) {
+        success.value = '注册成功！请等待管理员批准后再登录。'
+        isRegister.value = false
+        username.value = ''
+        password.value = ''
+      } else {
+        router.push((route.query.redirect as string) || '/dashboard')
+      }
     } else {
       await auth.login(username.value, password.value)
+      router.push((route.query.redirect as string) || '/dashboard')
     }
-    const redirect = (route.query.redirect as string) || '/dashboard'
-    router.push(redirect)
   } catch (e: any) {
     error.value = e.response?.data?.message || e.message || '操作失败'
   } finally {
@@ -43,6 +74,7 @@ async function submit() {
       </div>
 
       <el-alert v-if="error" :title="error" type="error" show-icon closable @close="error = ''" style="margin-bottom:16px" />
+      <el-alert v-if="success" :title="success" type="success" show-icon closable @close="success = ''" style="margin-bottom:16px" />
 
       <el-form @submit.prevent="submit" label-position="top">
         <el-form-item label="用户名">
@@ -53,6 +85,11 @@ async function submit() {
         </el-form-item>
         <el-form-item v-if="isRegister" label="显示名称">
           <el-input v-model="displayName" placeholder="可选" size="large" />
+        </el-form-item>
+        <el-form-item v-if="isRegister" label="归属组织">
+          <el-select v-model="orgUnitId" placeholder="选择组织（默认待定组）" clearable size="large" style="width:100%">
+            <el-option v-for="u in orgUnits" :key="u.id" :label="'　'.repeat(u._depth) + u.name" :value="u.id" />
+          </el-select>
         </el-form-item>
         <el-button type="primary" size="large" :loading="loading" native-type="submit" style="width:100%">
           {{ isRegister ? '注册' : '登录' }}

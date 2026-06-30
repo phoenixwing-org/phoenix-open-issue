@@ -9,6 +9,7 @@ export interface IssueList {
   listType: ListType
   ownerId: string
   orgUnitId: string | null
+  archived: number
   createdAt: string
   updatedAt: string
 }

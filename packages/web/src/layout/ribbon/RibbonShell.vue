@@ -10,7 +10,6 @@ const groups = [
     tools: [
       { label: '仪表盘', icon: 'Odometer', action: () => router.push('/dashboard') },
       { label: '我的列表', icon: 'List', action: () => router.push('/lists') },
-      { label: '新建列表', icon: 'Plus', action: () => router.push('/lists') },
     ],
   },
   {
@@ -18,6 +17,12 @@ const groups = [
     tools: [
       { label: '组织架构', icon: 'Share', action: () => router.push('/org') },
       { label: '推送历史', icon: 'Promotion', action: () => router.push('/push-history') },
+    ],
+  },
+  {
+    label: '工具',
+    tools: [
+      { label: '单元测试', icon: 'Monitor', action: () => router.push('/test-runner') },
     ],
   },
 ]

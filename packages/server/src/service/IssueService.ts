@@ -23,7 +23,7 @@ export class IssueService {
     if (!role) throw new ForbiddenError('无权访问此列表')
 
     const { status, priority, search, page = 1, size = 50 } = opts
-    const conditions: string[] = ['list_id = ?']
+    const conditions: string[] = ['listId = ?']
     const params: unknown[] = [listId]
 
     if (status) {
@@ -45,7 +45,7 @@ export class IssueService {
     const offset = (page - 1) * size
     params.push(size, offset)
     const items = db.prepare(
-      `SELECT * FROM issues WHERE ${where} ORDER BY sort_order ASC, created_at DESC LIMIT ? OFFSET ?`,
+      `SELECT * FROM issues WHERE ${where} ORDER BY sortOrder ASC, createdAt DESC LIMIT ? OFFSET ?`,
     ).all(...params) as Issue[]
 
     return { items, total: total.count }
@@ -65,14 +65,30 @@ export class IssueService {
     const id = uuid()
     const now = new Date().toISOString()
 
-    // 计算下一个 sort_order
-    const maxSort = db.prepare('SELECT MAX(sort_order) as m FROM issues WHERE list_id = ?').get(listId) as { m: number | null }
+    // 计算下一个 sortOrder
+    const maxSort = db.prepare('SELECT MAX(sortOrder) as m FROM issues WHERE listId = ?').get(listId) as { m: number | null }
     const sortOrder = (maxSort?.m ?? 0) + 1
 
+    // 生成可读编号：ISS-2026-0001（按年度+列表自增）
+    const year = new Date().getFullYear()
+    const count = db.prepare(
+      "SELECT COUNT(*) as c FROM issues WHERE listId = ? AND issueNo LIKE ?",
+    ).get(listId, `ISS-${year}-%`) as { c: number }
+    const issueNo = `ISS-${year}-${String((count?.c ?? 0) + 1).padStart(4, '0')}`
+
     db.prepare(
-      `INSERT INTO issues (id, list_id, title, description, status, priority, sort_order, created_by, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).run(id, listId, input.title, input.description ?? '', 'open', input.priority ?? 'medium', sortOrder, userId, now, now)
+      `INSERT INTO issues (id, listId, issueNo, title, description, status, priority, severity, category, detectionPhase,
+        reporterId, assigneeId, dueDate, containment, rootCause, correctiveAction,
+        sortOrder, createdBy, createdAt, updatedAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    ).run(
+      id, listId, issueNo, input.title, input.description ?? '',
+      'open', input.priority ?? 'medium', input.severity ?? 'minor',
+      input.category ?? null, input.detectionPhase ?? null,
+      input.reporterId ?? null, input.assigneeId ?? null, input.dueDate ?? null,
+      input.containment ?? '', input.rootCause ?? '', input.correctiveAction ?? '',
+      sortOrder, userId, now, now,
+    )
 
     return db.prepare('SELECT * FROM issues WHERE id = ?').get(id) as Issue
   }
@@ -81,18 +97,47 @@ export class IssueService {
     const db = getDb()
     const issue = this.getById(id)
     if (!issue) throw new NotFoundError('Issue')
-    const members = listService.getMembers(issue.list_id)
+    const members = listService.getMembers(issue.listId)
     const role = checkListAccess(userId, members)
     if (!canModifyIssue(role)) throw new ForbiddenError()
 
     db.prepare(
       `UPDATE issues
-       SET title = COALESCE(?, title), description = COALESCE(?, description),
-           status = COALESCE(?, status), priority = COALESCE(?, priority), updated_at = ?
+       SET title = COALESCE(?, title),
+           description = COALESCE(?, description),
+           status = COALESCE(?, status),
+           priority = COALESCE(?, priority),
+           severity = COALESCE(?, severity),
+           category = COALESCE(?, category),
+           detectionPhase = COALESCE(?, detectionPhase),
+           reporterId = COALESCE(?, reporterId),
+           assigneeId = COALESCE(?, assigneeId),
+           dueDate = COALESCE(?, dueDate),
+           closeReason = COALESCE(?, closeReason),
+           closedBy = COALESCE(?, closedBy),
+           completedAt = COALESCE(?, completedAt),
+           containment = COALESCE(?, containment),
+           rootCause = COALESCE(?, rootCause),
+           correctiveAction = COALESCE(?, correctiveAction),
+           updatedAt = ?
        WHERE id = ?`,
     ).run(
-      input.title ?? null, input.description ?? null,
-      input.status ?? null, input.priority ?? null,
+      input.title ?? null,
+      input.description ?? null,
+      input.status ?? null,
+      input.priority ?? null,
+      input.severity ?? null,
+      input.category ?? null,
+      input.detectionPhase ?? null,
+      input.reporterId ?? null,
+      input.assigneeId ?? null,
+      input.dueDate ?? null,
+      input.closeReason ?? null,
+      input.closedBy ?? null,
+      input.completedAt ?? null,
+      input.containment ?? null,
+      input.rootCause ?? null,
+      input.correctiveAction ?? null,
       new Date().toISOString(), id,
     )
 
@@ -103,12 +148,19 @@ export class IssueService {
     const db = getDb()
     const issue = this.getById(id)
     if (!issue) throw new NotFoundError('Issue')
-    const members = listService.getMembers(issue.list_id)
+    const members = listService.getMembers(issue.listId)
     const role = checkListAccess(userId, members)
     if (!canModifyIssue(role)) throw new ForbiddenError()
 
-    db.prepare('UPDATE issues SET status = ?, updated_at = ? WHERE id = ?')
-      .run(status, new Date().toISOString(), id)
+    // 如果转为 resolved/closed，自动记录完成时间
+    const now = new Date().toISOString()
+    if (status === 'resolved' || status === 'closed') {
+      db.prepare('UPDATE issues SET status = ?, completedAt = ?, updatedAt = ? WHERE id = ?')
+        .run(status, now, now, id)
+    } else {
+      db.prepare('UPDATE issues SET status = ?, updatedAt = ? WHERE id = ?')
+        .run(status, now, id)
+    }
 
     return db.prepare('SELECT * FROM issues WHERE id = ?').get(id) as Issue
   }
@@ -117,11 +169,11 @@ export class IssueService {
     const db = getDb()
     const issue = this.getById(id)
     if (!issue) throw new NotFoundError('Issue')
-    const members = listService.getMembers(issue.list_id)
+    const members = listService.getMembers(issue.listId)
     const role = checkListAccess(userId, members)
     if (!canModifyIssue(role)) throw new ForbiddenError()
 
-    db.prepare('DELETE FROM checkpoints WHERE issue_id = ?').run(id)
+    db.prepare('DELETE FROM checkpoints WHERE issueId = ?').run(id)
     db.prepare('DELETE FROM issues WHERE id = ?').run(id)
   }
 
@@ -131,10 +183,10 @@ export class IssueService {
     const role = checkListAccess(userId, members)
     if (!canModifyIssue(role)) throw new ForbiddenError()
 
-    const stmt = db.prepare('UPDATE issues SET sort_order = ?, updated_at = ? WHERE id = ?')
+    const stmt = db.prepare('UPDATE issues SET sortOrder = ?, updatedAt = ? WHERE id = ?')
     const now = new Date().toISOString()
     const reorder = db.transaction(() => {
-      input.issue_ids.forEach((issueId, index) => {
+      input.issueIds.forEach((issueId, index) => {
         stmt.run(index, now, issueId)
       })
     })

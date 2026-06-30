@@ -2,13 +2,29 @@
 import { onMounted, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useIssueListStore } from '@/stores/issueLists'
-import { ElMessage } from 'element-plus'
-import ListFormDialog from '@/components/ListFormDialog.vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import { runSeed } from '@/api/push'
 import { ref } from 'vue'
 
 const router = useRouter()
 const store = useIssueListStore()
 const showCreate = ref(false)
+const newListName = ref('')
+const newListType = ref('custom')
+const newListDesc = ref('')
+const seeding = ref(false)
+const listView = ref<'mine' | 'all' | 'archived'>('mine')
+
+async function switchView(view: 'mine' | 'all' | 'archived') {
+  listView.value = view
+  if (view === 'all') await store.fetchAllLists()
+  else if (view === 'archived') await store.fetchArchivedLists()
+  else await store.fetchLists()
+}
+
+async function onArchive(listId: string) {
+  await store.archiveList(listId, true)
+}
 
 const listTypeLabel: Record<string, string> = {
   yearly: '年度',
@@ -32,10 +48,28 @@ function goList(id: string) {
   router.push(`/lists/${id}`)
 }
 
-async function onCreate(data: { name: string; list_type: string; description?: string }) {
+async function onCreate(data: { name: string; listType: string; description?: string }) {
   await store.createList(data)
   showCreate.value = false
   ElMessage.success('列表创建成功')
+}
+
+async function onResetDemo() {
+  seeding.value = true
+  try {
+    const res = await runSeed(false)
+    const logs = res.data?.logs || []
+    if (logs.length === 1 && logs[0].includes('已有数据')) {
+      ElMessage.info('演示数据已存在，无需创建')
+    } else {
+      ElMessage.success('演示数据已创建！')
+      store.fetchLists()
+    }
+  } catch (e: any) {
+    ElMessage.error(e.response?.data?.message || '创建失败')
+  } finally {
+    seeding.value = false
+  }
 }
 </script>
 
@@ -43,9 +77,19 @@ async function onCreate(data: { name: string; list_type: string; description?: s
   <div class="page dashboard">
     <div class="page-head">
       <h2>仪表盘</h2>
-      <el-button type="primary" @click="showCreate = true">
-        <el-icon><Plus /></el-icon> 新建列表
-      </el-button>
+      <div class="head-actions">
+        <el-radio-group v-model="listView" size="small" @change="switchView">
+          <el-radio-button value="mine">👤 我的</el-radio-button>
+          <el-radio-button value="all">🌐 所有</el-radio-button>
+          <el-radio-button value="archived">📦 归档</el-radio-button>
+        </el-radio-group>
+        <el-button size="small" :loading="seeding" @click="onResetDemo">
+          🗂️ 创建演示数据
+        </el-button>
+        <el-button type="primary" @click="showCreate = true">
+          <el-icon><Plus /></el-icon> 新建列表
+        </el-button>
+      </div>
     </div>
 
     <div v-loading="store.loading">
@@ -57,25 +101,48 @@ async function onCreate(data: { name: string; list_type: string; description?: s
           class="list-card"
           @click="goList(list.id)"
         >
-          <div class="card-type" :style="{ background: listTypeColor[list.list_type] }">
-            {{ listTypeLabel[list.list_type] }}
+          <div class="card-type" :style="{ background: listTypeColor[list.listType] }">
+            {{ listTypeLabel[list.listType] }}
           </div>
           <div class="card-body">
             <h3>{{ list.name }}</h3>
             <p v-if="list.description">{{ list.description }}</p>
           </div>
           <div class="card-meta">
-            {{ new Date(list.updated_at).toLocaleDateString('zh-CN') }}
+            {{ new Date(list.updatedAt).toLocaleDateString('zh-CN') }}
+            <el-button
+              v-if="listView !== 'archived'"
+              link size="small" type="info"
+              @click.stop="onArchive(list.id)"
+              title="归档此列表"
+            >📦</el-button>
           </div>
         </div>
       </div>
     </div>
 
-    <ListFormDialog
-      v-if="showCreate"
-      @confirm="onCreate"
-      @close="showCreate = false"
-    />
+    <el-dialog v-if="showCreate" :model-value="true" title="新建列表" width="450px" @close="showCreate = false">
+      <el-form label-position="top">
+        <el-form-item label="名称" required>
+          <el-input v-model="newListName" placeholder="如：2026年7月点检" />
+        </el-form-item>
+        <el-form-item label="类型">
+          <el-select v-model="newListType">
+            <el-option label="年度" value="yearly" />
+            <el-option label="月度" value="monthly" />
+            <el-option label="项目" value="project" />
+            <el-option label="自定义" value="custom" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="描述">
+          <el-input v-model="newListDesc" type="textarea" :rows="2" placeholder="可选" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showCreate = false">取消</el-button>
+        <el-button type="primary" @click="onCreate({ name: newListName, listType: newListType, description: newListDesc }); showCreate = false; newListName = ''; newListDesc = ''">确认</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -85,6 +152,10 @@ async function onCreate(data: { name: string; list_type: string; description?: s
   justify-content: space-between;
   align-items: center;
   margin-bottom: 20px;
+}
+.head-actions {
+  display: flex;
+  gap: 8px;
 }
 .page-head h2 {
   font-size: 1.3rem;
@@ -131,6 +202,9 @@ async function onCreate(data: { name: string; list_type: string; description?: s
   white-space: nowrap;
 }
 .card-meta {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   padding: 8px 16px 12px;
   font-size: 0.72rem;
   color: #c0c4cc;

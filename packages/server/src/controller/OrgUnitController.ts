@@ -17,8 +17,8 @@ export class OrgUnitController {
   }
 
   create(req: Request, res: Response): void {
-    const { name, unit_type, parent_id } = req.body
-    const unit = orgUnitService.create(name, unit_type, parent_id ?? null)
+    const { name, unitType, parentId } = req.body
+    const unit = orgUnitService.create(name, unitType, parentId ?? null)
     res.status(201).json(unit)
   }
 
