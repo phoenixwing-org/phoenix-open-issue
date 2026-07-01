@@ -1,64 +1,42 @@
 # TODO — phoenix-open-issue
 
-## Step 1: 项目初始化
+## ✅ 已完成
 
-- [ ] `npm init` + Vite + Vue 3 + TypeScript
-- [ ] 加入 pnpm workspace，引用 `phoenix-wing`（`workspace:*`）
-- [ ] Element Plus + Pinia 安装配置
-- [ ] 基础目录结构：`src/`, `src/pages/`, `src/layout/`
+| 组件 | 位置 | 状态 |
+|------|------|------|
+| PnwChoiceDialogHost | AppShell | ✅ |
+| PnwAsyncProgressOverlay | AppShell | ✅ |
+| PnwAppModalOverlay | AppShell | ✅ |
+| PnwRibbonShell + PnwRibbonGroup + PnwRibbonToolButton | RibbonShell | ✅ |
+| PnwRibbonTabBar（可切换 Issue/系统） | AppToolbar | ✅ |
+| PnwPageHeader | DashboardView | ✅ |
+| PnwWelcomeShell | WelcomeView | ✅ |
+| PnwShellLogPanel | AppShell 底部 | ✅ |
+| pnwRegisterRibbonIcons + setupRibbonIcons | main.ts | ✅ |
+| usePnwDocumentTitle | AppShell | ✅ |
 
-## Step 2: 壳层布局（搭积木）
+## 🔜 多 Tab 工作台
 
-- [ ] **AppShell.vue** — 顶层壳组件，组合 phoenix-wing 组件
-  - [ ] `PnwRibbonTabBar` — 功能标签切换（系统 | Issue）
-  - [ ] `PnwWorkbenchTabBar` — 页面标签栏
-  - [ ] `PnwRibbonShell` — Ribbon 容器
-    - [ ] `PnwRibbonGroup` + `PnwRibbonToolButton` — 工具按钮
-  - [ ] `PnwSidebarBlock` — 左侧栏（筛选面板，可折叠）
-  - [ ] `PnwShellLogPanel` — 底部日志面板
-  - [ ] `PnwAppModalOverlay` — 全屏模态框（配置弹窗）
-  - [ ] `PnwChoiceDialogHost` — 确认对话框
-  - [ ] `PnwAsyncProgressOverlay` — 异步进度浮层
-- [ ] Ribbon 配置（tabs / groups / items 数据定义）
-- [ ] 注册图标映射 `pnwRegisterRibbonIcons`
-- [ ] 注册 URL 解析器 `pnwRegisterUrlParser`
-- [ ] Workbench 引擎 `pnwCreateWorkbench(config)`
-- [ ] Ribbon Tab 切换 `usePnwRibbonTabs`
-- [ ] 文档标题 `usePnwDocumentTitle`
-- [ ] 色彩方案 `pnwResolveColorScheme` + `pnwApplyColorScheme`
+- [ ] PnwWorkbenchTabBar — 在 AppToolbar header 中显示页面标签
+- [ ] pnwCreateWorkbench — Tab 管理引擎（开/关/切/去重）
+- [ ] Ribbon 按钮点击 → openTab → 多 Tab 并存
+- [ ] Tab 关闭确认（pnwPromptChoice）
 
-## Step 3: 欢迎页
+## 🔜 属性面板
 
-- [ ] **WelcomePage** — 基于 `PnwWelcomeShell`
-  - [ ] slot `brand` — 应用 Logo/名称
-  - [ ] slot `actions` — 打开工作空间按钮
-  - [ ] slot `main` — 最近工程列表
-  - [ ] slot `links` — 外链（Gitee / 文档）
+- [ ] PnwSidebarBlock（右侧）— Issue 详情属性面板
+- [ ] pnwPagePropertiesHost + usePnwPagePropertySheet
+- [ ] pnwPropGroup / pnwPropBool / pnwPropString 等构建属性表
+- [ ] 各页面注册属性表，Tab 切换自动切换属性面板
 
-## Step 4: 页面开发
+## 🔜 对话框统一
 
-- [ ] **IssueListPage** — Issue 列表
-  - [ ] `PnwPageHeader` 页面标题
-  - [ ] 表格 + 筛选 + 排序
-  - [ ] 打开详情（触发 Tab 切换）
-- [ ] **IssueDetailPage** — Issue 详情
-  - [ ] `PnwPageHeader` 页面标题
-  - [ ] 详情内容展示
+- [ ] ElMessageBox.confirm → pnwPromptChoice（5 个文件）
+- [ ] 补充 pnwPromptInput 到 phoenix-wing（文本输入对话框）
+- [ ] 补充 pnwAlert 到 phoenix-wing（简单消息弹窗）
 
-## Step 5: 工作台体验（后续）
+## 🔧 phoenix-wing 适配反馈
 
-- [ ] 多 Tab 切换（列表 ↔ 详情）
-- [ ] Tab 脏状态提示
-- [ ] 从列表打开详情自动新建/复用 Tab
-
-## Step 6: 属性面板（后续）
-
-- [ ] `PnwSidebarBlock`（右侧）— 属性面板
-- [ ] `pnwPagePropertiesHost` + `usePnwPagePropertySheet`
-- [ ] `pnwPropGroup`, `pnwPropBool`, `pnwPropString` 等 — 属性表字段
-
-## Step 7: 验证 & 反馈
-
-- [ ] 框架组件在实际项目中是否好用
-- [ ] 哪些功能需要补充到 phoenix-wing
-- [ ] 文档查漏补缺
+- [ ] pnwPromptInput — PushHistoryView, ListDetailView 需要文本输入
+- [ ] pnwAlert — SettingsView 需要简单消息提示
+- [ ] Ribbon 切换模块时自动过滤 Ribbon 按钮（usePnwRibbonTabs 待接入）

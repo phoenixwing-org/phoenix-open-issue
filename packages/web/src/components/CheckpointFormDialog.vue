@@ -28,7 +28,7 @@ function submit() {
         <el-input v-model="desc" placeholder="如：已流程到采购" />
       </el-form-item>
       <el-form-item label="负责人">
-        <el-select v-model="responsible" placeholder="选择负责人" clearable style="width:100%">
+        <el-select v-model="responsible" :teleported="false" placeholder="选择负责人" clearable style="width:100%">
           <el-option v-for="u in props.users" :key="u.id" :label="u.displayName || u.username" :value="u.id" />
         </el-select>
       </el-form-item>

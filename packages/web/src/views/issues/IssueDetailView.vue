@@ -4,7 +4,9 @@ import { useRoute, useRouter } from 'vue-router'
 import { useIssueStore } from '@/stores/issues'
 import { getCheckpoints, createCheckpoint, updateCheckpoint, deleteCheckpoint } from '@/api/checkpoints'
 import { getAllUsers } from '@/api/auth'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
+import { pnwPromptChoice } from 'phoenix-wing'
+import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
 import CheckpointFormDialog from '@/components/CheckpointFormDialog.vue'
 import IssueFormDialog from '@/components/IssueFormDialog.vue'
 import PushDialog from '@/views/push/PushDialog.vue'
@@ -14,10 +16,11 @@ const dict = useDictStore()
 import type { Checkpoint } from '@phoenix-wing/open-issue-core'
 import { isOverdue } from '@phoenix-wing/open-issue-core'
 
+const props = defineProps<{ issueId?: string }>()
 const route = useRoute()
 const router = useRouter()
 const issueStore = useIssueStore()
-const issueId = route.params.id as string
+const issueId = props.issueId || (route.params.id as string)
 
 const checkpoints = ref<Checkpoint[]>([])
 const allUsers = ref<any[]>([])
@@ -76,7 +79,8 @@ async function onToggleStatus(cp: Checkpoint) {
 }
 
 async function onDeleteCp(id: string) {
-  await ElMessageBox.confirm('确定删除此点检项？', '确认', { type: 'warning' })
+  const r = await pnwPromptChoice({ title: '确认', message: '确定删除此点检项？', choices: [{ id: 'delete', label: '删除', variant: 'danger' }, { id: 'cancel', label: '取消' }] })
+  if (r.choiceId !== 'delete') return
   await deleteCheckpoint(id)
   ElMessage.success('已删除')
   loadCheckpoints()
@@ -101,17 +105,19 @@ function goBack() {
 <template>
   <div class="page">
     <div class="page-head">
-      <div>
-        <el-button link @click="goBack"><el-icon><ArrowLeft /></el-icon> 返回</el-button>
-        <h2 v-if="issueStore.currentIssue">{{ issueStore.currentIssue.title }}</h2>
-      </div>
-      <div style="display:flex;gap:8px">
-        <el-button v-if="issueStore.currentIssue" size="small" @click="showEdit = true">
+      <h2 v-if="issueStore.currentIssue">{{ issueStore.currentIssue.title }}</h2>
+      <div class="page-head-actions">
+        <el-button v-if="issueStore.currentIssue" size="small" type="primary" plain @click="showEdit = true">
           <el-icon><Edit /></el-icon> 编辑
         </el-button>
-        <el-button v-if="issueStore.currentIssue" type="warning" size="small" @click="showPush = true">
+        <el-button v-if="issueStore.currentIssue" size="small" type="warning" plain @click="showPush = true">
           <el-icon><Promotion /></el-icon> 推送
         </el-button>
+        <button class="hdr-btn-close" @click="goBack" title="关闭">
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <path d="M4 4L12 12M12 4L4 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+        </button>
       </div>
     </div>
 
@@ -246,8 +252,45 @@ function goBack() {
 </template>
 
 <style scoped>
-.page-head { display: flex; justify-content: space-between; align-items: flex-start; }
-.page-head h2 { font-size: 1.3rem; font-weight: 650; margin-top: 4px; }
+.page-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 20px;
+}
+.page-head h2 {
+  font-size: 1.15rem;
+  font-weight: 650;
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.page-head-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-shrink: 0;
+}
+.hdr-btn-close {
+  width: 28px; height: 28px;
+  padding: 0;
+  display: grid; place-items: center;
+  background: transparent;
+  color: #909399;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0;
+  transition: background 0.15s, color 0.15s;
+}
+.hdr-btn-close:hover {
+  background: #f0f0f0;
+  color: #606266;
+}
 .detail-meta { display: flex; gap: 12px; align-items: center; margin-top: 8px; }
 .issue-no { font-family: monospace; font-size: 1rem; color: #409eff; font-weight: 600; }
 .meta-time { font-size: 0.8rem; color: #c0c4cc; }
@@ -266,4 +309,5 @@ function goBack() {
 @media (max-width: 768px) {
   .page-head { flex-direction: column; align-items: flex-start; gap: 8px; }
 }
+.page { padding: 16px; }
 </style>

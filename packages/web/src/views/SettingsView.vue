@@ -1,7 +1,9 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
 import { getAllDict, createDictItem, updateDictItem, deleteDictItem, applyDictPreset } from '@/api/dict'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus';
+import { pnwPromptChoice, pnwAlert } from 'phoenix-wing'
+import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
 import type { DictItem } from '@phoenix-wing/open-issue-core'
 
 const items = ref<DictItem[]>([])
@@ -36,15 +38,15 @@ onMounted(load)
 
 async function onApplyPreset(preset: string) {
   const label = presetLabels[preset] || preset
-  try {
-    await ElMessageBox.confirm(
-      `追加「${label}」预设项到各分组（已存在的值会跳过，不会覆盖）`,
-      '确认追加',
-      { type: 'info', confirmButtonText: '追加', cancelButtonText: '取消' },
-    )
-  } catch {
-    return // 取消
-  }
+  const r = await pnwPromptChoice({
+    title: '确认追加',
+    message: `追加「${label}」预设项到各分组（已存在的值会跳过，不会覆盖）`,
+    choices: [
+      { id: 'append', label: '追加', variant: 'primary' },
+      { id: 'cancel', label: '取消' },
+    ],
+  })
+  if (r.choiceId !== 'append') return
   try {
     const res = await applyDictPreset(preset)
     const data = res.data as { added: number; skipped: number }
@@ -76,7 +78,7 @@ async function onToggle(item: DictItem) {
 }
 
 async function onDelete(id: string) {
-  await ElMessageBox.confirm('确定删除？', '确认', { type: 'warning' })
+  (await pnwPromptChoice({ title: '确认', message: '确定删除？', choices: [{ id: 'delete', label: '删除', variant: 'danger' }, { id: 'cancel', label: '取消' }] })).choiceId === 'delete'
   try {
     await deleteDictItem(id)
     ElMessage.success('已删除')
@@ -84,7 +86,7 @@ async function onDelete(id: string) {
   } catch (e: any) {
     if (e?.response?.status === 409) {
       const msg = e.response.data?.message || e.response.data?.error || '该字典项正在使用中，无法删除'
-      ElMessageBox.alert(msg, '无法删除', { type: 'warning', confirmButtonText: '知道了' })
+      await pnwAlert('无法删除', msg)
     } else {
       ElMessage.error('删除失败')
     }

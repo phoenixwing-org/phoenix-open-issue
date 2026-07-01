@@ -1,12 +1,13 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { onMounted, ref, inject } from 'vue'
 import { useIssueListStore } from '@/stores/issueLists'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
+import { pnwPromptChoice } from 'phoenix-wing'
+import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
 import ListFormDialog from '@/components/ListFormDialog.vue'
 
-const router = useRouter()
 const store = useIssueListStore()
+const openTab = inject<(pageId: string, title: string, contextKey?: string) => void>('openTab')!
 const showCreate = ref(false)
 const editTarget = ref<string | null>(null)
 
@@ -15,7 +16,10 @@ const listTypeColor: Record<string, string> = { yearly: '#409EFF', monthly: '#67
 
 onMounted(() => store.fetchLists())
 
-function goDetail(id: string) { router.push(`/lists/${id}`) }
+function goDetail(id: string, name: string) {
+  const title = name.length > 12 ? name.slice(0, 12) + '…' : name
+  openTab('lists', title, id)
+}
 
 async function onCreate(data: any) {
   await store.createList(data)
@@ -32,7 +36,8 @@ async function onEdit(data: any) {
 }
 
 async function onDelete(id: string, name: string) {
-  await ElMessageBox.confirm(`确定删除列表「${name}」？所有 Issue 和点检项将被删除。`, '确认删除', { type: 'warning' })
+  const r = await pnwPromptChoice({ title: '确认删除', message: `确定删除列表「${name}」？所有 Issue 和点检项将被删除。`, choices: [{ id: 'delete', label: '删除', variant: 'danger' }, { id: 'cancel', label: '取消' }] })
+  if (r.choiceId !== 'delete') return
   await store.deleteList(id)
   ElMessage.success('已删除')
 }
@@ -40,16 +45,19 @@ async function onDelete(id: string, name: string) {
 
 <template>
   <div class="page">
-    <div class="page-head">
-      <h2>列表管理</h2>
-      <el-button type="primary" @click="showCreate = true"><el-icon><Plus /></el-icon> 新建列表</el-button>
-    </div>
+    <PnwPageHeader title="列表管理">
+      <template #actions>
+        <el-button type="primary" @click="showCreate = true">
+          <el-icon><Plus /></el-icon> 新建列表
+        </el-button>
+      </template>
+    </PnwPageHeader>
 
     <el-table :data="store.lists" v-loading="store.loading" stripe>
       <el-table-column prop="name" label="名称" min-width="180" fixed>
         <template #default="{ row }">
           <el-tooltip :content="row.name" placement="top" :show-after="500" :hide-after="0">
-            <el-link type="primary" @click="goDetail(row.id)" class="cell-link">{{ row.name }}</el-link>
+            <el-link type="primary" @click="goDetail(row.id, row.name)" class="cell-link">{{ row.name }}</el-link>
           </el-tooltip>
         </template>
       </el-table-column>
