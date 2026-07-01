@@ -78,6 +78,7 @@ async function loadData() {
     issueStore.fetchIssues(listId.value, {
       status: statusFilter.value || undefined,
       search: searchText.value || undefined,
+      sort: settings.issueSort,
     }),
     loadMembers(),
     loadAllUsers(),
@@ -128,12 +129,14 @@ async function onRejectPush(recordId: string) {
   }
 }
 
-// 获取某 Issue 的最近 N 条点检
+// 获取某 Issue 的最近 N 条点检（按日期倒序）
 function getRecentCheckpoints(issueId: string): Checkpoint[] {
   const maxCount = settings.maxTimelineRows
   const cps = checkpointMap.value[issueId]
   if (!cps || !cps.length) return []
-  return cps.slice(0, maxCount)
+  // 按 checkpointDate 倒序排列（最近的在前）
+  const sorted = [...cps].sort((a, b) => b.checkpointDate.localeCompare(a.checkpointDate))
+  return sorted.slice(0, maxCount)
 }
 
 // 点检状态图标
@@ -218,6 +221,32 @@ function formatDate(d: string | null) {
   return d.slice(0, 10)
 }
 
+// 点检日期格式化：同年或差距 < 阈值月数 → MM-DD，否则 → YYYY-MM-DD
+function formatCpDate(dateStr: string): string {
+  if (!dateStr) return '—'
+  const d = new Date(dateStr)
+  const now = new Date()
+  const thisYear = now.getFullYear()
+  const threshold = settings.cpYearThresholdMonths
+  // -1 = 永不简化，始终显示完整日期
+  if (threshold === -1) return dateStr.slice(0, 10)
+  const thresholdMs = threshold * 30.44 * 24 * 60 * 60 * 1000
+  if (d.getFullYear() === thisYear || Math.abs(d.getTime() - now.getTime()) < thresholdMs) {
+    const mm = String(d.getMonth() + 1).padStart(2, '0')
+    const dd = String(d.getDate()).padStart(2, '0')
+    return `${mm}-${dd}`
+  }
+  return dateStr.slice(0, 10)
+}
+
+function formatCpDateShort(dateStr: string): string {
+  if (!dateStr) return ''
+  const d = new Date(dateStr)
+  const mm = String(d.getMonth() + 1).padStart(2, '0')
+  const dd = String(d.getDate()).padStart(2, '0')
+  return `${mm}-${dd}`
+}
+
 function colWidth(key: string, fallback: number): number {
   return settings.colWidths[key] || fallback
 }
@@ -227,6 +256,22 @@ function onColResize(newWidth: number, _old: number, col: any) {
     settings.colWidths[key] = newWidth
   }
 }
+
+// sort-change: 用户点击表头排序
+function onSortChange({ prop, order }: { prop: string; order: 'ascending' | 'descending' | null }) {
+  if (order) {
+    settings.issueSort = `${prop}:${order === 'ascending' ? 'asc' : 'desc'}`
+  } else {
+    settings.issueSort = 'createdAt:desc'  // 取消排序 → 默认
+  }
+  loadData()
+}
+
+// 从 settings 解析 Element Plus 的 default-sort prop
+const defaultSort = computed(() => {
+  const [field, dir] = settings.issueSort.split(':')
+  return { prop: field, order: dir === 'asc' ? 'ascending' as const : 'descending' as const }
+})
 </script>
 
 <template>
@@ -259,7 +304,15 @@ function onColResize(newWidth: number, _old: number, col: any) {
         <el-select :model-value="settings.maxTimelineRows" @update:model-value="settings.maxTimelineRows = $event" size="small" style="width:65px">
           <el-option v-for="n in [1,2,3,4,5,6,7,8,9,10]" :key="n" :label="String(n)" :value="n" />
         </el-select>
-        条点检
+        条 · 日期简化
+        <el-select :model-value="settings.cpYearThresholdMonths" @update:model-value="settings.cpYearThresholdMonths = $event" size="small" style="width:70px">
+          <el-option :label="'当月'" :value="0" />
+          <el-option :label="'2个月'" :value="2" />
+          <el-option :label="'3个月'" :value="3" />
+          <el-option :label="'半年'" :value="6" />
+          <el-option :label="'全年'" :value="12" />
+          <el-option :label="'不简化'" :value="-1" />
+        </el-select>
       </span>
       <el-radio-group v-model="viewMode" size="small" class="view-toggle">
         <el-radio-button value="simple">📋 简单</el-radio-button>
@@ -300,22 +353,24 @@ function onColResize(newWidth: number, _old: number, col: any) {
       v-loading="issueStore.loading"
       stripe border
       size="small"
+      :default-sort="defaultSort"
+      @sort-change="onSortChange"
       @row-click="(row: any) => goIssue(row.id)"
       @header-dragend="onColResize"
       style="cursor:pointer"
       highlight-current-row
     >
       <el-table-column type="index" label="#" width="45" align="center" fixed="left" />
-      <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip fixed="left" />
-      <el-table-column prop="issueNo" label="编号" :width="colWidth('编号', 145)" resizable />
-      <el-table-column label="严重度" :width="colWidth('严重度', 75)" resizable align="center">
+      <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip fixed="left" sortable="custom" />
+      <el-table-column prop="issueNo" label="编号" :width="colWidth('编号', 145)" resizable sortable="custom" />
+      <el-table-column prop="severity" label="严重度" :width="colWidth('严重度', 75)" resizable align="center" sortable="custom">
         <template #default="{ row }">
           <el-tag :type="severityTag[row.severity]" size="small" effect="dark">
             {{ dict.getLabel('severity', row.severity) || row.severity }}
           </el-tag>
         </template>
       </el-table-column>
-      <el-table-column label="优先级" :width="colWidth('优先级', 75)" resizable align="center">
+      <el-table-column prop="priority" label="优先级" :width="colWidth('优先级', 75)" resizable align="center" sortable="custom">
         <template #default="{ row }">
           <el-tag :type="priorityTag[row.priority]" size="small">{{ priorityLabel[row.priority] || row.priority }}</el-tag>
         </template>
@@ -345,16 +400,21 @@ function onColResize(newWidth: number, _old: number, col: any) {
           <span v-else class="cell-na">—</span>
         </template>
       </el-table-column>
-      <el-table-column label="计划完成日" width="110">
+      <el-table-column prop="dueDate" label="计划完成日" width="110" sortable="custom">
         <template #default="{ row }">
           {{ formatDate(row.dueDate) }}
         </template>
       </el-table-column>
-      <el-table-column label="状态" width="90" align="center">
+      <el-table-column prop="status" label="状态" width="90" align="center" sortable="custom">
         <template #default="{ row }">
           <el-tag :type="statusTag[row.status]" size="small">
             {{ statusLabel[row.status] || row.status }}
           </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column prop="createdAt" label="创建日期" width="110" align="center" sortable="custom">
+        <template #default="{ row }">
+          <span class="cell-date">{{ formatCpDate(row.createdAt) }}</span>
         </template>
       </el-table-column>
       <!-- 跟踪模式：最近点检列 -->
@@ -368,7 +428,7 @@ function onColResize(newWidth: number, _old: number, col: any) {
               :class="{ 'cp-overdue': isOverdue(cp.checkpointDate, cp.status).overdue }"
             >
               <span class="cp-mini-icon">{{ cpIcon(cp) }}</span>
-              <span class="cp-mini-date">{{ cp.checkpointDate }}</span>
+              <span class="cp-mini-date" :title="'点检日: ' + cp.checkpointDate">{{ formatCpDate(cp.checkpointDate) }}</span>
               <span class="cp-mini-desc">{{ cp.description }}</span>
               <span v-if="cp.responsibleUserId" class="cp-mini-who">{{ userMap[cp.responsibleUserId] || '' }}</span>
             </div>
@@ -449,6 +509,11 @@ function onColResize(newWidth: number, _old: number, col: any) {
 .cell-na {
   color: #c0c4cc;
 }
+.cell-date {
+  font-family: monospace;
+  font-size: 0.8rem;
+  color: #909399;
+}
 .view-toggle {
   margin-left: 12px;
   flex-shrink: 0;
@@ -520,6 +585,12 @@ function onColResize(newWidth: number, _old: number, col: any) {
   flex-shrink: 0;
   color: #c0c4cc;
   font-size: 0.7rem;
+}
+.cp-mini-created {
+  flex-shrink: 0;
+  color: #c0c4cc;
+  font-size: 0.65rem;
+  margin-left: 2px;
 }
 .cp-mini-empty {
   color: #c0c4cc;

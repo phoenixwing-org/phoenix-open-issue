@@ -41,6 +41,7 @@ function wrap(fn: (req: any, res: any) => void) {
  router.get('/dict/:groupName', authMiddleware, wrap((req, res) => dictCtrl.getByGroup(req, res)))
  router.get('/dict', authMiddleware, wrap((req, res) => dictCtrl.getAll(req, res)))
  router.post('/dict', authMiddleware, wrap((req, res) => dictCtrl.create(req, res)))
+ router.post('/dict/presets', authMiddleware, wrap((req, res) => dictCtrl.applyPreset(req, res)))
  router.put('/dict/:id', authMiddleware, wrap((req, res) => dictCtrl.update(req, res)))
  router.delete('/dict/:id', authMiddleware, wrap((req, res) => dictCtrl.delete(req, res)))
 // ---- Auth ----

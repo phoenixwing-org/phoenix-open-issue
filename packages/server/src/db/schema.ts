@@ -5,7 +5,7 @@ export function runSchema(db: Database.Database): void {
   const migrations = [
     `ALTER TABLE users ADD COLUMN approved INTEGER NOT NULL DEFAULT 1`,
     `ALTER TABLE issueLists ADD COLUMN archived INTEGER NOT NULL DEFAULT 0`,
-    // 移除字典字段的 CHECK 约束（SQLite 不支持直接 DROP CHECK，重建表太复杂，用 dict 校验）`,
+    `ALTER TABLE dict ADD COLUMN tags TEXT NOT NULL DEFAULT ''`,
   ]
   for (const sql of migrations) {
     try { db.exec(sql) } catch { /* column already exists */ }

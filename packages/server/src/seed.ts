@@ -197,8 +197,8 @@ function seedDict() {
   let dictCount = 0
   for (const dg of dictDefaults) {
     for (const di of dg.items) {
-      db.prepare('INSERT OR IGNORE INTO dict (id, groupName, value, label, sortOrder) VALUES (?, ?, ?, ?, ?)')
-        .run(uuid(), dg.g, di.v, di.l, dictCount++)
+      db.prepare('INSERT OR IGNORE INTO dict (id, groupName, value, label, sortOrder, tags) VALUES (?, ?, ?, ?, ?, ?)')
+        .run(uuid(), dg.g, di.v, di.l, dictCount++, 'automotive')
     }
   }
   console.log(`  📚 ${dictCount} dict entries seeded`)

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { getAllDict, createDictItem, updateDictItem, deleteDictItem } from '@/api/dict'
+import { getAllDict, createDictItem, updateDictItem, deleteDictItem, applyDictPreset } from '@/api/dict'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import type { DictItem } from '@phoenix-wing/open-issue-core'
 
@@ -19,6 +19,11 @@ const groups = [
   { value: 'closeReason', label: '关闭理由' },
 ]
 
+const presetLabels: Record<string, string> = {
+  automotive: '汽车默认值',
+  software: '软件默认值',
+}
+
 async function load() {
   loading.value = true
   try {
@@ -28,6 +33,31 @@ async function load() {
 }
 
 onMounted(load)
+
+async function onApplyPreset(preset: string) {
+  const label = presetLabels[preset] || preset
+  try {
+    await ElMessageBox.confirm(
+      `追加「${label}」预设项到各分组（已存在的值会跳过，不会覆盖）`,
+      '确认追加',
+      { type: 'info', confirmButtonText: '追加', cancelButtonText: '取消' },
+    )
+  } catch {
+    return // 取消
+  }
+  try {
+    const res = await applyDictPreset(preset)
+    const data = res.data as { added: number; skipped: number }
+    if (data.added > 0) {
+      ElMessage.success(`已追加 ${data.added} 项${data.skipped > 0 ? `，跳过 ${data.skipped} 项（已存在）` : ''}`)
+    } else {
+      ElMessage.info(`所有项已存在，跳过 ${data.skipped} 项`)
+    }
+    load()
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.error || '应用预设失败')
+  }
+}
 
 async function onAdd() {
   if (!newValue.value.trim() || !newLabel.value.trim()) return
@@ -47,9 +77,26 @@ async function onToggle(item: DictItem) {
 
 async function onDelete(id: string) {
   await ElMessageBox.confirm('确定删除？', '确认', { type: 'warning' })
-  await deleteDictItem(id)
-  ElMessage.success('已删除')
-  load()
+  try {
+    await deleteDictItem(id)
+    ElMessage.success('已删除')
+    load()
+  } catch (e: any) {
+    if (e?.response?.status === 409) {
+      const msg = e.response.data?.message || e.response.data?.error || '该字典项正在使用中，无法删除'
+      ElMessageBox.alert(msg, '无法删除', { type: 'warning', confirmButtonText: '知道了' })
+    } else {
+      ElMessage.error('删除失败')
+    }
+  }
+}
+
+function tagColor(tag: string): string {
+  const map: Record<string, string> = {
+    automotive: '#409EFF',
+    software: '#67C23A',
+  }
+  return map[tag] || '#909399'
 }
 
 function groupedItems(): Record<string, DictItem[]> {
@@ -65,16 +112,35 @@ function groupedItems(): Record<string, DictItem[]> {
   <div class="page">
     <div class="page-head">
       <h2>数据字典</h2>
-      <el-button type="primary" size="small" @click="showAdd = true">+ 添加</el-button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <el-button type="default" size="small" @click="onApplyPreset('automotive')">🚗 汽车默认值</el-button>
+        <el-button type="default" size="small" @click="onApplyPreset('software')">💻 软件默认值</el-button>
+        <el-button type="primary" size="small" @click="showAdd = true">+ 添加</el-button>
+      </div>
     </div>
 
     <div v-loading="loading">
       <div v-for="g in groups" :key="g.value" style="margin-bottom:20px">
         <h3 style="margin-bottom:8px">{{ g.label }} ({{ groupedItems()[g.value]?.length || 0 }})</h3>
         <el-table :data="groupedItems()[g.value]" size="small" stripe>
-          <el-table-column prop="value" label="值" width="160" />
-          <el-table-column prop="label" label="显示名" width="160" />
-          <el-table-column label="状态" width="80" align="center">
+          <el-table-column prop="value" label="值" width="140" />
+          <el-table-column prop="label" label="显示名" width="140" />
+          <el-table-column label="标签" width="160">
+            <template #default="{ row }">
+              <template v-if="row.tags">
+                <el-tag
+                  v-for="t in row.tags.split(',').map((s:string) => s.trim()).filter(Boolean)"
+                  :key="t"
+                  size="small"
+                  :color="tagColor(t)"
+                  effect="dark"
+                  style="margin-right:4px;margin-bottom:2px"
+                >{{ t === 'automotive' ? '汽车' : t === 'software' ? '软件' : t }}</el-tag>
+              </template>
+              <span v-else style="color:#909399;font-size:12px">—</span>
+            </template>
+          </el-table-column>
+          <el-table-column label="状态" width="70" align="center">
             <template #default="{ row }">
               <el-tag :type="row.enabled ? 'success' : 'info'" size="small">{{ row.enabled ? '启用' : '禁用' }}</el-tag>
             </template>

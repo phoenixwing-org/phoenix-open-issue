@@ -6,11 +6,12 @@ const issueService = new IssueService()
 
 export class IssueController {
   getIssues(req: Request, res: Response): void {
-    const { status, priority, search, page, size } = req.query
+    const { status, priority, search, sort, page, size } = req.query
     const result = issueService.getIssues(req.params.listId, req.user!.userId, {
       status: status as string,
       priority: priority as string,
       search: search as string,
+      sort: sort as string,
       page: page ? parseInt(page as string) : undefined,
       size: size ? parseInt(size as string) : undefined,
     })
