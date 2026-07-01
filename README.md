@@ -8,13 +8,14 @@
 
 ```bash
 pnpm install          # 安装所有依赖
-pnpm seed             # 初始化数据库（演示数据）
-pnpm dev              # 一键启动 core + server + web
+pnpm dev              # 一键启动 core + server + web（首次启动自动初始化数据库和演示账号）
 ```
 
 打开 http://localhost:5173 即可使用。
 
 **演示账号**：`admin` / `123456` 或 `zhangsan` / `123456`
+
+> 如需重新填充演示数据：`pnpm seed`（或 `pnpm seed force` 强制清空重填）
 
 ## 项目结构
 
@@ -71,6 +72,7 @@ pnpm seed            # 重新填充演示数据
 |------|------|
 | [架构设计](doc/架构设计.md) | 架构 + 数据流 |
 | [API参考](doc/API参考.md) | REST API 全部端点 |
+| [数据字典配置](doc/数据字典配置.md) | 下拉选项枚举值，汽车/软件预设 |
 | [Issue列设计](doc/Issue列设计.md) | 汽车行业对标，列扩展讨论 |
 | [推送工作流](doc/推送工作流.md) | 推送→确认/拒绝 完整流程 |
 | [待办点检](doc/待办点检.md) | 用自己系统追踪自己开发 |

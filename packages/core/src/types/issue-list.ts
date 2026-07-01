@@ -12,6 +12,10 @@ export interface IssueList {
   archived: number
   createdAt: string
   updatedAt: string
+  /** 以下为查询时 JOIN 计算的衍生字段 */
+  ownerName?: string
+  memberCount?: number
+  issueCount?: number
 }
 
 export interface IssueListMember {

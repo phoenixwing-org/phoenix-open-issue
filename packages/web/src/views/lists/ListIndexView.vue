@@ -11,6 +11,7 @@ const showCreate = ref(false)
 const editTarget = ref<string | null>(null)
 
 const listTypeLabel: Record<string, string> = { yearly: '年度', monthly: '月度', project: '项目', custom: '自定义' }
+const listTypeColor: Record<string, string> = { yearly: '#409EFF', monthly: '#67C23A', project: '#E6A23C', custom: '#909399' }
 
 onMounted(() => store.fetchLists())
 
@@ -45,19 +46,32 @@ async function onDelete(id: string, name: string) {
     </div>
 
     <el-table :data="store.lists" v-loading="store.loading" stripe>
-      <el-table-column prop="name" label="名称" min-width="180">
+      <el-table-column prop="name" label="名称" min-width="180" fixed>
         <template #default="{ row }">
-          <el-link type="primary" @click="goDetail(row.id)">{{ row.name }}</el-link>
+          <el-tooltip :content="row.name" placement="top" :show-after="500" :hide-after="0">
+            <el-link type="primary" @click="goDetail(row.id)" class="cell-link">{{ row.name }}</el-link>
+          </el-tooltip>
         </template>
       </el-table-column>
-      <el-table-column prop="listType" label="类型" width="100">
-        <template #default="{ row }">{{ listTypeLabel[row.listType] || row.listType }}</template>
+      <el-table-column prop="listType" label="类型" width="90" align="center">
+        <template #default="{ row }">
+          <el-tag :color="listTypeColor[row.listType]" effect="dark" size="small" style="color:#fff">
+            {{ listTypeLabel[row.listType] || row.listType }}
+          </el-tag>
+        </template>
       </el-table-column>
-      <el-table-column prop="description" label="描述" min-width="200" show-overflow-tooltip />
-      <el-table-column label="创建时间" width="160">
-        <template #default="{ row }">{{ new Date(row.createdAt).toLocaleString('zh-CN') }}</template>
+      <el-table-column prop="ownerName" label="负责人" width="100" align="center">
+        <template #default="{ row }">
+          {{ row.ownerName || '—' }}
+        </template>
       </el-table-column>
-      <el-table-column label="操作" width="160" fixed="right">
+      <el-table-column prop="memberCount" label="成员" width="70" align="center" sortable />
+      <el-table-column prop="issueCount" label="Issue" width="70" align="center" sortable />
+      <el-table-column prop="description" label="描述" min-width="160" show-overflow-tooltip />
+      <el-table-column label="更新时间" width="160" sortable>
+        <template #default="{ row }">{{ new Date(row.updatedAt).toLocaleString('zh-CN') }}</template>
+      </el-table-column>
+      <el-table-column label="操作" width="80" fixed="right">
         <template #default="{ row }">
           <el-button link type="primary" size="small" @click="editTarget = row.id">编辑</el-button>
         </template>
@@ -87,5 +101,14 @@ async function onDelete(id: string, name: string) {
 .page-head h2 {
   font-size: 1.3rem;
   font-weight: 650;
+}
+.cell-link {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+:deep(.el-table th) {
+  white-space: nowrap;
 }
 </style>

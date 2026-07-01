@@ -19,3 +19,7 @@ export function updateDictItem(id: string, data: { label?: string; value?: strin
 export function deleteDictItem(id: string) {
   return request.delete(`/dict/${id}`)
 }
+
+export function applyDictPreset(preset: string) {
+  return request.post('/dict/presets', { preset })
+}

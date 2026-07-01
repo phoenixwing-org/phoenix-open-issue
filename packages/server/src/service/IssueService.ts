@@ -12,6 +12,7 @@ export class IssueService {
     status?: string
     priority?: string
     search?: string
+    sort?: string     // 如 "createdAt:desc" (默认) / "createdAt:asc"
     page?: number
     size?: number
   } = {}): { items: Issue[]; total: number } {
@@ -22,7 +23,7 @@ export class IssueService {
     const role = checkListAccess(userId, members)
     if (!role) throw new ForbiddenError('无权访问此列表')
 
-    const { status, priority, search, page = 1, size = 50 } = opts
+    const { status, priority, search, sort, page = 1, size = 50 } = opts
     const conditions: string[] = ['listId = ?']
     const params: unknown[] = [listId]
 
@@ -42,10 +43,33 @@ export class IssueService {
     const where = conditions.join(' AND ')
     const total = db.prepare(`SELECT COUNT(*) as count FROM issues WHERE ${where}`).get(...params) as { count: number }
 
+    // 排序：默认 createdAt DESC，可通过 sort 参数切换字段和方向
+    const SEVERITY_ORDER = "CASE severity WHEN 'fatal' THEN 1 WHEN 'major' THEN 2 WHEN 'minor' THEN 3 WHEN 'trivial' THEN 4 ELSE 5 END"
+    const PRIORITY_ORDER = "CASE priority WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 WHEN 'low' THEN 4 ELSE 5 END"
+    const STATUS_ORDER = "CASE status WHEN 'open' THEN 1 WHEN 'in_progress' THEN 2 WHEN 'resolved' THEN 3 WHEN 'closed' THEN 4 WHEN 'cancelled' THEN 5 ELSE 6 END"
+
+    let orderBy = 'createdAt DESC, sortOrder ASC'
+    if (sort) {
+      const parts = sort.split(':')
+      const field = parts[0]
+      const dir = parts[1] || 'desc'
+      const d = dir === 'asc' ? 'ASC' : 'DESC'
+      switch (field) {
+        case 'createdAt':  orderBy = `createdAt ${d}, sortOrder ASC`; break
+        case 'severity':   orderBy = `${SEVERITY_ORDER} ${d}, createdAt DESC`; break
+        case 'priority':   orderBy = `${PRIORITY_ORDER} ${d}, createdAt DESC`; break
+        case 'status':     orderBy = `${STATUS_ORDER} ${d}, createdAt DESC`; break
+        case 'title':      orderBy = `title ${d}, createdAt DESC`; break
+        case 'issueNo':    orderBy = `issueNo ${d}, createdAt DESC`; break
+        case 'dueDate':    orderBy = `COALESCE(dueDate,'9999') ${d}, createdAt DESC`; break
+        case 'sortOrder':  orderBy = `sortOrder ASC, createdAt DESC`; break
+      }
+    }
+
     const offset = (page - 1) * size
     params.push(size, offset)
     const items = db.prepare(
-      `SELECT * FROM issues WHERE ${where} ORDER BY sortOrder ASC, createdAt DESC LIMIT ? OFFSET ?`,
+      `SELECT * FROM issues WHERE ${where} ORDER BY ${orderBy} LIMIT ? OFFSET ?`,
     ).all(...params) as Issue[]
 
     return { items, total: total.count }
