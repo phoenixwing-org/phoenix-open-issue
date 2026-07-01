@@ -1,23 +1,38 @@
-import express from 'express'
+import express, { type Express } from 'express'
 import cors from 'cors'
+import path from 'path'
+import fs from 'fs'
 import routes from './routes/index.js'
 import { errorHandler } from './middleware/error-handler.js'
+import { config } from './config.js'
 
-export function createApp() {
+export function createApp(): Express {
   const app = express()
 
   app.use(cors())
   app.use(express.json())
 
-  // API routes
   app.use('/api', routes)
 
-  // Health check
   app.get('/health', (_req, res) => {
     res.json({ status: 'ok' })
   })
 
-  // Global error handler
+  if (config.serveStatic) {
+    app.use(express.static(config.staticDir))
+
+    app.use((req, res, next) => {
+      if (req.method !== 'GET' && req.method !== 'HEAD') return next()
+      if (req.path.startsWith('/api')) return next()
+      const indexHtml = path.join(config.staticDir, 'index.html')
+      if (fs.existsSync(indexHtml)) {
+        res.sendFile(indexHtml)
+      } else {
+        next()
+      }
+    })
+  }
+
   app.use(errorHandler)
 
   return app
