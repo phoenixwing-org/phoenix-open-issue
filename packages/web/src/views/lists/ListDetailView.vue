@@ -12,8 +12,9 @@ import { getAllUsers } from '@/api/auth'
 import { getCheckpointsByList } from '@/api/checkpoints'
 import { getIncomingPushes, handlePush } from '@/api/push'
 import { ElMessage } from 'element-plus';
-import { pnwPromptChoice, pnwPromptInput } from 'phoenix-wing'
+import { pnwPromptChoice, pnwPromptInput, pnwPropGroup, pnwPropEnum, pnwPropBool, pnwPropSheet } from 'phoenix-wing'
 import PnwAppModalOverlay from 'phoenix-wing/components/PnwAppModalOverlay.vue'
+import PnwSidebarBlock from 'phoenix-wing/layout/PnwSidebarBlock.vue'
 import IssueDetailView from '@/views/issues/IssueDetailView.vue'
 
 const showIssueModal = ref(false)
