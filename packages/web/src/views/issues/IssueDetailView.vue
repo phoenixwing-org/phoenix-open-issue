@@ -17,6 +17,7 @@ import type { Checkpoint } from '@phoenix-wing/open-issue-core'
 import { isOverdue } from '@phoenix-wing/open-issue-core'
 
 const props = defineProps<{ issueId?: string }>()
+const emit = defineEmits<{ close: [] }>()
 const route = useRoute()
 const router = useRouter()
 const issueStore = useIssueStore()
@@ -98,6 +99,7 @@ async function onEditIssue(data: any) {
 }
 
 function goBack() {
+  if (props.issueId) { emit('close'); return }
   router.back()
 }
 </script>

@@ -484,7 +484,7 @@ const defaultSort = computed(() => {
 
     <!-- Issue 详情遮罩 -->
     <PnwAppModalOverlay :open="showIssueModal" aria-label="Issue 详情" panel-class="issue-detail-modal" @close="showIssueModal = false">
-      <IssueDetailView v-if="showIssueModal" :issue-id="modalIssueId" />
+      <IssueDetailView v-if="showIssueModal" :issue-id="modalIssueId" @close="showIssueModal = false" />
     </PnwAppModalOverlay>
   </div>
 </template>
