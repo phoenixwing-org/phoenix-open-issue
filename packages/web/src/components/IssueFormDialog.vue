@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useDictStore } from '@/stores/dict'
 import { useAuthStore } from '@/stores/auth'
+import PnwDictSelect from 'phoenix-wing/components/PnwDictSelect.vue'
 
 const dict = useDictStore()
 const auth = useAuthStore()
@@ -59,16 +60,12 @@ function submit() {
         <!-- 严重度 & 分类 -->
         <el-col :span="12">
           <el-form-item label="严重度">
-            <el-select v-model="severity" :teleported="false" style="width:100%">
-              <el-option v-for="o in dict.getOptions('severity')" :key="o.value" :label="o.label" :value="o.value" />
-            </el-select>
+            <PnwDictSelect v-model="severity" :items="dict.getTaggedOptions('severity') as any" placeholder="选择严重度" storage-key="issue-severity" />
           </el-form-item>
         </el-col>
         <el-col :span="12">
           <el-form-item label="问题分类">
-            <el-select v-model="category" :teleported="false" placeholder="选择分类" clearable style="width:100%">
-              <el-option v-for="o in dict.getOptions('issueCategory')" :key="o.value" :label="o.label" :value="o.value" />
-            </el-select>
+            <PnwDictSelect v-model="category" :items="dict.getTaggedOptions('issueCategory') as any" placeholder="选择分类" storage-key="issue-category" />
           </el-form-item>
         </el-col>
       </el-row>
@@ -77,9 +74,7 @@ function submit() {
         <!-- 发现阶段 & 优先级 -->
         <el-col :span="12">
           <el-form-item label="发现阶段">
-            <el-select v-model="detectionPhase" :teleported="false" placeholder="选择阶段" clearable style="width:100%">
-              <el-option v-for="o in dict.getOptions('detectionPhase')" :key="o.value" :label="o.label" :value="o.value" />
-            </el-select>
+            <PnwDictSelect v-model="detectionPhase" :items="dict.getTaggedOptions('detectionPhase') as any" placeholder="选择阶段" storage-key="issue-detection" />
           </el-form-item>
         </el-col>
         <el-col :span="12">
