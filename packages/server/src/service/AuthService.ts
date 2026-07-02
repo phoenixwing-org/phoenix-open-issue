@@ -3,6 +3,7 @@ import { v4 as uuid } from 'uuid'
 import bcrypt from 'bcryptjs'
 import { signToken } from '../utils/jwt.js'
 import { ConflictError, UnauthorizedError } from '../utils/errors.js'
+import { resolveOrgUnitId } from '../utils/pendingOrgUnit.js'
 import type { User, UserPublic, CreateUserInput, LoginResult, RegisterResult } from '@phoenix-wing/open-issue-core'
 
 function toPublic(user: User): UserPublic {
@@ -23,7 +24,7 @@ export class AuthService {
     const now = new Date().toISOString()
 
     // 用户选择组织或默认待定组，新注册需管理员批准
-    const orgId = input.orgUnitId || (db.prepare("SELECT id FROM orgUnits WHERE name = '待定组' LIMIT 1").get() as { id: string } | undefined)?.id || null
+    const orgId = resolveOrgUnitId(db, input.orgUnitId)
 
     db.prepare(
       `INSERT INTO users (id, username, email, passwordHash, displayName, orgUnitId, approved, createdAt, updatedAt)
@@ -100,9 +101,10 @@ export class AuthService {
     const db = getDb()
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId) as User | undefined
     if (!user) throw new UnauthorizedError('用户不存在')
+    const resolvedOrgId = resolveOrgUnitId(db, orgUnitId)
     db.prepare('UPDATE users SET orgUnitId = ?, updatedAt = ? WHERE id = ?')
-      .run(orgUnitId, new Date().toISOString(), userId)
-    console.log(`👤 [MOVE] user "${user.username}" → org=${orgUnitId}`)
+      .run(resolvedOrgId, new Date().toISOString(), userId)
+    console.log(`👤 [MOVE] user "${user.username}" → org=${resolvedOrgId}`)
     return toPublic(db.prepare('SELECT * FROM users WHERE id = ?').get(userId) as User)
   }
 
@@ -110,8 +112,9 @@ export class AuthService {
     const db = getDb()
     const user = db.prepare('SELECT * FROM users WHERE id = ?').get(userId) as User | undefined
     if (!user) throw new UnauthorizedError('用户不存在')
-    db.prepare('UPDATE users SET displayName = COALESCE(?, displayName), email = COALESCE(?, email), orgUnitId = COALESCE(?, orgUnitId), updatedAt = ? WHERE id = ?')
-      .run(data.displayName ?? null, data.email ?? null, data.orgUnitId ?? null, new Date().toISOString(), userId)
+    const orgUnitId = 'orgUnitId' in data ? resolveOrgUnitId(db, data.orgUnitId) : user.orgUnitId
+    db.prepare('UPDATE users SET displayName = COALESCE(?, displayName), email = COALESCE(?, email), orgUnitId = ?, updatedAt = ? WHERE id = ?')
+      .run(data.displayName ?? null, data.email ?? null, orgUnitId, new Date().toISOString(), userId)
     console.log(`👤 [UPDATE] user "${user.username}"`)
     return toPublic(db.prepare('SELECT * FROM users WHERE id = ?').get(userId) as User)
   }

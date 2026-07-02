@@ -1,4 +1,5 @@
 import type Database from 'better-sqlite3'
+import { ensurePendingOrgUnit } from '../utils/pendingOrgUnit.js'
 
 export function runSchema(db: Database.Database): void {
   // ---- 迁移：列增量添加 ----
@@ -119,4 +120,6 @@ export function runSchema(db: Database.Database): void {
       createdAt TEXT DEFAULT (datetime('now'))
     );
   `)
+
+  ensurePendingOrgUnit(db)
 }

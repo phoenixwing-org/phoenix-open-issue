@@ -1,5 +1,7 @@
 import { getDb } from '../db/connection.js'
 import { v4 as uuid } from 'uuid'
+import { ConflictError } from '../utils/errors.js'
+import { getPendingOrgUnitId, isPendingOrgUnit, PENDING_ORG_UNIT_NAME } from '../utils/pendingOrgUnit.js'
 import type { OrgUnit, OrgTreeNode } from '@phoenix-wing/open-issue-core'
 
 export class OrgUnitService {
@@ -32,6 +34,9 @@ export class OrgUnitService {
 
   delete(id: string): void {
     const db = getDb()
+    if (isPendingOrgUnit(db, id)) {
+      throw new ConflictError(`「${PENDING_ORG_UNIT_NAME}」为系统保留节点，不可删除`)
+    }
     // 解除子节点的 parentId
     db.prepare('UPDATE orgUnits SET parentId = NULL WHERE parentId = ?').run(id)
     db.prepare('DELETE FROM orgUnits WHERE id = ?').run(id)
@@ -39,15 +44,42 @@ export class OrgUnitService {
 
   getUsers(orgUnitId: string) {
     const db = getDb()
+    const userCols = 'id, username, email, displayName, orgUnitId, approved, createdAt, updatedAt'
+    if (isPendingOrgUnit(db, orgUnitId)) {
+      const pendingId = getPendingOrgUnitId(db) ?? orgUnitId
+      return db.prepare(
+        `SELECT ${userCols} FROM users WHERE orgUnitId = ? OR orgUnitId IS NULL ORDER BY approved ASC, displayName, username`,
+      ).all(pendingId)
+    }
+    const all = db.prepare('SELECT id, parentId FROM orgUnits').all() as Pick<OrgUnit, 'id' | 'parentId'>[]
+    const orgIds = collectDescendantIds(all, orgUnitId)
+    const placeholders = orgIds.map(() => '?').join(', ')
     return db.prepare(
-      'SELECT id, username, email, displayName, orgUnitId, approved, createdAt, updatedAt FROM users WHERE orgUnitId = ?',
-    ).all(orgUnitId)
+      `SELECT ${userCols} FROM users WHERE orgUnitId IN (${placeholders}) ORDER BY approved ASC, displayName, username`,
+    ).all(...orgIds)
   }
 }
 
+/** 收集节点自身及所有下级组织 id */
+function collectDescendantIds(units: Pick<OrgUnit, 'id' | 'parentId'>[], rootId: string): string[] {
+  const ids = [rootId]
+  for (const unit of units) {
+    if (unit.parentId === rootId) {
+      ids.push(...collectDescendantIds(units, unit.id))
+    }
+  }
+  return ids
+}
+
 function buildTree(units: OrgUnit[], parentId: string | null = null): OrgTreeNode[] {
+  const ids = new Set(units.map(u => u.id))
   return units
-    .filter(u => u.parentId === parentId)
+    .filter(u => {
+      if (parentId !== null) return u.parentId === parentId
+      // 根节点：无上级，或上级已不存在（避免树中「消失」）
+      const p = u.parentId
+      return p == null || p === '' || !ids.has(p)
+    })
     .map(u => ({
       ...u,
       children: buildTree(units, u.id),

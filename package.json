@@ -11,6 +11,10 @@
     "build:server": "pnpm -C packages/server build",
     "build:web": "pnpm -C packages/web build",
     "build": "pnpm build:core && pnpm build:server && pnpm build:web",
+    "build:deploy": "pnpm build:core && pnpm -C packages/web exec vite build",
+    "start": "pnpm -C packages/server start",
+    "start:prod": "pnpm -C packages/server exec tsx src/main.ts",
+    "deploy": "pnpm build:deploy && pnpm start:prod",
     "seed": "pnpm -C packages/server seed"
   },
   "packageManager": "pnpm@9.15.9",

@@ -1,6 +1,7 @@
 import { getDb } from './db/connection.js'
 import { v4 as uuid } from 'uuid'
 import bcrypt from 'bcryptjs'
+import { ensurePendingOrgUnit } from './utils/pendingOrgUnit.js'
 
 export function seedDatabase(force = false): string[] {
   const db = getDb()
@@ -52,14 +53,12 @@ db.prepare(`INSERT INTO users (id, username, email, passwordHash, displayName, o
 console.log('  👤 3 users: admin / zhangsan / lisi  (password: 123456)')
 
 // ═══════ 组织 ═══════
-const orgPendingId = uuid()
+const orgPendingId = ensurePendingOrgUnit(db)
 const orgDeptId = uuid()
 const orgFrontendId = uuid()
 const orgBackendId = uuid()
 const orgQualityId = uuid()
 
-db.prepare('INSERT INTO orgUnits (id, name, unitType, parentId) VALUES (?, ?, ?, ?)')
-  .run(orgPendingId, '待定组', 'group', null)
 db.prepare('INSERT INTO orgUnits (id, name, unitType, parentId) VALUES (?, ?, ?, ?)')
   .run(orgDeptId, '研发部', 'division', null)
 db.prepare('INSERT INTO orgUnits (id, name, unitType, parentId) VALUES (?, ?, ?, ?)')

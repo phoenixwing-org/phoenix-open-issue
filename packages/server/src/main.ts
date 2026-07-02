@@ -15,6 +15,11 @@ function tryListen(port: number, maxRetries = 10): void {
   const server = app.listen(port, '0.0.0.0', () => {
     console.log(`📋 Open Issue List Server running at http://0.0.0.0:${port}`)
     console.log(`   Database: ${config.dbPath}`)
+    if (config.serveStatic) {
+      console.log(`   Mode:     unified (API + static)`)
+    } else {
+      console.log(`   Mode:     API only`)
+    }
   })
 
   server.on('error', (err: NodeJS.ErrnoException) => {
