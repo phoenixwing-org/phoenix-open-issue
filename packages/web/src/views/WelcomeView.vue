@@ -9,6 +9,10 @@ function goDashboard() {
   emit('close')
   router.push('/dashboard')
 }
+
+function backToWorkspace() {
+  emit('close')
+}
 </script>
 
 <template>
@@ -25,8 +29,12 @@ function goDashboard() {
 
     <template #title>Open Issue List</template>
 
+    <template #actions>
+      <button class="rail-btn rail-btn-back" @click="backToWorkspace">返回工作台</button>
+    </template>
+
     <template #headActions>
-      <button class="hdr-btn hdr-btn-primary" @click="goDashboard">进入仪表盘</button>
+      <button class="hdr-btn hdr-btn-primary" @click="goDashboard">打开仪表盘</button>
       <button class="hdr-btn hdr-btn-close" @click="emit('close')" title="关闭">
         <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
           <path d="M4 4L12 12M12 4L4 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
@@ -87,6 +95,27 @@ function goDashboard() {
   font-size: 0.7rem;
   color: #909399;
   margin-top: 2px;
+}
+
+/* ---- rail buttons ---- */
+.rail-btn {
+  width: 100%;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: 1px solid transparent;
+  transition: background 0.15s;
+  text-align: left;
+}
+.rail-btn-back {
+  background: transparent;
+  color: var(--text, #0f172a);
+  border-color: #dcdfe6;
+}
+.rail-btn-back:hover {
+  background: #f0f2f5;
 }
 
 /* ---- header buttons ---- */
