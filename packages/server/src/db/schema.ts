@@ -1,7 +1,7 @@
-import type { DbAdapter } from './adapter.js'
+import type { PnwDbAdapter } from 'phoenix-wing/db/pnwDbAdapter'
 import { ensurePendingOrgUnit } from '../utils/pendingOrgUnit.js'
 
-export function runSchema(db: DbAdapter): void {
+export function runSchema(db: PnwDbAdapter): void {
   // ---- 迁移：列增量添加 ----
   const migrations = [
     `ALTER TABLE users ADD COLUMN approved INTEGER NOT NULL DEFAULT 1`,

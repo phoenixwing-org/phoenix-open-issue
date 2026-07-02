@@ -1,15 +1,15 @@
-import type { DbAdapter } from '../db/adapter.js'
+import type { PnwDbAdapter } from 'phoenix-wing/db/pnwDbAdapter'
 import { v4 as uuid } from 'uuid'
 
 export const PENDING_ORG_UNIT_NAME = '待定组'
 
-export function getPendingOrgUnitId(db: DbAdapter): string | null {
+export function getPendingOrgUnitId(db: PnwDbAdapter): string | null {
   const row = db.get<{ id: string }>('SELECT id FROM orgUnits WHERE name = ? LIMIT 1', PENDING_ORG_UNIT_NAME)
   return row?.id ?? null
 }
 
 /** 确保「待定组」存在，并将 orgUnitId 为 null 的用户迁入该组 */
-export function ensurePendingOrgUnit(db: DbAdapter): string {
+export function ensurePendingOrgUnit(db: PnwDbAdapter): string {
   let id = getPendingOrgUnitId(db)
   if (!id) {
     id = uuid()
@@ -29,7 +29,7 @@ export function ensurePendingOrgUnit(db: DbAdapter): string {
   return id
 }
 
-export function migrateUsersWithoutOrg(db: DbAdapter, pendingOrgId: string): number {
+export function migrateUsersWithoutOrg(db: PnwDbAdapter, pendingOrgId: string): number {
   const result = db.run('UPDATE users SET orgUnitId = ?, updatedAt = ? WHERE orgUnitId IS NULL', [pendingOrgId, new Date().toISOString()])
   if (result.changes > 0) {
     console.log(`👤 [ORG] migrated ${result.changes} user(s) without org → "${PENDING_ORG_UNIT_NAME}"`)
@@ -38,13 +38,13 @@ export function migrateUsersWithoutOrg(db: DbAdapter, pendingOrgId: string): num
 }
 
 /** 未指定组织时归入待定组；显式 null/空字符串同样归入待定组 */
-export function resolveOrgUnitId(db: DbAdapter, orgUnitId?: string | null): string {
+export function resolveOrgUnitId(db: PnwDbAdapter, orgUnitId?: string | null): string {
   const trimmed = orgUnitId?.trim()
   if (trimmed) return trimmed
   return ensurePendingOrgUnit(db)
 }
 
-export function isPendingOrgUnit(db: DbAdapter, orgUnitId: string): boolean {
+export function isPendingOrgUnit(db: PnwDbAdapter, orgUnitId: string): boolean {
   const pendingId = getPendingOrgUnitId(db)
   return pendingId !== null && pendingId === orgUnitId
 }
