@@ -20,6 +20,14 @@ export function ensurePendingOrgUnit(db: Database.Database): string {
       null,
     )
     console.log(`🏢 [ORG] created "${PENDING_ORG_UNIT_NAME}" (${id})`)
+  } else {
+    // 已有记录可能被误设为子节点，修正为根节点以保证组织树可见
+    const fixed = db.prepare(
+      'UPDATE orgUnits SET parentId = NULL, unitType = ? WHERE id = ? AND (parentId IS NOT NULL OR unitType != ?)',
+    ).run('group', id, 'group')
+    if (fixed.changes > 0) {
+      console.log(`🏢 [ORG] normalized "${PENDING_ORG_UNIT_NAME}" to root node`)
+    }
   }
   migrateUsersWithoutOrg(db, id)
   return id

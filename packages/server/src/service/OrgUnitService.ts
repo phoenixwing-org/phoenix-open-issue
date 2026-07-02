@@ -57,8 +57,14 @@ export class OrgUnitService {
 }
 
 function buildTree(units: OrgUnit[], parentId: string | null = null): OrgTreeNode[] {
+  const ids = new Set(units.map(u => u.id))
   return units
-    .filter(u => u.parentId === parentId)
+    .filter(u => {
+      if (parentId !== null) return u.parentId === parentId
+      // 根节点：无上级，或上级已不存在（避免树中「消失」）
+      const p = u.parentId
+      return p == null || p === '' || !ids.has(p)
+    })
     .map(u => ({
       ...u,
       children: buildTree(units, u.id),
