@@ -44,16 +44,31 @@ export class OrgUnitService {
 
   getUsers(orgUnitId: string) {
     const db = getDb()
+    const userCols = 'id, username, email, displayName, orgUnitId, approved, createdAt, updatedAt'
     if (isPendingOrgUnit(db, orgUnitId)) {
       const pendingId = getPendingOrgUnitId(db) ?? orgUnitId
       return db.prepare(
-        'SELECT id, username, email, displayName, orgUnitId, approved, createdAt, updatedAt FROM users WHERE orgUnitId = ? OR orgUnitId IS NULL',
+        `SELECT ${userCols} FROM users WHERE orgUnitId = ? OR orgUnitId IS NULL ORDER BY approved ASC, displayName, username`,
       ).all(pendingId)
     }
+    const all = db.prepare('SELECT id, parentId FROM orgUnits').all() as Pick<OrgUnit, 'id' | 'parentId'>[]
+    const orgIds = collectDescendantIds(all, orgUnitId)
+    const placeholders = orgIds.map(() => '?').join(', ')
     return db.prepare(
-      'SELECT id, username, email, displayName, orgUnitId, approved, createdAt, updatedAt FROM users WHERE orgUnitId = ?',
-    ).all(orgUnitId)
+      `SELECT ${userCols} FROM users WHERE orgUnitId IN (${placeholders}) ORDER BY approved ASC, displayName, username`,
+    ).all(...orgIds)
   }
+}
+
+/** 收集节点自身及所有下级组织 id */
+function collectDescendantIds(units: Pick<OrgUnit, 'id' | 'parentId'>[], rootId: string): string[] {
+  const ids = [rootId]
+  for (const unit of units) {
+    if (unit.parentId === rootId) {
+      ids.push(...collectDescendantIds(units, unit.id))
+    }
+  }
+  return ids
 }
 
 function buildTree(units: OrgUnit[], parentId: string | null = null): OrgTreeNode[] {
