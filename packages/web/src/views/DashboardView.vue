@@ -4,6 +4,7 @@ import { useIssueListStore } from '@/stores/issueLists'
 import { ElMessage } from 'element-plus'
 import { runSeed } from '@/api/push'
 import PnwPageHeader from 'phoenix-wing/layout/PnwPageHeader.vue'
+import PageHelpButton from '@/components/PageHelpButton.vue'
 
 const store = useIssueListStore()
 const openTab = inject<(pageId: string, title: string, contextKey?: string) => void>('openTab')!
@@ -89,6 +90,7 @@ async function onResetDemo() {
           <el-icon><Plus /></el-icon> 新建列表
         </el-button>
       </template>
+      <template #help><PageHelpButton page-id="dashboard" /></template>
     </PnwPageHeader>
 
     <div v-loading="store.loading">

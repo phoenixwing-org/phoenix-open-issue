@@ -7,6 +7,7 @@ import { getAllUsers } from '@/api/auth'
 import { ElMessage } from 'element-plus'
 import { pnwPromptChoice } from 'phoenix-wing'
 import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
+import PageHelpButton from "@/components/PageHelpButton.vue"
 import CheckpointFormDialog from '@/components/CheckpointFormDialog.vue'
 import IssueFormDialog from '@/components/IssueFormDialog.vue'
 import PushDialog from '@/views/push/PushDialog.vue'
@@ -106,9 +107,8 @@ function goBack() {
 
 <template>
   <div class="page">
-    <div class="page-head">
-      <h2 v-if="issueStore.currentIssue">{{ issueStore.currentIssue.title }}</h2>
-      <div class="page-head-actions">
+    <PnwPageHeader :title="issueStore.currentIssue?.title || 'Issue 详情'">
+      <template #actions>
         <el-button v-if="issueStore.currentIssue" size="small" type="primary" plain @click="showEdit = true">
           <el-icon><Edit /></el-icon> 编辑
         </el-button>
@@ -120,8 +120,9 @@ function goBack() {
             <path d="M4 4L12 12M12 4L4 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
           </svg>
         </button>
-      </div>
-    </div>
+      </template>
+      <template #help><PageHelpButton page-id="issueDetail" /></template>
+    </PnwPageHeader>
 
     <div v-if="issueStore.currentIssue" class="issue-detail">
       <div class="detail-meta">

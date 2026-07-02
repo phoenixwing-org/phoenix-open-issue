@@ -20,6 +20,7 @@ import IssueDetailView from '@/views/issues/IssueDetailView.vue'
 const showIssueModal = ref(false)
 const modalIssueId = ref('')
 import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
+import PageHelpButton from "@/components/PageHelpButton.vue"
 import { isOverdue } from '@phoenix-wing/open-issue-core'
 import type { Checkpoint } from '@phoenix-wing/open-issue-core'
 import IssueFormDialog from '@/components/IssueFormDialog.vue'
@@ -285,16 +286,13 @@ const defaultSort = computed(() => {
 
 <template>
   <div class="page">
-    <div class="page-head">
-      <div>
-        <h2>{{ currentList?.name }}</h2>
-        <p v-if="currentList?.description" class="list-desc">{{ currentList.description }}</p>
-      </div>
-      <div class="head-actions">
+    <PnwPageHeader :title="currentList?.name || '列表详情'" :subtitle="currentList?.description">
+      <template #actions>
         <el-button @click="showMembers = true"><el-icon><User /></el-icon> 成员 ({{ members.length }})</el-button>
         <el-button type="primary" @click="showCreateIssue = true"><el-icon><Plus /></el-icon> 新建 Issue</el-button>
-      </div>
-    </div>
+      </template>
+      <template #help><PageHelpButton page-id="lists" /></template>
+    </PnwPageHeader>
 
     <!-- 筛选栏 -->
     <div class="filters">

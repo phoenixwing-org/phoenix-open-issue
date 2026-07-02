@@ -12,6 +12,7 @@
     "@element-plus/icons-vue": "^2.3.2",
     "@phoenix-wing/open-issue-core": "workspace:*",
     "axios": "^1.8.4",
+    "driver.js": "^1.6.0",
     "element-plus": "^2.10.2",
     "phoenix-wing": "^0.1.1",
     "pinia": "^3.0.4",
