@@ -1,2 +1,3 @@
 packages:
   - "packages/*"
+  - "../phoenix-wing"

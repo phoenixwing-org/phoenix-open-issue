@@ -5,6 +5,7 @@ import { useDictStore } from '@/stores/dict'
 
 const dict = useDictStore()
 import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
+import PageHelpButton from "@/components/PageHelpButton.vue"
 import { getOrgUnitUsers, createOrgUnit, deleteOrgUnit, updateOrgUnit } from '@/api/orgUnits'
 import { approveUser, updateUserOrg, updateUser } from '@/api/auth'
 import { ElMessage } from 'element-plus'
@@ -138,10 +139,12 @@ const unitTypeColor: Record<string, string> = { group: '#67c23a', department: '#
 
 <template>
   <div class="page">
-    <div class="page-head">
-      <h2>组织架构</h2>
-      <el-button type="primary" size="small" @click="showCreate = true"><el-icon><Plus /></el-icon> 新建节点</el-button>
-    </div>
+    <PnwPageHeader title="组织架构">
+      <template #actions>
+        <el-button type="primary" size="small" @click="showCreate = true"><el-icon><Plus /></el-icon> 新建节点</el-button>
+      </template>
+      <template #help><PageHelpButton page-id="org" /></template>
+    </PnwPageHeader>
 
     <div class="org-layout">
       <div class="org-tree-panel">

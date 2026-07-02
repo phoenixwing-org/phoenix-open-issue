@@ -93,9 +93,11 @@ function appendLog(msg: string) { logText.value += `[${new Date().toLocaleTimeSt
       @close-wb-tab="onCloseWbTab"
       @close-all-wb-tabs="onCloseAllWbTabs"
     />
-    <RibbonShell :collapsed="ribbonCollapsed" :active-tab="activeRibbonTab" @open="onRibbonOpen" />
+    <div data-tour="ribbon-area">
+      <RibbonShell :collapsed="ribbonCollapsed" :active-tab="activeRibbonTab" @open="onRibbonOpen" />
+    </div>
     <div class="shell-body">
-      <main class="shell-main">
+      <main class="shell-main" data-tour="shell-main">
         <router-view v-slot="{ Component }">
           <transition name="fade" mode="out-in">
             <keep-alive :max="10">
@@ -106,7 +108,9 @@ function appendLog(msg: string) { logText.value += `[${new Date().toLocaleTimeSt
       </main>
     </div>
     <PnwShellLogPanel v-if="logExpanded" :log-text="logText" @clear="logText = ''" @close="logExpanded = false" />
-    <StatusBar :label="pageLabel" @toggle-log="logExpanded = !logExpanded" />
+    <div data-tour="shell-status">
+      <StatusBar :label="pageLabel" @toggle-log="logExpanded = !logExpanded" />
+    </div>
     <PnwChoiceDialogHost />
     <PnwAsyncProgressOverlay />
     <PnwAppModalOverlay :open="configOpen" aria-label="设置" @close="configOpen = false">

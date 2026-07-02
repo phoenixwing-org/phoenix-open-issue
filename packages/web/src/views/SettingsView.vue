@@ -4,6 +4,7 @@ import { getAllDict, createDictItem, updateDictItem, deleteDictItem, applyDictPr
 import { ElMessage } from 'element-plus';
 import { pnwPromptChoice, pnwAlert } from 'phoenix-wing'
 import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
+import PageHelpButton from "@/components/PageHelpButton.vue"
 import type { DictItem } from '@phoenix-wing/open-issue-core'
 
 const items = ref<DictItem[]>([])
@@ -112,14 +113,14 @@ function groupedItems(): Record<string, DictItem[]> {
 
 <template>
   <div class="page">
-    <div class="page-head">
-      <h2>数据字典</h2>
-      <div style="display:flex;gap:8px;align-items:center">
+    <PnwPageHeader title="数据字典">
+      <template #actions>
         <el-button type="default" size="small" @click="onApplyPreset('automotive')">🚗 汽车默认值</el-button>
         <el-button type="default" size="small" @click="onApplyPreset('software')">💻 软件默认值</el-button>
         <el-button type="primary" size="small" @click="showAdd = true">+ 添加</el-button>
-      </div>
-    </div>
+      </template>
+      <template #help><PageHelpButton page-id="settings" /></template>
+    </PnwPageHeader>
 
     <div v-loading="loading">
       <div v-for="g in groups" :key="g.value" style="margin-bottom:20px">

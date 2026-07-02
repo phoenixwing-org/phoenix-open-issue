@@ -4,6 +4,7 @@ import { useIssueListStore } from '@/stores/issueLists'
 import { ElMessage } from 'element-plus'
 import { pnwPromptChoice } from 'phoenix-wing'
 import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
+import PageHelpButton from "@/components/PageHelpButton.vue"
 import ListFormDialog from '@/components/ListFormDialog.vue'
 
 const store = useIssueListStore()
@@ -51,6 +52,7 @@ async function onDelete(id: string, name: string) {
           <el-icon><Plus /></el-icon> 新建列表
         </el-button>
       </template>
+      <template #help><PageHelpButton page-id="lists" /></template>
     </PnwPageHeader>
 
     <el-table :data="store.lists" v-loading="store.loading" stripe>

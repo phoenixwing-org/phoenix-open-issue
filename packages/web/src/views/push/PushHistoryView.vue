@@ -5,6 +5,7 @@ import { getMyPushHistory, handlePush } from '@/api/push'
 import { ElMessage } from 'element-plus';
 import { pnwPromptInput } from 'phoenix-wing'
 import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
+import PageHelpButton from "@/components/PageHelpButton.vue"
 
 const router = useRouter()
 const records = ref<any[]>([])
@@ -46,9 +47,9 @@ function goList(listId: string) {
 
 <template>
   <div class="page">
-    <div class="page-head">
-      <h2>推送历史</h2>
-    </div>
+    <PnwPageHeader title="推送历史">
+      <template #help><PageHelpButton page-id="pushHistory" /></template>
+    </PnwPageHeader>
 
     <el-table :data="records" v-loading="loading" stripe size="small">
       <el-table-column label="时间" width="140">
