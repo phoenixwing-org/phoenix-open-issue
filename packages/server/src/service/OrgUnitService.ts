@@ -1,5 +1,7 @@
 import { getDb } from '../db/connection.js'
 import { v4 as uuid } from 'uuid'
+import { ConflictError } from '../utils/errors.js'
+import { getPendingOrgUnitId, isPendingOrgUnit, PENDING_ORG_UNIT_NAME } from '../utils/pendingOrgUnit.js'
 import type { OrgUnit, OrgTreeNode } from '@phoenix-wing/open-issue-core'
 
 export class OrgUnitService {
@@ -32,6 +34,9 @@ export class OrgUnitService {
 
   delete(id: string): void {
     const db = getDb()
+    if (isPendingOrgUnit(db, id)) {
+      throw new ConflictError(`「${PENDING_ORG_UNIT_NAME}」为系统保留节点，不可删除`)
+    }
     // 解除子节点的 parentId
     db.prepare('UPDATE orgUnits SET parentId = NULL WHERE parentId = ?').run(id)
     db.prepare('DELETE FROM orgUnits WHERE id = ?').run(id)
@@ -39,6 +44,12 @@ export class OrgUnitService {
 
   getUsers(orgUnitId: string) {
     const db = getDb()
+    if (isPendingOrgUnit(db, orgUnitId)) {
+      const pendingId = getPendingOrgUnitId(db) ?? orgUnitId
+      return db.prepare(
+        'SELECT id, username, email, displayName, orgUnitId, approved, createdAt, updatedAt FROM users WHERE orgUnitId = ? OR orgUnitId IS NULL',
+      ).all(pendingId)
+    }
     return db.prepare(
       'SELECT id, username, email, displayName, orgUnitId, approved, createdAt, updatedAt FROM users WHERE orgUnitId = ?',
     ).all(orgUnitId)

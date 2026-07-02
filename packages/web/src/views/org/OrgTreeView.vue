@@ -207,7 +207,7 @@ const unitTypeColor: Record<string, string> = { group: '#67c23a', department: '#
                 <span style="cursor:pointer" @click="onEditUser(u)">{{ u.displayName || u.username }}</span>
                 <span class="user-email" v-if="u.email">{{ u.email }}</span>
                 <el-tag v-if="!u.approved" type="warning" size="small">待批准</el-tag>
-                <el-select v-if="u.approved" size="small" :model-value="u.orgUnitId" placeholder="更换组织" clearable @change="(v: string) => onMoveUser(u.id, v || null)" style="width:130px" @click.stop>
+                <el-select v-if="u.approved" size="small" :model-value="u.orgUnitId" placeholder="更换组织" clearable @change="(v: string | null) => onMoveUser(u.id, v)" style="width:130px" @click.stop>
                   <el-option v-for="org in flattenUnits(store.tree)" :key="org.id" :label="'　'.repeat(org._depth) + org.name" :value="org.id" />
                 </el-select>
                 <template v-if="!u.approved">
@@ -259,7 +259,7 @@ const unitTypeColor: Record<string, string> = { group: '#67c23a', department: '#
           <el-input v-model="editEmail" placeholder="邮箱" />
         </el-form-item>
         <el-form-item label="组织">
-          <el-select v-model="editOrgId" clearable placeholder="选择组织" style="width:100%">
+          <el-select v-model="editOrgId" clearable placeholder="选择组织（清空→待定组）" style="width:100%">
             <el-option v-for="org in flattenUnits(store.tree)" :key="org.id" :label="'　'.repeat(org._depth) + org.name" :value="org.id" />
           </el-select>
         </el-form-item>
