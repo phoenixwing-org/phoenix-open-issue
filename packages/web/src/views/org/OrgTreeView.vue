@@ -4,9 +4,11 @@ import { useOrgUnitStore } from '@/stores/orgUnits'
 import { useDictStore } from '@/stores/dict'
 
 const dict = useDictStore()
+import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
 import { getOrgUnitUsers, createOrgUnit, deleteOrgUnit, updateOrgUnit } from '@/api/orgUnits'
 import { approveUser, updateUserOrg, updateUser } from '@/api/auth'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
+import { pnwPromptChoice } from 'phoenix-wing'
 
 const store = useOrgUnitStore()
 const unitUsers = ref<any[]>([])
@@ -121,7 +123,8 @@ async function onSaveUnit() {
 }
 
 async function onDelete(id: string, name: string) {
-  await ElMessageBox.confirm(`确定删除「${name}」？`, '确认', { type: 'warning' })
+  const r = await pnwPromptChoice({ title: '确认', message: `确定删除「${name}」？`, choices: [{ id: 'delete', label: '删除', variant: 'danger' }, { id: 'cancel', label: '取消' }] })
+  if (r.choiceId !== 'delete') return
   await deleteOrgUnit(id)
   ElMessage.success('已删除')
   selectedUnit.value = null

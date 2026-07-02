@@ -1,5 +1,6 @@
 <script setup lang="ts">
 defineProps<{ label: string }>()
+const emit = defineEmits<{ 'toggle-log': [] }>()
 </script>
 
 <template>
@@ -7,6 +8,8 @@ defineProps<{ label: string }>()
     <span class="status-label">【{{ label }}】</span>
     <span class="status-divider">·</span>
     <span>Open Issue List v0.1</span>
+    <span style="flex:1" />
+    <button class="log-toggle" title="日志" @click="emit('toggle-log')">📋</button>
   </footer>
 </template>
 

@@ -31,10 +31,17 @@ export const useDictStore = defineStore('dict', () => {
     return g.map(i => ({ value: i.value, label: i.label }))
   }
 
+  /** 返回带 tags 的选项（供 PnwDictSelect 分组用） */
+  function getTaggedOptions(groupName: string) {
+    const g = getGroup(groupName)
+    if (!g || !g.length) return []
+    return g.map(i => ({ value: i.value, label: i.label, tags: (i as any).tags }))
+  }
+
   function refresh() {
     loaded.value = false
     return load()
   }
 
-  return { items, loaded, load, getGroup, getLabel, getOptions, refresh }
+  return { items, loaded, load, getGroup, getLabel, getOptions, getTaggedOptions, refresh }
 })

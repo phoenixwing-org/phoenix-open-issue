@@ -11,7 +11,15 @@ import { getMembers, addMember, removeMember } from '@/api/issueLists'
 import { getAllUsers } from '@/api/auth'
 import { getCheckpointsByList } from '@/api/checkpoints'
 import { getIncomingPushes, handlePush } from '@/api/push'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus';
+import { pnwPromptChoice, pnwPromptInput, pnwPropGroup, pnwPropEnum, pnwPropBool, pnwPropSheet } from 'phoenix-wing'
+import PnwAppModalOverlay from 'phoenix-wing/components/PnwAppModalOverlay.vue'
+import PnwSidebarBlock from 'phoenix-wing/layout/PnwSidebarBlock.vue'
+import IssueDetailView from '@/views/issues/IssueDetailView.vue'
+
+const showIssueModal = ref(false)
+const modalIssueId = ref('')
+import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
 import { isOverdue } from '@phoenix-wing/open-issue-core'
 import type { Checkpoint } from '@phoenix-wing/open-issue-core'
 import IssueFormDialog from '@/components/IssueFormDialog.vue'
@@ -118,7 +126,7 @@ async function onAcceptPush(recordId: string) {
 
 async function onRejectPush(recordId: string) {
   try {
-    await ElMessageBox.prompt('拒绝理由（可选）', '拒绝推送', { confirmButtonText: '确认拒绝', cancelButtonText: '取消' })
+    await pnwPromptInput('拒绝推送', '拒绝理由（可选）')
       .then(async ({ value }) => {
         await handlePush(recordId, 'rejected', value || undefined)
         ElMessage.success('已拒绝推送')
@@ -177,7 +185,7 @@ const filteredIssues = computed(() => {
   return list
 })
 
-function goIssue(id: string) { router.push(`/issues/${id}`) }
+function goIssue(id: string) { modalIssueId.value = id; showIssueModal.value = true }
 
 async function onCreateIssue(data: any) {
   await issueStore.createIssue(listId.value, data)
@@ -198,7 +206,8 @@ function onPushIssue(issueId: string) {
 }
 
 async function onDeleteIssue(id: string, title: string) {
-  await ElMessageBox.confirm(`确定删除 Issue「${title}」及其所有点检项？`, '确认删除', { type: 'warning' })
+  const r = await pnwPromptChoice({ title: '确认删除', message: `确定删除 Issue「」及其所有点检项？`, choices: [{ id: 'delete', label: '删除', variant: 'danger' }, { id: 'cancel', label: '取消' }] });
+  if (r.choiceId !== 'delete') return
   await issueStore.deleteIssue(id)
   ElMessage.success('已删除')
   loadData()
@@ -473,6 +482,11 @@ const defaultSort = computed(() => {
       @close="showMembers = false"
     />
     <PushDialog v-if="showPush" :list-id="listId" :preselected-issue-ids="pushIssueId ? [pushIssueId] : []" @close="showPush = false; pushIssueId = null" />
+
+    <!-- Issue 详情遮罩 -->
+    <PnwAppModalOverlay :open="showIssueModal" aria-label="Issue 详情" panel-class="issue-detail-modal" @close="showIssueModal = false">
+      <IssueDetailView v-if="showIssueModal" :issue-id="modalIssueId" @close="showIssueModal = false" />
+    </PnwAppModalOverlay>
   </div>
 </template>
 
@@ -619,5 +633,15 @@ const defaultSort = computed(() => {
   .page-head { flex-direction: column; align-items: flex-start; gap: 8px; }
   .head-actions { flex-wrap: wrap; }
   .filters { flex-wrap: wrap; }
+}
+</style>
+<style>
+.issue-detail-modal .pnw-modal-panel {
+  width: min(900px, 96vw);
+  max-height: min(92vh, 900px);
+  padding: 0;
+}
+.issue-detail-modal .pnw-modal-panel .page {
+  padding: 24px;
 }
 </style>

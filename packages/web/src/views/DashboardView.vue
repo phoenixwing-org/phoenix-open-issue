@@ -1,13 +1,12 @@
 <script setup lang="ts">
-import { onMounted, computed } from 'vue'
-import { useRouter } from 'vue-router'
+import { onMounted, ref, inject } from 'vue'
 import { useIssueListStore } from '@/stores/issueLists'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { runSeed } from '@/api/push'
-import { ref } from 'vue'
+import PnwPageHeader from 'phoenix-wing/layout/PnwPageHeader.vue'
 
-const router = useRouter()
 const store = useIssueListStore()
+const openTab = inject<(pageId: string, title: string, contextKey?: string) => void>('openTab')!
 const showCreate = ref(false)
 const newListName = ref('')
 const newListType = ref('custom')
@@ -44,8 +43,9 @@ onMounted(() => {
   store.fetchLists()
 })
 
-function goList(id: string) {
-  router.push(`/lists/${id}`)
+function goList(id: string, name: string) {
+  const title = name.length > 12 ? name.slice(0, 12) + '…' : name
+  openTab('lists', title, id)
 }
 
 async function onCreate(data: { name: string; listType: string; description?: string }) {
@@ -75,9 +75,8 @@ async function onResetDemo() {
 
 <template>
   <div class="page dashboard">
-    <div class="page-head">
-      <h2>仪表盘</h2>
-      <div class="head-actions">
+    <PnwPageHeader title="仪表盘">
+      <template #actions>
         <el-radio-group v-model="listView" size="small" @change="switchView">
           <el-radio-button value="mine">👤 我的</el-radio-button>
           <el-radio-button value="all">🌐 所有</el-radio-button>
@@ -89,8 +88,8 @@ async function onResetDemo() {
         <el-button type="primary" @click="showCreate = true">
           <el-icon><Plus /></el-icon> 新建列表
         </el-button>
-      </div>
-    </div>
+      </template>
+    </PnwPageHeader>
 
     <div v-loading="store.loading">
       <el-empty v-if="!store.lists.length && !store.loading" description="还没有列表，点击上方按钮创建" />
@@ -99,7 +98,7 @@ async function onResetDemo() {
         <div
           v-for="list in store.lists" :key="list.id"
           class="list-card"
-          @click="goList(list.id)"
+          @click="goList(list.id, list.name)"
         >
           <div class="card-type" :style="{ background: listTypeColor[list.listType] }">
             {{ listTypeLabel[list.listType] }}

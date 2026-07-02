@@ -21,7 +21,7 @@ function submit() {
         <el-input v-model="name" placeholder="如：2026年7月点检" />
       </el-form-item>
       <el-form-item label="类型">
-        <el-select v-model="listType">
+        <el-select v-model="listType" :teleported="false">
           <el-option label="年度" value="yearly" />
           <el-option label="月度" value="monthly" />
           <el-option label="项目" value="project" />

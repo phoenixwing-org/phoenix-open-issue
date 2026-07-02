@@ -61,7 +61,7 @@ async function onPush() {
       <el-alert v-else :title="`将推送 ${props.preselectedIssueIds.length} 个 Issue`" type="info" :closable="false" style="margin-bottom:12px" />
 
       <el-form-item label="目标列表">
-        <el-select v-model="targetListId" placeholder="选择目标列表" style="width:100%" @change="onPreview">
+        <el-select v-model="targetListId" :teleported="false" placeholder="选择目标列表" style="width:100%" @change="onPreview">
           <el-option v-for="l in targetLists" :key="l.id" :label="l.name" :value="l.id" />
         </el-select>
       </el-form-item>

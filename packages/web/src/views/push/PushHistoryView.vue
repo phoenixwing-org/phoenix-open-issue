@@ -2,7 +2,9 @@
 import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { getMyPushHistory, handlePush } from '@/api/push'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus';
+import { pnwPromptInput } from 'phoenix-wing'
+import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
 
 const router = useRouter()
 const records = ref<any[]>([])
@@ -28,7 +30,7 @@ async function onAccept(recordId: string) {
 
 async function onReject(recordId: string) {
   try {
-    await ElMessageBox.prompt('拒绝理由（可选）', '拒绝推送', { confirmButtonText: '确认拒绝' })
+    await pnwPromptInput('拒绝推送', '拒绝理由（可选）')
       .then(async ({ value }) => {
         await handlePush(recordId, 'rejected', value || undefined)
         ElMessage.success('已拒绝推送')

@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
 import { useDictStore } from '@/stores/dict'
+import { useAuthStore } from '@/stores/auth'
+import PnwDictSelect from 'phoenix-wing/components/PnwDictSelect.vue'
 
 const dict = useDictStore()
+const auth = useAuthStore()
 
 const props = defineProps<{
   allUsers: Array<{ id: string; username: string; displayName: string | null }>
@@ -25,8 +28,8 @@ const priority = ref(props.initial?.priority || 'medium')
 const severity = ref(props.initial?.severity || 'minor')
 const category = ref(props.initial?.category || '')
 const detectionPhase = ref(props.initial?.detectionPhase || '')
-const reporterId = ref(props.initial?.reporterId || '')
-const assigneeId = ref(props.initial?.assigneeId || '')
+const reporterId = ref(props.initial?.reporterId || auth.user?.id || '')
+const assigneeId = ref(props.initial?.assigneeId || auth.user?.id || '')
 const dueDate = ref(props.initial?.dueDate || '')
 
 function submit() {
@@ -57,16 +60,12 @@ function submit() {
         <!-- 严重度 & 分类 -->
         <el-col :span="12">
           <el-form-item label="严重度">
-            <el-select v-model="severity" style="width:100%">
-              <el-option v-for="o in dict.getOptions('severity')" :key="o.value" :label="o.label" :value="o.value" />
-            </el-select>
+            <PnwDictSelect v-model="severity" :items="dict.getTaggedOptions('severity') as any" placeholder="选择严重度" storage-key="issue-severity" />
           </el-form-item>
         </el-col>
         <el-col :span="12">
           <el-form-item label="问题分类">
-            <el-select v-model="category" placeholder="选择分类" clearable style="width:100%">
-              <el-option v-for="o in dict.getOptions('issueCategory')" :key="o.value" :label="o.label" :value="o.value" />
-            </el-select>
+            <PnwDictSelect v-model="category" :items="dict.getTaggedOptions('issueCategory') as any" placeholder="选择分类" storage-key="issue-category" />
           </el-form-item>
         </el-col>
       </el-row>
@@ -75,9 +74,7 @@ function submit() {
         <!-- 发现阶段 & 优先级 -->
         <el-col :span="12">
           <el-form-item label="发现阶段">
-            <el-select v-model="detectionPhase" placeholder="选择阶段" clearable style="width:100%">
-              <el-option v-for="o in dict.getOptions('detectionPhase')" :key="o.value" :label="o.label" :value="o.value" />
-            </el-select>
+            <PnwDictSelect v-model="detectionPhase" :items="dict.getTaggedOptions('detectionPhase') as any" placeholder="选择阶段" storage-key="issue-detection" />
           </el-form-item>
         </el-col>
         <el-col :span="12">
@@ -96,14 +93,14 @@ function submit() {
         <!-- 人员与日期 -->
         <el-col :span="12">
           <el-form-item label="提出人">
-            <el-select v-model="reporterId" filterable placeholder="谁发现的" clearable style="width:100%">
+            <el-select v-model="reporterId" :teleported="false" filterable placeholder="谁发现的" clearable style="width:100%">
               <el-option v-for="u in props.allUsers" :key="u.id" :label="u.displayName || u.username" :value="u.id" />
             </el-select>
           </el-form-item>
         </el-col>
         <el-col :span="12">
           <el-form-item label="责任人">
-            <el-select v-model="assigneeId" filterable placeholder="谁负责" clearable style="width:100%">
+            <el-select v-model="assigneeId" :teleported="false" filterable placeholder="谁负责" clearable style="width:100%">
               <el-option v-for="u in props.allUsers" :key="u.id" :label="u.displayName || u.username" :value="u.id" />
             </el-select>
           </el-form-item>
