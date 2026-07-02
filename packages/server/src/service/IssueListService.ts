@@ -7,7 +7,7 @@ import type { IssueList, IssueListMember, MemberWithUser, CreateListInput, Updat
 export class IssueListService {
   getMyLists(userId: string): IssueList[] {
     const db = getDb()
-    return db.prepare(`
+    return db.all(`
       SELECT DISTINCT l.*,
         (SELECT COUNT(*) FROM issueListMembers WHERE listId = l.id) as memberCount,
         (SELECT COUNT(*) FROM issues WHERE listId = l.id) as issueCount,
@@ -17,45 +17,45 @@ export class IssueListService {
       LEFT JOIN users u ON u.id = l.ownerId
       WHERE (l.ownerId = ? OR m.userId = ?) AND l.archived = 0
       ORDER BY l.updatedAt DESC
-    `).all(userId, userId) as IssueList[]
+    `, [userId, userId]) as IssueList[]
   }
 
   getAllLists(): IssueList[] {
     const db = getDb()
-    return db.prepare(`
+    return db.all(`
       SELECT l.*,
         (SELECT COUNT(*) FROM issueListMembers WHERE listId = l.id) as memberCount,
         (SELECT COUNT(*) FROM issues WHERE listId = l.id) as issueCount,
         u.displayName as ownerName
       FROM issueLists l LEFT JOIN users u ON u.id = l.ownerId
       WHERE l.archived = 0 ORDER BY l.updatedAt DESC
-    `).all() as IssueList[]
+    `) as IssueList[]
   }
 
   getArchivedLists(): IssueList[] {
     const db = getDb()
-    return db.prepare(`
+    return db.all(`
       SELECT l.*,
         (SELECT COUNT(*) FROM issueListMembers WHERE listId = l.id) as memberCount,
         (SELECT COUNT(*) FROM issues WHERE listId = l.id) as issueCount,
         u.displayName as ownerName
       FROM issueLists l LEFT JOIN users u ON u.id = l.ownerId
       WHERE l.archived = 1 ORDER BY l.updatedAt DESC
-    `).all() as IssueList[]
+    `) as IssueList[]
   }
 
   archiveList(id: string, archived: boolean, userId: string): IssueList {
     const db = getDb()
     const list = this.getById(id)
     if (!list) throw new NotFoundError('列表')
-    db.prepare('UPDATE issueLists SET archived = ?, updatedAt = ? WHERE id = ?')
-      .run(archived ? 1 : 0, new Date().toISOString(), id)
-    return db.prepare('SELECT * FROM issueLists WHERE id = ?').get(id) as IssueList
+    db.run('UPDATE issueLists SET archived = ?, updatedAt = ? WHERE id = ?',
+      [archived ? 1 : 0, new Date().toISOString(), id])
+    return db.get('SELECT * FROM issueLists WHERE id = ?', id) as IssueList
   }
 
   getById(id: string): IssueList | undefined {
     const db = getDb()
-    return db.prepare('SELECT * FROM issueLists WHERE id = ?').get(id) as IssueList | undefined
+    return db.get('SELECT * FROM issueLists WHERE id = ?', id) as IssueList | undefined
   }
 
   create(input: CreateListInput, ownerId: string): IssueList {
@@ -64,17 +64,19 @@ export class IssueListService {
     const memberId = uuid()
     const now = new Date().toISOString()
 
-    db.prepare(
+    db.run(
       `INSERT INTO issueLists (id, name, description, listType, ownerId, orgUnitId, createdAt, updatedAt)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).run(listId, input.name, input.description ?? '', input.listType, ownerId, input.orgUnitId ?? null, now, now)
+      [listId, input.name, input.description ?? '', input.listType, ownerId, input.orgUnitId ?? null, now, now],
+    )
 
     // owner 自动成为成员
-    db.prepare(
+    db.run(
       'INSERT INTO issueListMembers (id, listId, userId, role) VALUES (?, ?, ?, ?)',
-    ).run(memberId, listId, ownerId, 'owner')
+      [memberId, listId, ownerId, 'owner'],
+    )
 
-    return db.prepare('SELECT * FROM issueLists WHERE id = ?').get(listId) as IssueList
+    return db.get('SELECT * FROM issueLists WHERE id = ?', listId) as IssueList
   }
 
   update(id: string, input: UpdateListInput, userId: string): IssueList {
@@ -86,12 +88,13 @@ export class IssueListService {
     const role = checkListAccess(userId, members)
     if (!canManageList(role)) throw new ForbiddenError()
 
-    db.prepare(
+    db.run(
       `UPDATE issueLists SET name = COALESCE(?, name), description = COALESCE(?, description), updatedAt = ?
        WHERE id = ?`,
-    ).run(input.name ?? null, input.description ?? null, new Date().toISOString(), id)
+      [input.name ?? null, input.description ?? null, new Date().toISOString(), id],
+    )
 
-    return db.prepare('SELECT * FROM issueLists WHERE id = ?').get(id) as IssueList
+    return db.get('SELECT * FROM issueLists WHERE id = ?', id) as IssueList
   }
 
   delete(id: string, userId: string): void {
@@ -104,29 +107,29 @@ export class IssueListService {
     if (!canDeleteList(role)) throw new ForbiddenError('只有列表所有者可以删除')
 
     // 手动级联删除
-    const issues = db.prepare('SELECT id FROM issues WHERE listId = ?').all(id) as { id: string }[]
+    const issues = db.all('SELECT id FROM issues WHERE listId = ?', id) as { id: string }[]
     for (const issue of issues) {
-      db.prepare('DELETE FROM checkpoints WHERE issueId = ?').run(issue.id)
+      db.run('DELETE FROM checkpoints WHERE issueId = ?', issue.id)
     }
-    db.prepare('DELETE FROM issues WHERE listId = ?').run(id)
-    db.prepare('DELETE FROM issueListMembers WHERE listId = ?').run(id)
-    db.prepare('DELETE FROM issueLists WHERE id = ?').run(id)
+    db.run('DELETE FROM issues WHERE listId = ?', id)
+    db.run('DELETE FROM issueListMembers WHERE listId = ?', id)
+    db.run('DELETE FROM issueLists WHERE id = ?', id)
   }
 
   getMembers(listId: string): IssueListMember[] {
     const db = getDb()
-    return db.prepare('SELECT * FROM issueListMembers WHERE listId = ?').all(listId) as IssueListMember[]
+    return db.all('SELECT * FROM issueListMembers WHERE listId = ?', listId) as IssueListMember[]
   }
 
   getMembersWithUser(listId: string): MemberWithUser[] {
     const db = getDb()
-    return db.prepare(`
+    return db.all(`
       SELECT m.*, u.username, u.displayName
       FROM issueListMembers m
       JOIN users u ON u.id = m.userId
       WHERE m.listId = ?
       ORDER BY m.joinedAt
-    `).all(listId) as MemberWithUser[]
+    `, listId) as MemberWithUser[]
   }
 
   addMember(listId: string, userId: string, role: string, actorId: string): IssueListMember {
@@ -140,10 +143,11 @@ export class IssueListService {
     if (existing) return existing
 
     const id = uuid()
-    db.prepare(
+    db.run(
       'INSERT INTO issueListMembers (id, listId, userId, role) VALUES (?, ?, ?, ?)',
-    ).run(id, listId, userId, role)
-    return db.prepare('SELECT * FROM issueListMembers WHERE id = ?').get(id) as IssueListMember
+      [id, listId, userId, role],
+    )
+    return db.get('SELECT * FROM issueListMembers WHERE id = ?', id) as IssueListMember
   }
 
   removeMember(listId: string, targetUserId: string, actorId: string): void {
@@ -155,6 +159,6 @@ export class IssueListService {
     const target = members.find(m => m.userId === targetUserId)
     if (target?.role === 'owner') throw new ForbiddenError('不能移除列表所有者')
 
-    db.prepare('DELETE FROM issueListMembers WHERE listId = ? AND userId = ?').run(listId, targetUserId)
+    db.run('DELETE FROM issueListMembers WHERE listId = ? AND userId = ?', [listId, targetUserId])
   }
 }

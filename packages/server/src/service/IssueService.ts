@@ -41,7 +41,7 @@ export class IssueService {
     }
 
     const where = conditions.join(' AND ')
-    const total = db.prepare(`SELECT COUNT(*) as count FROM issues WHERE ${where}`).get(...params) as { count: number }
+    const total = db.get(`SELECT COUNT(*) as count FROM issues WHERE ${where}`, params) as { count: number }
 
     // 排序：默认 createdAt DESC，可通过 sort 参数切换字段和方向
     const SEVERITY_ORDER = "CASE severity WHEN 'fatal' THEN 1 WHEN 'major' THEN 2 WHEN 'minor' THEN 3 WHEN 'trivial' THEN 4 ELSE 5 END"
@@ -67,17 +67,18 @@ export class IssueService {
     }
 
     const offset = (page - 1) * size
-    params.push(size, offset)
-    const items = db.prepare(
+    const allParams = [...params, size, offset]
+    const items = db.all(
       `SELECT * FROM issues WHERE ${where} ORDER BY ${orderBy} LIMIT ? OFFSET ?`,
-    ).all(...params) as Issue[]
+      allParams,
+    ) as Issue[]
 
     return { items, total: total.count }
   }
 
   getById(id: string): Issue | undefined {
     const db = getDb()
-    return db.prepare('SELECT * FROM issues WHERE id = ?').get(id) as Issue | undefined
+    return db.get('SELECT * FROM issues WHERE id = ?', id) as Issue | undefined
   }
 
   create(listId: string, input: CreateIssueInput, userId: string): Issue {
@@ -90,31 +91,33 @@ export class IssueService {
     const now = new Date().toISOString()
 
     // 计算下一个 sortOrder
-    const maxSort = db.prepare('SELECT MAX(sortOrder) as m FROM issues WHERE listId = ?').get(listId) as { m: number | null }
+    const maxSort = db.get('SELECT MAX(sortOrder) as m FROM issues WHERE listId = ?', listId) as { m: number | null }
     const sortOrder = (maxSort?.m ?? 0) + 1
 
     // 生成可读编号：ISS-2026-0001（按年度+列表自增）
     const year = new Date().getFullYear()
-    const count = db.prepare(
+    const count = db.get(
       "SELECT COUNT(*) as c FROM issues WHERE listId = ? AND issueNo LIKE ?",
-    ).get(listId, `ISS-${year}-%`) as { c: number }
+      [listId, `ISS-${year}-%`],
+    ) as { c: number }
     const issueNo = `ISS-${year}-${String((count?.c ?? 0) + 1).padStart(4, '0')}`
 
-    db.prepare(
+    db.run(
       `INSERT INTO issues (id, listId, issueNo, title, description, status, priority, severity, category, detectionPhase,
         reporterId, assigneeId, dueDate, containment, rootCause, correctiveAction,
         sortOrder, createdBy, createdAt, updatedAt)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    ).run(
-      id, listId, issueNo, input.title, input.description ?? '',
-      'open', input.priority ?? 'medium', input.severity ?? 'minor',
-      input.category ?? null, input.detectionPhase ?? null,
-      input.reporterId ?? null, input.assigneeId ?? null, input.dueDate ?? null,
-      input.containment ?? '', input.rootCause ?? '', input.correctiveAction ?? '',
-      sortOrder, userId, now, now,
+      [
+        id, listId, issueNo, input.title, input.description ?? '',
+        'open', input.priority ?? 'medium', input.severity ?? 'minor',
+        input.category ?? null, input.detectionPhase ?? null,
+        input.reporterId ?? null, input.assigneeId ?? null, input.dueDate ?? null,
+        input.containment ?? '', input.rootCause ?? '', input.correctiveAction ?? '',
+        sortOrder, userId, now, now,
+      ],
     )
 
-    return db.prepare('SELECT * FROM issues WHERE id = ?').get(id) as Issue
+    return db.get('SELECT * FROM issues WHERE id = ?', id) as Issue
   }
 
   update(id: string, input: UpdateIssueInput, userId: string): Issue {
@@ -125,7 +128,7 @@ export class IssueService {
     const role = checkListAccess(userId, members)
     if (!canModifyIssue(role)) throw new ForbiddenError()
 
-    db.prepare(
+    db.run(
       `UPDATE issues
        SET title = COALESCE(?, title),
            description = COALESCE(?, description),
@@ -145,27 +148,28 @@ export class IssueService {
            correctiveAction = COALESCE(?, correctiveAction),
            updatedAt = ?
        WHERE id = ?`,
-    ).run(
-      input.title ?? null,
-      input.description ?? null,
-      input.status ?? null,
-      input.priority ?? null,
-      input.severity ?? null,
-      input.category ?? null,
-      input.detectionPhase ?? null,
-      input.reporterId ?? null,
-      input.assigneeId ?? null,
-      input.dueDate ?? null,
-      input.closeReason ?? null,
-      input.closedBy ?? null,
-      input.completedAt ?? null,
-      input.containment ?? null,
-      input.rootCause ?? null,
-      input.correctiveAction ?? null,
-      new Date().toISOString(), id,
+      [
+        input.title ?? null,
+        input.description ?? null,
+        input.status ?? null,
+        input.priority ?? null,
+        input.severity ?? null,
+        input.category ?? null,
+        input.detectionPhase ?? null,
+        input.reporterId ?? null,
+        input.assigneeId ?? null,
+        input.dueDate ?? null,
+        input.closeReason ?? null,
+        input.closedBy ?? null,
+        input.completedAt ?? null,
+        input.containment ?? null,
+        input.rootCause ?? null,
+        input.correctiveAction ?? null,
+        new Date().toISOString(), id,
+      ],
     )
 
-    return db.prepare('SELECT * FROM issues WHERE id = ?').get(id) as Issue
+    return db.get('SELECT * FROM issues WHERE id = ?', id) as Issue
   }
 
   updateStatus(id: string, status: IssueStatus, userId: string): Issue {
@@ -179,14 +183,14 @@ export class IssueService {
     // 如果转为 resolved/closed，自动记录完成时间
     const now = new Date().toISOString()
     if (status === 'resolved' || status === 'closed') {
-      db.prepare('UPDATE issues SET status = ?, completedAt = ?, updatedAt = ? WHERE id = ?')
-        .run(status, now, now, id)
+      db.run('UPDATE issues SET status = ?, completedAt = ?, updatedAt = ? WHERE id = ?',
+        [status, now, now, id])
     } else {
-      db.prepare('UPDATE issues SET status = ?, updatedAt = ? WHERE id = ?')
-        .run(status, now, id)
+      db.run('UPDATE issues SET status = ?, updatedAt = ? WHERE id = ?',
+        [status, now, id])
     }
 
-    return db.prepare('SELECT * FROM issues WHERE id = ?').get(id) as Issue
+    return db.get('SELECT * FROM issues WHERE id = ?', id) as Issue
   }
 
   delete(id: string, userId: string): void {
@@ -197,8 +201,8 @@ export class IssueService {
     const role = checkListAccess(userId, members)
     if (!canModifyIssue(role)) throw new ForbiddenError()
 
-    db.prepare('DELETE FROM checkpoints WHERE issueId = ?').run(id)
-    db.prepare('DELETE FROM issues WHERE id = ?').run(id)
+    db.run('DELETE FROM checkpoints WHERE issueId = ?', id)
+    db.run('DELETE FROM issues WHERE id = ?', id)
   }
 
   reorder(listId: string, input: ReorderInput, userId: string): void {
@@ -207,13 +211,16 @@ export class IssueService {
     const role = checkListAccess(userId, members)
     if (!canModifyIssue(role)) throw new ForbiddenError()
 
-    const stmt = db.prepare('UPDATE issues SET sortOrder = ?, updatedAt = ? WHERE id = ?')
     const now = new Date().toISOString()
-    const reorder = db.transaction(() => {
+    db.exec('BEGIN TRANSACTION')
+    try {
       input.issueIds.forEach((issueId, index) => {
-        stmt.run(index, now, issueId)
+        db.run('UPDATE issues SET sortOrder = ?, updatedAt = ? WHERE id = ?', [index, now, issueId])
       })
-    })
-    reorder()
+      db.exec('COMMIT')
+    } catch (err) {
+      if (db.inTransaction) db.exec('ROLLBACK')
+      throw err
+    }
   }
 }

@@ -1,7 +1,7 @@
-import type Database from 'better-sqlite3'
+import type { DbAdapter } from './adapter.js'
 import { ensurePendingOrgUnit } from '../utils/pendingOrgUnit.js'
 
-export function runSchema(db: Database.Database): void {
+export function runSchema(db: DbAdapter): void {
   // ---- 迁移：列增量添加 ----
   const migrations = [
     `ALTER TABLE users ADD COLUMN approved INTEGER NOT NULL DEFAULT 1`,

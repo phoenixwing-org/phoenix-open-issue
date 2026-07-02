@@ -1,30 +1,26 @@
-import type Database from 'better-sqlite3'
+import type { DbAdapter } from '../db/adapter.js'
 import { v4 as uuid } from 'uuid'
 
 export const PENDING_ORG_UNIT_NAME = '待定组'
 
-export function getPendingOrgUnitId(db: Database.Database): string | null {
-  const row = db.prepare('SELECT id FROM orgUnits WHERE name = ? LIMIT 1').get(PENDING_ORG_UNIT_NAME) as { id: string } | undefined
+export function getPendingOrgUnitId(db: DbAdapter): string | null {
+  const row = db.get<{ id: string }>('SELECT id FROM orgUnits WHERE name = ? LIMIT 1', PENDING_ORG_UNIT_NAME)
   return row?.id ?? null
 }
 
 /** 确保「待定组」存在，并将 orgUnitId 为 null 的用户迁入该组 */
-export function ensurePendingOrgUnit(db: Database.Database): string {
+export function ensurePendingOrgUnit(db: DbAdapter): string {
   let id = getPendingOrgUnitId(db)
   if (!id) {
     id = uuid()
-    db.prepare('INSERT INTO orgUnits (id, name, unitType, parentId) VALUES (?, ?, ?, ?)').run(
-      id,
-      PENDING_ORG_UNIT_NAME,
-      'group',
-      null,
-    )
+    db.run('INSERT INTO orgUnits (id, name, unitType, parentId) VALUES (?, ?, ?, ?)', [id, PENDING_ORG_UNIT_NAME, 'group', null])
     console.log(`🏢 [ORG] created "${PENDING_ORG_UNIT_NAME}" (${id})`)
   } else {
     // 已有记录可能被误设为子节点，修正为根节点以保证组织树可见
-    const fixed = db.prepare(
+    const fixed = db.run(
       'UPDATE orgUnits SET parentId = NULL, unitType = ? WHERE id = ? AND (parentId IS NOT NULL OR unitType != ?)',
-    ).run('group', id, 'group')
+      ['group', id, 'group'],
+    )
     if (fixed.changes > 0) {
       console.log(`🏢 [ORG] normalized "${PENDING_ORG_UNIT_NAME}" to root node`)
     }
@@ -33,11 +29,8 @@ export function ensurePendingOrgUnit(db: Database.Database): string {
   return id
 }
 
-export function migrateUsersWithoutOrg(db: Database.Database, pendingOrgId: string): number {
-  const result = db.prepare('UPDATE users SET orgUnitId = ?, updatedAt = ? WHERE orgUnitId IS NULL').run(
-    pendingOrgId,
-    new Date().toISOString(),
-  )
+export function migrateUsersWithoutOrg(db: DbAdapter, pendingOrgId: string): number {
+  const result = db.run('UPDATE users SET orgUnitId = ?, updatedAt = ? WHERE orgUnitId IS NULL', [pendingOrgId, new Date().toISOString()])
   if (result.changes > 0) {
     console.log(`👤 [ORG] migrated ${result.changes} user(s) without org → "${PENDING_ORG_UNIT_NAME}"`)
   }
@@ -45,13 +38,13 @@ export function migrateUsersWithoutOrg(db: Database.Database, pendingOrgId: stri
 }
 
 /** 未指定组织时归入待定组；显式 null/空字符串同样归入待定组 */
-export function resolveOrgUnitId(db: Database.Database, orgUnitId?: string | null): string {
+export function resolveOrgUnitId(db: DbAdapter, orgUnitId?: string | null): string {
   const trimmed = orgUnitId?.trim()
   if (trimmed) return trimmed
   return ensurePendingOrgUnit(db)
 }
 
-export function isPendingOrgUnit(db: Database.Database, orgUnitId: string): boolean {
+export function isPendingOrgUnit(db: DbAdapter, orgUnitId: string): boolean {
   const pendingId = getPendingOrgUnitId(db)
   return pendingId !== null && pendingId === orgUnitId
 }

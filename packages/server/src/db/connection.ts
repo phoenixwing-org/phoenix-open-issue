@@ -1,25 +1,16 @@
-import Database from 'better-sqlite3'
-import fs from 'fs'
-import path from 'path'
+// 禁止使用 better-sqlite3（需要 C++ 编译），统一通过适配层使用 node-sqlite3-wasm
+import { createDb } from './adapter.js'
+import type { DbAdapter } from './adapter.js'
 import { config } from '../config.js'
 import { runSchema } from './schema.js'
 
-let db: Database.Database
+let db: DbAdapter
 
-export function getDb(): Database.Database {
+export function getDb(): DbAdapter {
   if (!db) {
-    const dir = path.dirname(config.dbPath)
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true })
-    }
-
-    db = new Database(config.dbPath)
-
-    // 性能设置
-    db.pragma('journal_mode = WAL')
-    db.pragma('foreign_keys = OFF')
-
-    // 建表
+    db = createDb(config.dbPath)
+    db.exec('PRAGMA journal_mode = WAL')
+    db.exec('PRAGMA foreign_keys = OFF')
     runSchema(db)
   }
   return db

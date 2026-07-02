@@ -32,20 +32,20 @@ export class PushService {
 
     const records: PushRecord[] = []
 
-    const insertRecord = db.prepare(
-      `INSERT INTO pushRecords (id, fromListId, toListId, issueId, pushedBy, note)
-       VALUES (?, ?, ?, ?, ?, ?)`,
-    )
-
-    const push = db.transaction(() => {
+    db.exec('BEGIN TRANSACTION')
+    try {
       for (const issueId of req.issueIds) {
-        const issue = db.prepare('SELECT * FROM issues WHERE id = ? AND listId = ?')
-          .get(issueId, req.fromListId) as { id: string } | undefined
+        const issue = db.get('SELECT * FROM issues WHERE id = ? AND listId = ?',
+          [issueId, req.fromListId]) as { id: string } | undefined
         if (!issue) continue
 
         const recordId = uuid()
         const now = new Date().toISOString()
-        insertRecord.run(recordId, req.fromListId, req.toListId, issueId, userId, req.note ?? '')
+        db.run(
+          `INSERT INTO pushRecords (id, fromListId, toListId, issueId, pushedBy, note)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [recordId, req.fromListId, req.toListId, issueId, userId, req.note ?? ''],
+        )
         records.push({
           id: recordId,
           fromListId: req.fromListId,
@@ -60,9 +60,12 @@ export class PushService {
           note: req.note ?? '',
         })
       }
-    })
+      db.exec('COMMIT')
+    } catch (err) {
+      if (db.inTransaction) db.exec('ROLLBACK')
+      throw err
+    }
 
-    push()
     console.log(`📤 [PUSH] ${records.length} issue(s) from "${fromList.name}" → "${toList.name}" by ${userId}`)
     for (const r of records) {
       console.log(`   record ${r.id}: issue=${r.issueId} status=pending`)
@@ -72,7 +75,7 @@ export class PushService {
 
   getListPushHistory(listId: string): PushRecord[] {
     const db = getDb()
-    return db.prepare(
+    return db.all(
       `SELECT pr.*, i.title as issueTitle, fl.name as fromListName, tl.name as toListName
        FROM pushRecords pr
        JOIN issues i ON i.id = pr.issueId
@@ -80,12 +83,13 @@ export class PushService {
        JOIN issueLists tl ON tl.id = pr.toListId
        WHERE pr.fromListId = ? OR pr.toListId = ?
        ORDER BY pr.pushedAt DESC`,
-    ).all(listId, listId) as PushRecord[]
+      [listId, listId],
+    ) as PushRecord[]
   }
 
   getMyPushHistory(userId: string): PushRecord[] {
     const db = getDb()
-    return db.prepare(
+    return db.all(
       `SELECT pr.*, i.title as issueTitle, fl.name as fromListName, tl.name as toListName
        FROM pushRecords pr
        JOIN issues i ON i.id = pr.issueId
@@ -95,78 +99,84 @@ export class PushService {
           OR pr.toListId IN (SELECT listId FROM issueListMembers WHERE userId = ?)
           OR pr.fromListId IN (SELECT listId FROM issueListMembers WHERE userId = ?)
        ORDER BY pr.pushedAt DESC`,
-    ).all(userId, userId, userId) as PushRecord[]
+      [userId, userId, userId],
+    ) as PushRecord[]
   }
 
   /** 获取发到目标列表的待处理推送 */
   getIncomingPushes(listId: string): PushRecord[] {
     const db = getDb()
-    return db.prepare(
+    return db.all(
       `SELECT pr.*, i.title as issueTitle, fl.name as fromListName
        FROM pushRecords pr
        JOIN issues i ON i.id = pr.issueId
        JOIN issueLists fl ON fl.id = pr.fromListId
        WHERE pr.toListId = ? AND pr.status = 'pending'
        ORDER BY pr.pushedAt DESC`,
-    ).all(listId) as PushRecord[]
+      listId,
+    ) as PushRecord[]
   }
 
   /** 审批推送：接受或拒绝 */
   handlePush(recordId: string, action: 'accepted' | 'rejected', userId: string, rejectReason?: string): PushRecord {
     const db = getDb()
-    const record = db.prepare('SELECT * FROM pushRecords WHERE id = ?').get(recordId) as PushRecord | undefined
+    const record = db.get('SELECT * FROM pushRecords WHERE id = ?', recordId) as PushRecord | undefined
     if (!record) throw new NotFoundError('推送记录')
     if (record.status !== 'pending') throw new ForbiddenError('该推送已处理')
 
     const now = new Date().toISOString()
-    db.prepare(
+    db.run(
       `UPDATE pushRecords SET status = ?, handledBy = ?, handledAt = ?, rejectReason = ? WHERE id = ?`,
-    ).run(action, userId, now, rejectReason ?? null, recordId)
+      [action, userId, now, rejectReason ?? null, recordId],
+    )
 
     console.log(`📋 [PUSH] ${action === 'accepted' ? '✅ 接受' : '❌ 拒绝'} push ${recordId} by ${userId}${rejectReason ? ` (理由: ${rejectReason})` : ''}`)
 
     // 接受后复制 Issue 到目标列表
     if (action === 'accepted') {
-      const issue = db.prepare('SELECT * FROM issues WHERE id = ?').get(record.issueId) as any
+      const issue = db.get('SELECT * FROM issues WHERE id = ?', record.issueId) as any
       if (issue && issue.listId !== record.toListId) {
         const newId = uuid()
-        const maxSort = db.prepare('SELECT MAX(sortOrder) as m FROM issues WHERE listId = ?').get(record.toListId) as { m: number | null }
+        const maxSort = db.get('SELECT MAX(sortOrder) as m FROM issues WHERE listId = ?', record.toListId) as { m: number | null }
         const sortOrder = (maxSort?.m ?? 0) + 1
 
         // 生成目标列表的编号
         const year = new Date().getFullYear()
-        const count = db.prepare(
+        const count = db.get(
           "SELECT COUNT(*) as c FROM issues WHERE listId = ? AND issueNo LIKE ?",
-        ).get(record.toListId, `ISS-${year}-%`) as { c: number }
+          [record.toListId, `ISS-${year}-%`],
+        ) as { c: number }
         const issueNo = `ISS-${year}-${String((count?.c ?? 0) + 1).padStart(4, '0')}`
 
-        db.prepare(
+        db.run(
           `INSERT INTO issues (id, listId, issueNo, title, description, status, priority, severity, category, detectionPhase,
             reporterId, assigneeId, dueDate, containment, rootCause, correctiveAction,
             sortOrder, createdBy, createdAt, updatedAt)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        ).run(
-          newId, record.toListId, issueNo, issue.title, issue.description,
-          issue.status, issue.priority, issue.severity, issue.category, issue.detectionPhase,
-          issue.reporterId, issue.assigneeId, issue.dueDate,
-          issue.containment, issue.rootCause, issue.correctiveAction,
-          sortOrder, issue.createdBy, now, now,
+          [
+            newId, record.toListId, issueNo, issue.title, issue.description,
+            issue.status, issue.priority, issue.severity, issue.category, issue.detectionPhase,
+            issue.reporterId, issue.assigneeId, issue.dueDate,
+            issue.containment, issue.rootCause, issue.correctiveAction,
+            sortOrder, issue.createdBy, now, now,
+          ],
         )
 
         console.log(`   📋 已复制 Issue "${issue.title}" → 目标列表 (newId=${newId}, issueNo=${issueNo})`)
 
         // 复制点检
-        const checkpoints = db.prepare('SELECT * FROM checkpoints WHERE issueId = ?').all(issue.id) as any[]
+        const checkpoints = db.all('SELECT * FROM checkpoints WHERE issueId = ?', issue.id) as any[]
         for (const cp of checkpoints) {
-          db.prepare(
+          db.run(
             `INSERT INTO checkpoints (id, issueId, checkpointDate, description, status, responsibleUserId, sortOrder, createdAt, updatedAt)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          ).run(uuid(), newId, cp.checkpointDate, cp.description, cp.status, cp.responsibleUserId, cp.sortOrder, now, now)
+            [uuid(), newId, cp.checkpointDate, cp.description, cp.status, cp.responsibleUserId, cp.sortOrder, now, now],
+          )
         }
         console.log(`   📅 已复制 ${checkpoints.length} 条点检`)
       }
     }
 
-    return db.prepare('SELECT * FROM pushRecords WHERE id = ?').get(recordId) as PushRecord
+    return db.get('SELECT * FROM pushRecords WHERE id = ?', recordId) as PushRecord
   }
 }

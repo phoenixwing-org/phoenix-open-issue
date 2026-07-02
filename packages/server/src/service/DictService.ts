@@ -94,34 +94,31 @@ export class DictService {
   /** 获取某个分组的字典项 */
   getByGroup(groupName: string): DictItem[] {
     const db = getDb()
-    return db.prepare(
+    return db.all(
       'SELECT * FROM dict WHERE groupName = ? AND enabled = 1 ORDER BY sortOrder',
-    ).all(groupName) as DictItem[]
+      groupName,
+    ) as DictItem[]
   }
 
   /** 获取所有分组的字典（管理用） */
   getAll(): DictItem[] {
     const db = getDb()
-    return db.prepare('SELECT * FROM dict ORDER BY groupName, sortOrder').all() as DictItem[]
+    return db.all('SELECT * FROM dict ORDER BY groupName, sortOrder') as DictItem[]
   }
 
   create(groupName: string, value: string, label: string, tags?: string): DictItem {
     const db = getDb()
     const id = uuid()
-    const maxSort = db.prepare('SELECT MAX(sortOrder) as m FROM dict WHERE groupName = ?').get(groupName) as { m: number | null }
+    const maxSort = db.get('SELECT MAX(sortOrder) as m FROM dict WHERE groupName = ?', groupName) as { m: number | null }
     const sortOrder = (maxSort?.m ?? -1) + 1
-    db.prepare('INSERT INTO dict (id, groupName, value, label, sortOrder, tags) VALUES (?, ?, ?, ?, ?, ?)')
-      .run(id, groupName, value, label, sortOrder, tags || '')
-    return db.prepare('SELECT * FROM dict WHERE id = ?').get(id) as DictItem
+    db.run('INSERT INTO dict (id, groupName, value, label, sortOrder, tags) VALUES (?, ?, ?, ?, ?, ?)',
+      [id, groupName, value, label, sortOrder, tags || ''])
+    return db.get('SELECT * FROM dict WHERE id = ?', id) as DictItem
   }
 
   /** 批量追加预设项；对新项打标签，对已存在的项追加标签 */
   batchCreate(items: { groupName: string; value: string; label: string }[], tag: string): { added: number; skipped: number; tagged: number } {
     const db = getDb()
-    const existStmt = db.prepare('SELECT id, tags FROM dict WHERE groupName = ? AND value = ?')
-    const maxStmt = db.prepare('SELECT MAX(sortOrder) as m FROM dict WHERE groupName = ?')
-    const insertStmt = db.prepare('INSERT INTO dict (id, groupName, value, label, sortOrder, tags) VALUES (?, ?, ?, ?, ?, ?)')
-    const appendTagStmt = db.prepare('UPDATE dict SET tags = ? WHERE id = ?')
 
     let added = 0
     let skipped = 0
@@ -129,16 +126,18 @@ export class DictService {
 
     const sortCache: Record<string, number> = {}
 
-    const batch = db.transaction(() => {
+    db.exec('BEGIN TRANSACTION')
+    try {
       for (const item of items) {
-        const row = existStmt.get(item.groupName, item.value) as { id: string; tags: string } | undefined
+        const row = db.get('SELECT id, tags FROM dict WHERE groupName = ? AND value = ?',
+          [item.groupName, item.value]) as { id: string; tags: string } | undefined
         if (row) {
           // 已存在 → 追加 tag（如果还没有）
           const existingTags = row.tags || ''
           const tagSet = new Set(existingTags.split(',').map(t => t.trim()).filter(Boolean))
           if (!tagSet.has(tag)) {
             tagSet.add(tag)
-            appendTagStmt.run([...tagSet].join(','), row.id)
+            db.run('UPDATE dict SET tags = ? WHERE id = ?', [[...tagSet].join(','), row.id])
             tagged++
           } else {
             skipped++
@@ -147,29 +146,33 @@ export class DictService {
         }
         // 新项 → 打上标签
         if (sortCache[item.groupName] === undefined) {
-          const r = maxStmt.get(item.groupName) as { m: number | null }
+          const r = db.get('SELECT MAX(sortOrder) as m FROM dict WHERE groupName = ?', item.groupName) as { m: number | null }
           sortCache[item.groupName] = r?.m ?? -1
         }
         sortCache[item.groupName]++
-        insertStmt.run(uuid(), item.groupName, item.value, item.label, sortCache[item.groupName], tag)
+        db.run('INSERT INTO dict (id, groupName, value, label, sortOrder, tags) VALUES (?, ?, ?, ?, ?, ?)',
+          [uuid(), item.groupName, item.value, item.label, sortCache[item.groupName], tag])
         added++
       }
-    })
-    batch()
+      db.exec('COMMIT')
+    } catch (err) {
+      if (db.inTransaction) db.exec('ROLLBACK')
+      throw err
+    }
     return { added, skipped, tagged }
   }
 
   update(id: string, data: { label?: string; value?: string; enabled?: number; sortOrder?: number }): DictItem {
     const db = getDb()
-    db.prepare('UPDATE dict SET label = COALESCE(?, label), value = COALESCE(?, value), enabled = COALESCE(?, enabled), sortOrder = COALESCE(?, sortOrder) WHERE id = ?')
-      .run(data.label ?? null, data.value ?? null, data.enabled ?? null, data.sortOrder ?? null, id)
-    return db.prepare('SELECT * FROM dict WHERE id = ?').get(id) as DictItem
+    db.run('UPDATE dict SET label = COALESCE(?, label), value = COALESCE(?, value), enabled = COALESCE(?, enabled), sortOrder = COALESCE(?, sortOrder) WHERE id = ?',
+      [data.label ?? null, data.value ?? null, data.enabled ?? null, data.sortOrder ?? null, id])
+    return db.get('SELECT * FROM dict WHERE id = ?', id) as DictItem
   }
 
   /** 检查字典项被数据表引用的次数 */
   checkUsage(id: string): { table: string; column: string; label: string; count: number }[] {
     const db = getDb()
-    const item = db.prepare('SELECT groupName, value FROM dict WHERE id = ?').get(id) as { groupName: string; value: string } | undefined
+    const item = db.get('SELECT groupName, value FROM dict WHERE id = ?', id) as { groupName: string; value: string } | undefined
     if (!item) return []
 
     const usageMap: Record<string, { table: string; column: string; label: string }> = {
@@ -184,7 +187,7 @@ export class DictService {
 
     const targets = usageMap[item.groupName]
     if (targets) {
-      const row = db.prepare(`SELECT COUNT(*) as c FROM ${targets.table} WHERE ${targets.column} = ?`).get(item.value) as { c: number }
+      const row = db.get(`SELECT COUNT(*) as c FROM ${targets.table} WHERE ${targets.column} = ?`, item.value) as { c: number }
       if (row.c > 0) {
         result.push({ ...targets, count: row.c })
       }
@@ -195,6 +198,6 @@ export class DictService {
 
   delete(id: string): void {
     const db = getDb()
-    db.prepare('DELETE FROM dict WHERE id = ?').run(id)
+    db.run('DELETE FROM dict WHERE id = ?', id)
   }
 }
