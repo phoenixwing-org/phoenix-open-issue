@@ -10,12 +10,15 @@ export interface IssueList {
   ownerId: string
   orgUnitId: string | null
   archived: number
+  isDeleted: number
+  deletedAt: string | null
   createdAt: string
   updatedAt: string
   /** 以下为查询时 JOIN 计算的衍生字段 */
   ownerName?: string
   memberCount?: number
   issueCount?: number
+  myRole?: MemberRole | null
 }
 
 export interface IssueListMember {

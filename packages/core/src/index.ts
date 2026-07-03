@@ -10,6 +10,8 @@ export {
   checkListAccess,
   canManageList,
   canDeleteList,
+  canDeleteListAsUser,
+  isSystemAdmin,
   canAddMember,
   canModifyIssue,
   canCreateIssue,

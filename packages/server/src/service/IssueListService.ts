@@ -1,8 +1,10 @@
 import { getDb } from '../db/connection.js'
 import { v4 as uuid } from 'uuid'
 import { NotFoundError, ForbiddenError } from '../utils/errors.js'
-import { checkListAccess, canManageList, canDeleteList } from '@open-issue/core'
+import { checkListAccess, canManageList, canDeleteListAsUser } from '@open-issue/core'
 import type { IssueList, IssueListMember, MemberWithUser, CreateListInput, UpdateListInput } from '@open-issue/core'
+
+const NOT_DELETED = 'l.isDeleted = 0'
 
 export class IssueListService {
   getMyLists(userId: string): IssueList[] {
@@ -11,37 +13,40 @@ export class IssueListService {
       SELECT DISTINCT l.*,
         (SELECT COUNT(*) FROM issueListMembers WHERE listId = l.id) as memberCount,
         (SELECT COUNT(*) FROM issues WHERE listId = l.id) as issueCount,
-        u.displayName as ownerName
+        u.displayName as ownerName,
+        (SELECT role FROM issueListMembers WHERE listId = l.id AND userId = ?) as myRole
       FROM issueLists l
       LEFT JOIN issueListMembers m ON m.listId = l.id
       LEFT JOIN users u ON u.id = l.ownerId
-      WHERE (l.ownerId = ? OR m.userId = ?) AND l.archived = 0
+      WHERE (l.ownerId = ? OR m.userId = ?) AND l.archived = 0 AND ${NOT_DELETED}
       ORDER BY l.updatedAt DESC
-    `, [userId, userId]) as IssueList[]
+    `, [userId, userId, userId]) as IssueList[]
   }
 
-  getAllLists(): IssueList[] {
+  getAllLists(userId: string): IssueList[] {
     const db = getDb()
     return db.all(`
       SELECT l.*,
         (SELECT COUNT(*) FROM issueListMembers WHERE listId = l.id) as memberCount,
         (SELECT COUNT(*) FROM issues WHERE listId = l.id) as issueCount,
-        u.displayName as ownerName
+        u.displayName as ownerName,
+        (SELECT role FROM issueListMembers WHERE listId = l.id AND userId = ?) as myRole
       FROM issueLists l LEFT JOIN users u ON u.id = l.ownerId
-      WHERE l.archived = 0 ORDER BY l.updatedAt DESC
-    `) as IssueList[]
+      WHERE l.archived = 0 AND ${NOT_DELETED} ORDER BY l.updatedAt DESC
+    `, userId) as IssueList[]
   }
 
-  getArchivedLists(): IssueList[] {
+  getArchivedLists(userId: string): IssueList[] {
     const db = getDb()
     return db.all(`
       SELECT l.*,
         (SELECT COUNT(*) FROM issueListMembers WHERE listId = l.id) as memberCount,
         (SELECT COUNT(*) FROM issues WHERE listId = l.id) as issueCount,
-        u.displayName as ownerName
+        u.displayName as ownerName,
+        (SELECT role FROM issueListMembers WHERE listId = l.id AND userId = ?) as myRole
       FROM issueLists l LEFT JOIN users u ON u.id = l.ownerId
-      WHERE l.archived = 1 ORDER BY l.updatedAt DESC
-    `) as IssueList[]
+      WHERE l.archived = 1 AND ${NOT_DELETED} ORDER BY l.updatedAt DESC
+    `, userId) as IssueList[]
   }
 
   archiveList(id: string, archived: boolean, userId: string): IssueList {
@@ -55,7 +60,7 @@ export class IssueListService {
 
   getById(id: string): IssueList | undefined {
     const db = getDb()
-    return db.get('SELECT * FROM issueLists WHERE id = ?', id) as IssueList | undefined
+    return db.get(`SELECT * FROM issueLists WHERE id = ? AND isDeleted = 0`, id) as IssueList | undefined
   }
 
   create(input: CreateListInput, ownerId: string): IssueList {
@@ -97,23 +102,22 @@ export class IssueListService {
     return db.get('SELECT * FROM issueLists WHERE id = ?', id) as IssueList
   }
 
-  delete(id: string, userId: string): void {
+  delete(id: string, userId: string, username: string): void {
     const db = getDb()
-    const list = this.getById(id)
+    const list = db.get('SELECT * FROM issueLists WHERE id = ? AND isDeleted = 0', id) as IssueList | undefined
     if (!list) throw new NotFoundError('列表')
 
     const members = this.getMembers(id)
     const role = checkListAccess(userId, members)
-    if (!canDeleteList(role)) throw new ForbiddenError('只有列表所有者可以删除')
-
-    // 手动级联删除
-    const issues = db.all('SELECT id FROM issues WHERE listId = ?', id) as { id: string }[]
-    for (const issue of issues) {
-      db.run('DELETE FROM checkpoints WHERE issueId = ?', issue.id)
+    if (!canDeleteListAsUser(role, username, list.ownerId, userId)) {
+      throw new ForbiddenError('只有系统管理员或列表所有者可以删除')
     }
-    db.run('DELETE FROM issues WHERE listId = ?', id)
-    db.run('DELETE FROM issueListMembers WHERE listId = ?', id)
-    db.run('DELETE FROM issueLists WHERE id = ?', id)
+
+    const now = new Date().toISOString()
+    db.run(
+      'UPDATE issueLists SET isDeleted = 1, deletedAt = ?, updatedAt = ? WHERE id = ?',
+      [now, now, id],
+    )
   }
 
   getMembers(listId: string): IssueListMember[] {

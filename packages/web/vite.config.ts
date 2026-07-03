@@ -21,6 +21,7 @@ export default defineConfig(({ mode }) => {
         '@': resolve(__dirname, 'src'),
         ...(localWingSrc ? { 'phoenix-wing': localWingSrc } : {}),
       },
+      dedupe: ['vue', 'phoenix-wing'],
     },
     server: {
       port: devPort,

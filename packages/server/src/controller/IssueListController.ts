@@ -10,8 +10,8 @@ export class IssueListController {
     res.json(lists)
   }
 
-  getAllLists(_req: Request, res: Response): void {
-    const lists = listService.getAllLists()
+  getAllLists(req: Request, res: Response): void {
+    const lists = listService.getAllLists(req.user!.userId)
     res.json(lists)
   }
 
@@ -32,7 +32,7 @@ export class IssueListController {
   }
 
   delete(req: Request, res: Response): void {
-    listService.delete(req.params.id, req.user!.userId)
+    listService.delete(req.params.id, req.user!.userId, req.user!.username)
     res.status(204).send()
   }
 
@@ -57,8 +57,8 @@ export class IssueListController {
     res.json(list)
   }
 
-  getArchivedLists(_req: Request, res: Response): void {
-    const lists = listService.getArchivedLists()
+  getArchivedLists(req: Request, res: Response): void {
+    const lists = listService.getArchivedLists(req.user!.userId)
     res.json(lists)
   }
 }

@@ -16,6 +16,21 @@ export function canDeleteList(role: MemberRole | null): boolean {
   return role === 'owner'
 }
 
+export function isSystemAdmin(username: string): boolean {
+  return username === 'admin'
+}
+
+export function canDeleteListAsUser(
+  role: MemberRole | null,
+  username: string,
+  ownerId: string,
+  userId: string,
+): boolean {
+  if (isSystemAdmin(username)) return true
+  if (ownerId === userId) return true
+  return canDeleteList(role)
+}
+
 export function canAddMember(role: MemberRole | null): boolean {
   return role === 'owner' || role === 'admin'
 }

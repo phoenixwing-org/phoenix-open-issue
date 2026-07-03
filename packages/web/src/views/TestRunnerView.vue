@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import {
-  checkListAccess, canManageList, canDeleteList, canAddMember,
+  checkListAccess, canManageList, canDeleteList, canDeleteListAsUser, canAddMember,
   canModifyIssue, canCreateIssue, canEditOwnIssue,
   validatePush, resolveOverlap, canPushToList, canHandlePush,
   isOverdue, calculateNextCheckpoint,
@@ -41,11 +41,18 @@ function defineTests(): TestCase[] {
       run: () => ({ pass: canManageList('owner') === true, expected: true, actual: canManageList('owner') }) },
     { id: 'perm-04', group: '权限', name: 'canManageList viewer 不可管理',
       run: () => ({ pass: canManageList('viewer') === false, expected: false, actual: canManageList('viewer') }) },
-    { id: 'perm-05', group: '权限', name: 'canDeleteList 仅 owner 可删除',
+    { id: 'perm-05', group: '权限', name: 'canDeleteList 仅 owner 角色可删',
       run: () => {
         const a = canDeleteList('owner'); const b = canDeleteList('admin')
         const c = canDeleteList('editor'); const d = canDeleteList(null)
         return { pass: a && !b && !c && !d, expected: 'owner only', actual: { owner: a, admin: b, editor: c, null: d } }
+      } },
+    { id: 'perm-05b', group: '权限', name: 'canDeleteListAsUser 系统管理员/所有者',
+      run: () => {
+        const sysAdmin = canDeleteListAsUser(null, 'admin', 'other', 'u1')
+        const owner = canDeleteListAsUser(null, 'zhangsan', 'u1', 'u1')
+        const listAdmin = canDeleteListAsUser('admin', 'zhangsan', 'u2', 'u1')
+        return { pass: sysAdmin && owner && !listAdmin, expected: 'sysAdmin+owner', actual: { sysAdmin, owner, listAdmin } }
       } },
     { id: 'perm-06', group: '权限', name: 'canModifyIssue editor 可修改',
       run: () => ({ pass: canModifyIssue('editor') === true, expected: true, actual: canModifyIssue('editor') }) },

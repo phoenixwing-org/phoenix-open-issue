@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { checkListAccess, canManageList, canDeleteList, canAddMember, canModifyIssue, canCreateIssue, canEditOwnIssue } from './permission.js'
+import { checkListAccess, canManageList, canDeleteList, canDeleteListAsUser, canAddMember, canModifyIssue, canCreateIssue, canEditOwnIssue } from './permission.js'
 
 const members = [
   { userId: 'u1', role: 'owner' as const },
@@ -40,11 +40,33 @@ describe('canManageList', () => {
 })
 
 describe('canDeleteList', () => {
-  it('only owner can delete', () => {
+  it('only owner can delete by role', () => {
     expect(canDeleteList('owner')).toBe(true)
     expect(canDeleteList('admin')).toBe(false)
     expect(canDeleteList('editor')).toBe(false)
     expect(canDeleteList(null)).toBe(false)
+  })
+})
+
+describe('canDeleteListAsUser', () => {
+  it('system admin can delete any list', () => {
+    expect(canDeleteListAsUser(null, 'admin', 'other-owner', 'u1')).toBe(true)
+  })
+
+  it('list owner can delete even without member role', () => {
+    expect(canDeleteListAsUser(null, 'zhangsan', 'u1', 'u1')).toBe(true)
+  })
+
+  it('list owner member can delete via role', () => {
+    expect(canDeleteListAsUser('owner', 'zhangsan', 'u1', 'u1')).toBe(true)
+  })
+
+  it('list admin member cannot delete', () => {
+    expect(canDeleteListAsUser('admin', 'zhangsan', 'u2', 'u1')).toBe(false)
+  })
+
+  it('editor cannot delete', () => {
+    expect(canDeleteListAsUser('editor', 'zhangsan', 'u2', 'u1')).toBe(false)
   })
 })
 

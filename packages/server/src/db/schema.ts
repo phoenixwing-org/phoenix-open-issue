@@ -6,6 +6,8 @@ export function runSchema(db: PnwDbAdapter): void {
   const migrations = [
     `ALTER TABLE users ADD COLUMN approved INTEGER NOT NULL DEFAULT 1`,
     `ALTER TABLE issueLists ADD COLUMN archived INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE issueLists ADD COLUMN isDeleted INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE issueLists ADD COLUMN deletedAt TEXT`,
     `ALTER TABLE dict ADD COLUMN tags TEXT NOT NULL DEFAULT ''`,
   ]
   for (const sql of migrations) {
@@ -42,6 +44,8 @@ export function runSchema(db: PnwDbAdapter): void {
       ownerId TEXT NOT NULL,
       orgUnitId TEXT,
       archived INTEGER NOT NULL DEFAULT 0,
+      isDeleted INTEGER NOT NULL DEFAULT 0,
+      deletedAt TEXT,
       createdAt TEXT DEFAULT (datetime('now')),
       updatedAt TEXT DEFAULT (datetime('now'))
     );
@@ -117,6 +121,7 @@ export function runSchema(db: PnwDbAdapter): void {
       label TEXT NOT NULL,
       sortOrder INTEGER DEFAULT 0,
       enabled INTEGER DEFAULT 1,
+      tags TEXT NOT NULL DEFAULT '',
       createdAt TEXT DEFAULT (datetime('now'))
     );
   `)
