@@ -21,8 +21,8 @@ const showIssueModal = ref(false)
 const modalIssueId = ref('')
 import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
 import PageHelpButton from "@/components/PageHelpButton.vue"
-import { isOverdue } from '@phoenix-wing/open-issue-core'
-import type { Checkpoint } from '@phoenix-wing/open-issue-core'
+import { isOverdue } from '@open-issue/core'
+import type { Checkpoint } from '@open-issue/core'
 import IssueFormDialog from '@/components/IssueFormDialog.vue'
 import MemberManageDialog from '@/components/MemberManageDialog.vue'
 import PushDialog from '@/views/push/PushDialog.vue'

@@ -5,7 +5,7 @@ import { ElMessage } from 'element-plus';
 import { pnwPromptChoice, pnwAlert } from 'phoenix-wing'
 import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
 import PageHelpButton from "@/components/PageHelpButton.vue"
-import type { DictItem } from '@phoenix-wing/open-issue-core'
+import type { DictItem } from '@open-issue/core'
 
 const items = ref<DictItem[]>([])
 const loading = ref(false)

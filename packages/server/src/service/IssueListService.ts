@@ -1,8 +1,8 @@
 import { getDb } from '../db/connection.js'
 import { v4 as uuid } from 'uuid'
 import { NotFoundError, ForbiddenError } from '../utils/errors.js'
-import { checkListAccess, canManageList, canDeleteList } from '@phoenix-wing/open-issue-core'
-import type { IssueList, IssueListMember, MemberWithUser, CreateListInput, UpdateListInput } from '@phoenix-wing/open-issue-core'
+import { checkListAccess, canManageList, canDeleteList } from '@open-issue/core'
+import type { IssueList, IssueListMember, MemberWithUser, CreateListInput, UpdateListInput } from '@open-issue/core'
 
 export class IssueListService {
   getMyLists(userId: string): IssueList[] {

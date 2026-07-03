@@ -4,7 +4,7 @@ import bcrypt from 'bcryptjs'
 import { signToken } from '../utils/jwt.js'
 import { ConflictError, UnauthorizedError } from '../utils/errors.js'
 import { resolveOrgUnitId } from '../utils/pendingOrgUnit.js'
-import type { User, UserPublic, CreateUserInput, LoginResult, RegisterResult } from '@phoenix-wing/open-issue-core'
+import type { User, UserPublic, CreateUserInput, LoginResult, RegisterResult } from '@open-issue/core'
 
 function toPublic(user: User): UserPublic {
   const { passwordHash: _, ...pub } = user

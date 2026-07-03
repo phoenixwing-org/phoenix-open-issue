@@ -1,5 +1,5 @@
 {
-  "name": "@phoenix-wing/open-issue-core",
+  "name": "@open-issue/core",
   "version": "0.1.0",
   "description": "Open Issue List — 核心类型定义与算法",
   "type": "module",

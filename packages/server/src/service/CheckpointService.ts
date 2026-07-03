@@ -1,8 +1,8 @@
 import { getDb } from '../db/connection.js'
 import { v4 as uuid } from 'uuid'
 import { NotFoundError, ForbiddenError } from '../utils/errors.js'
-import { checkListAccess, canModifyIssue } from '@phoenix-wing/open-issue-core'
-import type { Checkpoint, CreateCheckpointInput, UpdateCheckpointInput, MemberRole } from '@phoenix-wing/open-issue-core'
+import { checkListAccess, canModifyIssue } from '@open-issue/core'
+import type { Checkpoint, CreateCheckpointInput, UpdateCheckpointInput, MemberRole } from '@open-issue/core'
 
 export class CheckpointService {
   getByIssueId(issueId: string): Checkpoint[] {

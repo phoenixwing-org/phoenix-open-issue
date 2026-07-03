@@ -2,7 +2,7 @@ import { getDb } from '../db/connection.js'
 import { v4 as uuid } from 'uuid'
 import { ConflictError } from '../utils/errors.js'
 import { getPendingOrgUnitId, isPendingOrgUnit, PENDING_ORG_UNIT_NAME } from '../utils/pendingOrgUnit.js'
-import type { OrgUnit, OrgTreeNode } from '@phoenix-wing/open-issue-core'
+import type { OrgUnit, OrgTreeNode } from '@open-issue/core'
 
 export class OrgUnitService {
   getTree(): OrgTreeNode[] {

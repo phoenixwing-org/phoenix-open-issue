@@ -1,8 +1,8 @@
 import { getDb } from '../db/connection.js'
 import { v4 as uuid } from 'uuid'
 import { NotFoundError, ForbiddenError } from '../utils/errors.js'
-import { checkListAccess, canModifyIssue } from '@phoenix-wing/open-issue-core'
-import type { Issue, CreateIssueInput, UpdateIssueInput, ReorderInput, IssueStatus } from '@phoenix-wing/open-issue-core'
+import { checkListAccess, canModifyIssue } from '@open-issue/core'
+import type { Issue, CreateIssueInput, UpdateIssueInput, ReorderInput, IssueStatus } from '@open-issue/core'
 import { IssueListService } from './IssueListService.js'
 
 const listService = new IssueListService()

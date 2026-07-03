@@ -60,7 +60,7 @@ pnpm dev              # 一键启动 core + server + web（首次启动自动初
 | 前端 | Vue 3 + Element Plus + Pinia | 同 desk-tools 风格 |
 | 后端 | Express + TypeScript | 原型用，后续迁移 Midway.js |
 | 数据库 | SQLite (better-sqlite3) | 零配置原型；生产换 PostgreSQL |
-| 核心算法 | `@phoenix-wing/open-issue-core` | 纯 TS，可独立发布 npm |
+| 核心算法 | `@open-issue/core` | 纯 TS，可独立发布 npm |
 | 包管理 | pnpm workspaces | monorepo |
 
 ## 核心概念
@@ -80,17 +80,14 @@ pnpm dev              # 一键启动 core + server + web（首次启动自动初
 ## 命令参考
 
 ```bash
-# 单独启动
-pnpm dev:core        # 构建 core 包（watch 模式）
-pnpm dev:server      # 启动后端 :3001
-pnpm dev:web         # 启动前端 :5173
-
-# 构建
+pnpm dev             # 一键启动 core + server + web
+pnpm dev:web         # 仅启动前端 :5183
+pnpm dev:server      # 仅启动后端 :3400
 pnpm build           # 全部构建
-
-# 数据库
 pnpm seed            # 重新填充演示数据
 ```
+
+> phoenix-wing 本地联调自动检测：上级目录有 `phoenix-wing/` 就用本地源码，没有就用 npm 库。详见 [phoenix-wing 依赖配置](doc/phoenix-wing依赖配置.md)。
 
 ## 文档
 
@@ -103,12 +100,13 @@ pnpm seed            # 重新填充演示数据
 | [推送工作流](doc/推送工作流.md) | 推送→确认/拒绝 完整流程 |
 | [待办点检](doc/待办点检.md) | 用自己系统追踪自己开发 |
 | [开发计划](doc/开发计划.md) | ADR 决策 + 路线图 |
+| [phoenix-wing 依赖配置](doc/phoenix-wing依赖配置.md) | npm 模式 vs 本地 link 模式 |
 
 ## 路线图
 
 - [x] v0.1 原型：SQLite + Express + Vue 3，7 张表，基础 CRUD
 - [ ] v0.2 扩展：Issue 列扩展 + 推送确认/拒绝 [→ 讨论](doc/Issue列设计.md)
-- [ ] v0.3 npm 发布 `@phoenix-wing/*`
+- [ ] v0.3 npm 发布 `@open-issue/*`
 - [ ] v1.0 cool-admin 插件 + PostgreSQL
 
 更多待办见 [TODO](doc/TODO.md)

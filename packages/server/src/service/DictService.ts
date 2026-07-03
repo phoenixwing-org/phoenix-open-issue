@@ -1,6 +1,6 @@
 import { getDb } from '../db/connection.js'
 import { v4 as uuid } from 'uuid'
-import type { DictItem } from '@phoenix-wing/open-issue-core'
+import type { DictItem } from '@open-issue/core'
 
 // ── 预设定义 ──
 export interface PresetEntry { v: string; l: string }

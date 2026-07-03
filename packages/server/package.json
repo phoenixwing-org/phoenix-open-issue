@@ -1,5 +1,5 @@
 {
-  "name": "@phoenix-wing/open-issue-server",
+  "name": "@open-issue/server",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -10,7 +10,8 @@
     "seed": "tsx src/seed.ts"
   },
   "dependencies": {
-    "@phoenix-wing/open-issue-core": "workspace:*",
+    "@open-issue/core": "workspace:*",
+    "phoenix-wing": "^0.1.4",
     "bcryptjs": "^2.4.3",
     "node-sqlite3-wasm": "^0.8.59",
     "cors": "^2.8.5",

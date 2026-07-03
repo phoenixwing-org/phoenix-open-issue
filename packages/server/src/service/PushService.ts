@@ -1,8 +1,8 @@
 import { getDb } from '../db/connection.js'
 import { v4 as uuid } from 'uuid'
 import { NotFoundError, ForbiddenError } from '../utils/errors.js'
-import { validatePush } from '@phoenix-wing/open-issue-core'
-import type { PushRecord, PushRequest, PushValidationResult } from '@phoenix-wing/open-issue-core'
+import { validatePush } from '@open-issue/core'
+import type { PushRecord, PushRequest, PushValidationResult } from '@open-issue/core'
 import { IssueListService } from './IssueListService.js'
 
 const listService = new IssueListService()

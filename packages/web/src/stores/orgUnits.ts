@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import * as api from '@/api/orgUnits'
-import type { OrgTreeNode } from '@phoenix-wing/open-issue-core'
+import type { OrgTreeNode } from '@open-issue/core'
 
 export const useOrgUnitStore = defineStore('orgUnits', () => {
   const tree = ref<OrgTreeNode[]>([])

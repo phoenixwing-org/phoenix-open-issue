@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import * as api from '@/api/dict'
-import type { DictItem } from '@phoenix-wing/open-issue-core'
+import type { DictItem } from '@open-issue/core'
 
 export const useDictStore = defineStore('dict', () => {
   const items = ref<DictItem[]>([])

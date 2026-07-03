@@ -14,8 +14,8 @@ import PushDialog from '@/views/push/PushDialog.vue'
 import { useDictStore } from '@/stores/dict'
 
 const dict = useDictStore()
-import type { Checkpoint } from '@phoenix-wing/open-issue-core'
-import { isOverdue } from '@phoenix-wing/open-issue-core'
+import type { Checkpoint } from '@open-issue/core'
+import { isOverdue } from '@open-issue/core'
 
 const props = defineProps<{ issueId?: string }>()
 const emit = defineEmits<{ close: [] }>()

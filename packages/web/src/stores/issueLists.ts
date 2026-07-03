@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as api from '@/api/issueLists'
-import type { IssueList } from '@phoenix-wing/open-issue-core'
+import type { IssueList } from '@open-issue/core'
 
 export const useIssueListStore = defineStore('issueLists', () => {
   const lists = ref<IssueList[]>([])

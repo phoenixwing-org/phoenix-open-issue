@@ -5,7 +5,7 @@ import {
   canModifyIssue, canCreateIssue, canEditOwnIssue,
   validatePush, resolveOverlap, canPushToList, canHandlePush,
   isOverdue, calculateNextCheckpoint,
-} from '@phoenix-wing/open-issue-core'
+} from '@open-issue/core'
 
 // ── 测试用例定义 ──
 interface TestCase {
