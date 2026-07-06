@@ -2,18 +2,6 @@ import type { PnwDbAdapter } from 'phoenix-wing/db/pnwDbAdapter'
 import { ensurePendingOrgUnit } from '../utils/pendingOrgUnit.js'
 
 export function runSchema(db: PnwDbAdapter): void {
-  // ---- 迁移：列增量添加 ----
-  const migrations = [
-    `ALTER TABLE users ADD COLUMN approved INTEGER NOT NULL DEFAULT 1`,
-    `ALTER TABLE issueLists ADD COLUMN archived INTEGER NOT NULL DEFAULT 0`,
-    `ALTER TABLE issueLists ADD COLUMN isDeleted INTEGER NOT NULL DEFAULT 0`,
-    `ALTER TABLE issueLists ADD COLUMN deletedAt TEXT`,
-    `ALTER TABLE dict ADD COLUMN tags TEXT NOT NULL DEFAULT ''`,
-  ]
-  for (const sql of migrations) {
-    try { db.exec(sql) } catch { /* column already exists */ }
-  }
-
   // ---- 建表 ----
   db.exec(`
     CREATE TABLE IF NOT EXISTS users (
@@ -125,6 +113,18 @@ export function runSchema(db: PnwDbAdapter): void {
       createdAt TEXT DEFAULT (datetime('now'))
     );
   `)
+
+  // ---- 迁移：旧库列增量添加（须在 CREATE TABLE 之后） ----
+  const migrations = [
+    `ALTER TABLE users ADD COLUMN approved INTEGER NOT NULL DEFAULT 1`,
+    `ALTER TABLE issueLists ADD COLUMN archived INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE issueLists ADD COLUMN isDeleted INTEGER NOT NULL DEFAULT 0`,
+    `ALTER TABLE issueLists ADD COLUMN deletedAt TEXT`,
+    `ALTER TABLE dict ADD COLUMN tags TEXT NOT NULL DEFAULT ''`,
+  ]
+  for (const sql of migrations) {
+    try { db.exec(sql) } catch { /* column already exists */ }
+  }
 
   ensurePendingOrgUnit(db)
 }
