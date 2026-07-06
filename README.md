@@ -48,7 +48,7 @@ pnpm dev              # 一键启动 core + server + web（首次启动自动初
 | 路径 | 说明 |
 |---|---|
 | `packages/core/` | 纯 TypeScript 类型 + 算法（零框架依赖，可独立发布 npm） |
-| `packages/server/` | Express + better-sqlite3 后端（MVC） |
+| `packages/server/` | Express + node-sqlite3-wasm 后端（MVC） |
 | `packages/web/` | Vue 3 + Element Plus 前端 |
 | `data/` | SQLite 数据库文件（自动生成） |
 | `doc/` | 文档 |
@@ -59,7 +59,7 @@ pnpm dev              # 一键启动 core + server + web（首次启动自动初
 |---|---|---|
 | 前端 | Vue 3 + Element Plus + Pinia | 同 desk-tools 风格 |
 | 后端 | Express + TypeScript | 原型用，后续迁移 Midway.js |
-| 数据库 | SQLite (better-sqlite3) | 零配置原型；生产换 PostgreSQL |
+| 数据库 | SQLite (node-sqlite3-wasm) | 零配置原型；生产换 PostgreSQL |
 | 核心算法 | `@open-issue/core` | 纯 TS，可独立发布 npm |
 | 包管理 | pnpm workspaces | monorepo |
 
