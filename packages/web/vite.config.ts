@@ -23,6 +23,9 @@ export default defineConfig(({ mode }) => {
       },
       dedupe: ['vue', 'phoenix-wing'],
     },
+    optimizeDeps: {
+      exclude: ['phoenix-wing'],
+    },
     server: {
       port: devPort,
       host: '0.0.0.0',
