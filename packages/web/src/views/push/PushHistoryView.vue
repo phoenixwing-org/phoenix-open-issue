@@ -41,7 +41,7 @@ async function onReject(recordId: string) {
 }
 
 function goList(listId: string) {
-  router.push(`/lists/${listId}`)
+  router.push(`/list/${listId}`)
 }
 </script>
 

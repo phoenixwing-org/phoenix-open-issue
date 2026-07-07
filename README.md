@@ -14,11 +14,13 @@ Open Issue List 的目标是提供一个 **轻量、标准对齐、开箱即用*
 
 字段设计与工作流参考汽车行业质量管理标准：
 
-| 标准 | 说明 |
-|------|------|
+
+| 标准             | 说明                     |
+| -------------- | ---------------------- |
 | **IATF 16949** | 汽车质量管理体系 — 问题解决与纠正措施要求 |
-| **8D 报告** | 八步问题解决法（D1-D8） |
-| **VDA 6.3** | 过程审核 — 问题分级与追踪 |
+| **8D 报告**      | 八步问题解决法（D1-D8）         |
+| **VDA 6.3**    | 过程审核 — 问题分级与追踪         |
+
 
 核心字段对标：严重度（S）、优先级（P）、发现阶段、责任人、计划完成日、实际完成日、点检记录等。
 
@@ -31,6 +33,8 @@ Open Issue List 的目标是提供一个 **轻量、标准对齐、开箱即用*
 - **零配置启动** — SQLite 单文件数据库，`pnpm dev` 一键运行
 - **按需演示** — 首次登录弹窗询问是否添加演示数据，拒绝后不再打扰
 
+
+
 ## 快速启动
 
 ```bash
@@ -38,7 +42,7 @@ pnpm install          # 安装所有依赖
 pnpm dev              # 一键启动 core + server + web（首次启动自动创建管理员账号）
 ```
 
-打开 http://localhost:5173 即可使用。
+打开 [http://localhost:5173](http://localhost:5173) 即可使用。
 
 **默认管理员**：`admin` / `123456`
 
@@ -46,38 +50,54 @@ pnpm dev              # 一键启动 core + server + web（首次启动自动创
 
 > CLI 强制重填：`pnpm seed`（或 `pnpm seed force` 清空后重填）
 
+
+
 ## 项目结构
 
-| 路径 | 说明 |
-|---|---|
-| `packages/core/` | 纯 TypeScript 类型 + 算法（零框架依赖，可独立发布 npm） |
-| `packages/server/` | Express + node-sqlite3-wasm 后端（MVC） |
-| `packages/web/` | Vue 3 + Element Plus 前端 |
-| `data/` | SQLite 数据库文件（自动生成） |
-| `doc/` | 文档 |
+
+| 路径                 | 说明                                    |
+| ------------------ | ------------------------------------- |
+| `packages/core/`   | 纯 TypeScript 类型 + 算法（零框架依赖，可独立发布 npm） |
+| `packages/server/` | Express + node-sqlite3-wasm 后端（MVC）   |
+| `packages/web/`    | Vue 3 + Element Plus 前端               |
+| `data/`            | SQLite 数据库文件（自动生成）                    |
+| `doc/`             | 文档                                    |
+
+
+
 
 ## 技术栈（原型）
 
-| 层 | 技术 | 说明 |
-|---|---|---|
-| 前端 | Vue 3 + Element Plus + Pinia | 同 desk-tools 风格 |
-| 后端 | Express + TypeScript | 原型用，后续迁移 Midway.js |
-| 数据库 | SQLite (node-sqlite3-wasm) | 零配置原型；生产换 PostgreSQL |
-| 核心算法 | `@open-issue/core` | 纯 TS，可独立发布 npm |
-| 包管理 | pnpm workspaces | monorepo |
+
+| 层    | 技术                           | 说明                   |
+| ---- | ---------------------------- | -------------------- |
+| 前端   | Vue 3 + Element Plus + Pinia | 同 desk-tools 风格      |
+| 后端   | Express + TypeScript         | 原型用，后续迁移 Midway.js   |
+| 数据库  | SQLite (node-sqlite3-wasm)   | 零配置原型；生产换 PostgreSQL |
+| 核心算法 | `@open-issue/core`           | 纯 TS，可独立发布 npm       |
+| 包管理  | pnpm workspaces              | monorepo             |
+
+
+
 
 ## 核心概念
 
+
+
 ### 列表 (Issue List)
+
 每个人可创建多个列表，按年度、月度、项目或自定义命名。列表有成员管理（owner / editor / viewer）。
 
 ### 议题 (Issue)
+
 每个列表下的追踪条目，有状态（待处理 → 进行中 → 已解决 → 已关闭）和优先级（低 / 中 / 高 / 紧急）。
 
 ### 点检 (Checkpoint)
+
 每条例议题的时间线记录，包含日期、描述、负责人。逾期项红色高亮。
 
 ### 推送 (Push)
+
 **逐条 Issue 推送**（不是整个表）。把某个 Issue 从列表 A 推送到列表 B。目标列表成员确认后，Issue 进入目标列表全员可见；拒绝则关闭，可下次重推。小组 → 科室 → 部级依此类推。要求源和目标列表至少有 1 个共同成员。
 
 ## 命令参考
@@ -92,17 +112,20 @@ pnpm seed            # CLI 重新填充演示数据（force 追加可清空）
 
 > phoenix-wing 本地联调自动检测：上级目录有 `phoenix-wing/` 就用本地源码，没有就用 npm 库。详见 [phoenix-wing 依赖配置](doc/phoenix-wing依赖配置.md)。
 
+
+
 ## 文档
 
-| 文档 | 说明 |
-|------|------|
-| [架构设计](doc/架构设计.md) | 架构 + 数据流 |
-| [API参考](doc/API参考.md) | REST API 全部端点 |
-| [数据字典配置](doc/数据字典配置.md) | 下拉选项枚举值，汽车/软件预设 |
-| [Issue列设计](doc/Issue列设计.md) | 汽车行业对标，列扩展讨论 |
-| [推送工作流](doc/推送工作流.md) | 推送→确认/拒绝 完整流程 |
-| [待办点检](doc/待办点检.md) | 用自己系统追踪自己开发 |
-| [开发计划](doc/开发计划.md) | ADR 决策 + 路线图 |
+
+| 文档                                           | 说明                   |
+| -------------------------------------------- | -------------------- |
+| [架构设计](doc/架构设计.md)                          | 架构 + 数据流             |
+| [API参考](doc/API参考.md)                        | REST API 全部端点        |
+| [数据字典配置](doc/数据字典配置.md)                      | 下拉选项枚举值，汽车/软件预设      |
+| [Issue列设计](doc/Issue列设计.md)                  | 汽车行业对标，列扩展讨论         |
+| [推送工作流](doc/推送工作流.md)                        | 推送→确认/拒绝 完整流程        |
+| [待办点检](doc/待办点检.md)                          | 用自己系统追踪自己开发          |
+| [开发计划](doc/开发计划.md)                          | ADR 决策 + 路线图         |
 | [phoenix-wing 依赖配置](doc/phoenix-wing依赖配置.md) | npm 模式 vs 本地 link 模式 |
 
 ## 路线图
@@ -117,6 +140,7 @@ pnpm seed            # CLI 重新填充演示数据（force 追加可清空）
 ## 相关项目
 
 - [phoenix-desk-tools](https://gitee.com/PhoenixWing321/phoenix-desk-tools) — Phoenix 桌面辅助工具（布局参考）
+- [phoenix-wing](https://gitee.com/PhoenixWing321/phoenix-wing) — Phoenix npm 插件
 
 ## License
 

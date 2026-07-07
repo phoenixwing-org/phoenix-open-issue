@@ -22,7 +22,12 @@ const router = useRouter()
 
 // Workbench engine
 const wb = pnwCreateWorkbench({
-  pagePolicy: () => ({ maxTabs: 10, tabEnabled: true }),
+  pagePolicy: (pageId) => {
+    // 这些页面仅允许单个 Tab，再次点击激活已有
+    const SINGLETON = new Set(['dashboard', 'lists', 'org', 'pushHistory', 'settings'])
+    const maxTabs = SINGLETON.has(pageId) ? 1 : 30
+    return { maxTabs, tabEnabled: true }
+  },
   navLabel: (pageId) => {
     // 带参数的 pageId → 取基础名
     const base = pageId.split(':')[0]
@@ -83,7 +88,14 @@ async function onCloseAllWbTabs() {
 // expose for child pages
 provide('openTab', (pageId: string, title: string, contextKey?: string) => {
   wb.openTab({ pageId, title, contextKey })
-  router.push(contextKey ? `/${pageId}/${contextKey}` : `/${pageId}`)
+  // URL: listDetail:<id> → /list/<id>, issueDetail:<id> → /issue/<id>
+  if (pageId.startsWith('listDetail:')) {
+    router.push(`/list/${contextKey || pageId.split(':')[1]}`)
+  } else if (pageId.startsWith('issueDetail:')) {
+    router.push(`/issue/${contextKey || pageId.split(':')[1]}`)
+  } else {
+    router.push(contextKey ? `/${pageId}/${contextKey}` : `/${pageId}`)
+  }
 })
 
 // 让子页面更新当前标签标题

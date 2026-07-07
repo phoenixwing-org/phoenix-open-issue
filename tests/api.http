@@ -1,0 +1,378 @@
+### Open Issue API 测试
+### 使用 VS Code REST Client 插件，或 IntelliJ HTTP Client
+### Base: http://localhost:3400/api
+
+@base = http://localhost:3400/api
+@token = {{login.response.body.token}}
+
+# ═══════════════════ Auth ═══════════════════
+
+### 登录 (admin)
+# @name login
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{ "username": "admin", "password": "123456" }
+
+### 登录 (zhangsan)
+POST {{base}}/auth/login
+Content-Type: application/json
+
+{ "username": "zhangsan", "password": "123456" }
+
+### 注册
+POST {{base}}/auth/register
+Content-Type: application/json
+
+{ "username": "testuser", "password": "123456", "displayName": "测试用户" }
+
+### 获取当前用户
+GET {{base}}/auth/me
+Authorization: Bearer {{token}}
+
+### 修改密码
+PATCH {{base}}/auth/change-password
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "oldPassword": "123456", "newPassword": "654321" }
+
+### 获取所有用户
+GET {{base}}/users
+Authorization: Bearer {{token}}
+
+### 获取待审批用户
+GET {{base}}/users/pending
+Authorization: Bearer {{token}}
+
+### 审批用户
+PATCH {{base}}/user/{{userId}}/approve
+Authorization: Bearer {{token}}
+
+### 更新用户组织
+PATCH {{base}}/user/{{userId}}/org
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "orgUnitId": "{{orgId}}" }
+
+### 禁用用户
+PATCH {{base}}/user/{{userId}}/disable
+Authorization: Bearer {{token}}
+
+### 启用用户
+PATCH {{base}}/user/{{userId}}/enable
+Authorization: Bearer {{token}}
+
+### 重置用户密码
+PATCH {{base}}/user/{{userId}}/reset-password
+Authorization: Bearer {{token}}
+
+# ═══════════════════ Org Units ═══════════════════
+
+### 获取组织树
+GET {{base}}/org-unit
+
+### 获取单个组织
+GET {{base}}/org-unit/{{orgId}}
+
+### 创建组织
+POST {{base}}/org-unit
+Content-Type: application/json
+
+{ "name": "测试组", "unitType": "group", "parentId": null }
+
+### 更新组织
+PUT {{base}}/org-unit/{{orgId}}
+Content-Type: application/json
+
+{ "name": "新名称" }
+
+### 删除组织
+DELETE {{base}}/org-unit/{{orgId}}
+
+### 获取组织下用户
+GET {{base}}/org-unit/{{orgId}}/users
+
+# ═══════════════════ Issue Lists ═══════════════════
+
+### 获取我的列表
+GET {{base}}/lists
+Authorization: Bearer {{token}}
+
+### 获取所有列表
+GET {{base}}/lists/all
+Authorization: Bearer {{token}}
+
+### 获取归档列表
+GET {{base}}/lists/archived
+Authorization: Bearer {{token}}
+
+### 创建列表
+POST {{base}}/list
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "name": "测试列表", "listType": "custom", "description": "API 测试" }
+
+### 获取列表详情
+GET {{base}}/list/{{listId}}
+Authorization: Bearer {{token}}
+
+### 更新列表
+PUT {{base}}/list/{{listId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "name": "更新后的名称" }
+
+### 归档列表
+PATCH {{base}}/list/{{listId}}/archive
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "archived": true }
+
+### 删除列表
+DELETE {{base}}/list/{{listId}}
+Authorization: Bearer {{token}}
+
+### 获取列表成员
+GET {{base}}/list/{{listId}}/members
+Authorization: Bearer {{token}}
+
+### 添加成员
+POST {{base}}/list/{{listId}}/member
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "userId": "{{userId}}", "role": "editor" }
+
+### 更新成员角色
+PATCH {{base}}/list/{{listId}}/member/{{userId}}/role
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "role": "admin" }
+
+### 移除成员
+DELETE {{base}}/list/{{listId}}/member/{{userId}}
+Authorization: Bearer {{token}}
+
+### 转让列表所有者
+PATCH {{base}}/list/{{listId}}/transfer-owner
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "newOwnerId": "{{userId}}" }
+
+# ═══════════════════ Issues ═══════════════════
+
+### 获取 Issue 列表
+GET {{base}}/list/{{listId}}/issues?status=open&page=1&size=20
+Authorization: Bearer {{token}}
+
+### 搜索 Issue
+GET {{base}}/list/{{listId}}/issues?search=超时&sort=priority:desc
+Authorization: Bearer {{token}}
+
+### 包含已作废
+GET {{base}}/list/{{listId}}/issues?includeVoided=true
+Authorization: Bearer {{token}}
+
+### 创建 Issue
+# @name createIssue
+POST {{base}}/list/{{listId}}/issue
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "title": "测试 Issue",
+  "description": "通过 API 创建的测试",
+  "priority": "high",
+  "severity": "major",
+  "category": "function",
+  "detectionPhase": "in_process",
+  "assigneeId": null,
+  "dueDate": "2026-12-31"
+}
+
+### 获取 Issue 详情
+GET {{base}}/issue/{{issueId}}
+Authorization: Bearer {{token}}
+
+### 更新 Issue
+PUT {{base}}/issue/{{issueId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "title": "更新标题", "status": "in_progress" }
+
+### 快速变更状态
+PATCH {{base}}/issue/{{issueId}}/status
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "status": "resolved" }
+
+### 作废链接
+PATCH {{base}}/list/{{listId}}/issue/{{issueId}}/void
+Authorization: Bearer {{token}}
+
+### 恢复链接
+PATCH {{base}}/list/{{listId}}/issue/{{issueId}}/unvoid
+Authorization: Bearer {{token}}
+
+### 删除 Issue
+DELETE {{base}}/issue/{{issueId}}
+Authorization: Bearer {{token}}
+
+### Issue 排序
+PUT {{base}}/list/{{listId}}/issue/reorder
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "issueIds": ["uuid1", "uuid2", "uuid3"] }
+
+# ═══════════════════ Checkpoints ═══════════════════
+
+### 获取 Issue 的点检
+GET {{base}}/issue/{{issueId}}/checkpoints
+Authorization: Bearer {{token}}
+
+### 获取列表所有点检
+GET {{base}}/list/{{listId}}/checkpoints
+Authorization: Bearer {{token}}
+
+### 添加点检
+POST {{base}}/issue/{{issueId}}/checkpoint
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "checkpointDate": "2026-07-15",
+  "description": "验证修复效果",
+  "responsibleUserId": null
+}
+
+### 更新点检
+PUT {{base}}/checkpoint/{{cpId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "status": "done", "description": "已完成验证" }
+
+### 删除点检
+DELETE {{base}}/checkpoint/{{cpId}}
+Authorization: Bearer {{token}}
+
+# ═══════════════════ Push ═══════════════════
+
+### 预览推送
+GET {{base}}/push/preview?fromListId={{listId}}&toListId={{toListId}}
+Authorization: Bearer {{token}}
+
+### 执行推送
+POST {{base}}/push
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "fromListId": "{{listId}}",
+  "toListId": "{{toListId}}",
+  "issueIds": ["{{issueId}}"],
+  "note": "测试推送"
+}
+
+### 收到的推送
+GET {{base}}/list/{{listId}}/incoming-pushes
+Authorization: Bearer {{token}}
+
+### 处理推送
+PATCH {{base}}/push/{{pushId}}/handle
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "action": "accepted" }
+
+### 推送历史
+GET {{base}}/list/{{listId}}/push-history
+Authorization: Bearer {{token}}
+
+### 我的推送历史
+GET {{base}}/push/history
+Authorization: Bearer {{token}}
+
+# ═══════════════════ Dict ═══════════════════
+
+### 获取所有字典
+GET {{base}}/dict
+Authorization: Bearer {{token}}
+
+### 获取分组字典
+GET {{base}}/dict/issueCategory
+Authorization: Bearer {{token}}
+
+### 添加字典项
+POST {{base}}/dict
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "groupName": "issueCategory", "value": "test", "label": "测试分类" }
+
+### 应用预设
+POST {{base}}/dict/presets
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "preset": "software" }
+
+### 更新字典项
+PUT {{base}}/dict/{{dictId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "enabled": 0 }
+
+### 删除单个字典项
+DELETE {{base}}/dict/{{dictId}}
+Authorization: Bearer {{token}}
+
+### 按标签批量删除
+DELETE {{base}}/dict/tag/software
+Authorization: Bearer {{token}}
+
+# ═══════════════════ Seed ═══════════════════
+
+### 查询测试数据状态
+GET {{base}}/seed/status
+Authorization: Bearer {{token}}
+
+### 添加测试数据
+POST {{base}}/seed/test-data
+Authorization: Bearer {{token}}
+
+### 拒绝测试数据（不再询问）
+POST {{base}}/seed/decline
+Authorization: Bearer {{token}}
+
+### 强制重置所有数据
+POST {{base}}/seed?force=true
+Authorization: Bearer {{token}}
+
+# ═══════════════════ Backup ═══════════════════
+
+### 导出数据库
+GET {{base}}/db/export
+Authorization: Bearer {{token}}
+
+### 导入数据库
+POST {{base}}/db/import
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{ "data": {}, "mode": "merge" }
+
+### 修正 Issue 链接
+POST {{base}}/db/repair-links
+Authorization: Bearer {{token}}

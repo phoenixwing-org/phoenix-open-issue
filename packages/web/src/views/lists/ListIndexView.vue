@@ -30,7 +30,7 @@ function canDelete(row: { ownerId: string; myRole?: MemberRole | null }) {
 
 function goDetail(id: string, name: string) {
   const title = name.length > 12 ? name.slice(0, 12) + '…' : name
-  openTab('lists', title, id)
+  openTab(`listDetail:${id}`, title, id)
 }
 
 async function onCreate(data: any) {

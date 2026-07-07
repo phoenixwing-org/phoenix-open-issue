@@ -82,7 +82,7 @@ onMounted(async () => {
 
 function goList(id: string, name: string) {
   const title = name.length > 12 ? name.slice(0, 12) + '…' : name
-  openTab('lists', title, id)
+  openTab(`listDetail:${id}`, title, id)
 }
 
 async function onCreate(data: { name: string; listType: string; description?: string }) {

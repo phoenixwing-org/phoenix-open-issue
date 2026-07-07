@@ -1,21 +1,23 @@
 import request from './request'
 
+// 返回列表 → 复数
 export function getCheckpoints(issueId: string) {
-  return request.get(`/issues/${issueId}/checkpoints`)
+  return request.get(`/issue/${issueId}/checkpoints`)
 }
 
 export function getCheckpointsByList(listId: string) {
-  return request.get(`/lists/${listId}/checkpoints`)
+  return request.get(`/list/${listId}/checkpoints`)
 }
 
+// 单个操作 → 单数
 export function createCheckpoint(issueId: string, data: { checkpointDate: string; description: string; responsibleUserId?: string }) {
-  return request.post(`/issues/${issueId}/checkpoints`, data)
+  return request.post(`/issue/${issueId}/checkpoint`, data)
 }
 
 export function updateCheckpoint(id: string, data: Record<string, any>) {
-  return request.put(`/checkpoints/${id}`, data)
+  return request.put(`/checkpoint/${id}`, data)
 }
 
 export function deleteCheckpoint(id: string) {
-  return request.delete(`/checkpoints/${id}`)
+  return request.delete(`/checkpoint/${id}`)
 }

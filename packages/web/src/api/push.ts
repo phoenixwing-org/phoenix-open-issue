@@ -9,7 +9,7 @@ export function pushIssues(data: { fromListId: string; toListId: string; issueId
 }
 
 export function getListPushHistory(listId: string) {
-  return request.get(`/lists/${listId}/push-history`)
+  return request.get(`/list/${listId}/push-history`)
 }
 
 export function getMyPushHistory() {
@@ -17,7 +17,7 @@ export function getMyPushHistory() {
 }
 
 export function getIncomingPushes(listId: string) {
-  return request.get(`/lists/${listId}/incoming-pushes`)
+  return request.get(`/list/${listId}/incoming-pushes`)
 }
 
 export function handlePush(recordId: string, action: 'accepted' | 'rejected', rejectReason?: string) {
@@ -28,7 +28,6 @@ export function runSeed(force = false) {
   return request.post('/seed' + (force ? '?force=true' : ''))
 }
 
-// ── 测试数据管理 ──
 export function getSeedStatus() {
   return request.get('/seed/status')
 }

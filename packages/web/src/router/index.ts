@@ -35,13 +35,13 @@ const router = createRouter({
           component: () => import('@/views/lists/ListIndexView.vue'),
         },
         {
-          path: 'lists/:id',
+          path: 'list/:id',
           name: 'listDetail',
           component: () => import('@/views/lists/ListDetailView.vue'),
           props: true,
         },
         {
-          path: 'issues/:id',
+          path: 'issue/:id',
           name: 'issueDetail',
           component: () => import('@/views/issues/IssueDetailView.vue'),
           props: true,

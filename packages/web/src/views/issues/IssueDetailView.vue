@@ -23,6 +23,7 @@ const route = useRoute()
 const router = useRouter()
 const issueStore = useIssueStore()
 const issueId = props.issueId || (route.params.id as string)
+const openTab = inject<(pageId: string, title: string, contextKey?: string) => void>('openTab', () => {})
 const updateTabTitle = inject<(pageId: string, title: string) => void>('updateTabTitle', () => {})
 
 // 判断是否为模态模式（有 props.issueId 说明是弹窗）
@@ -30,7 +31,8 @@ const isModal = computed(() => !!props.issueId)
 
 function openAsPage() {
   emit('close')
-  router.push(`/issues/${issueId}`)
+  const title = issueStore.currentIssue?.title || `Issue #${issueId.slice(0, 8)}`
+  openTab(`issueDetail:${issueId}`, title, issueId)
 }
 
 const checkpoints = ref<Checkpoint[]>([])
