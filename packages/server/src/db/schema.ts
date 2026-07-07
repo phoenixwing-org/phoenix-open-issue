@@ -123,6 +123,11 @@ export function runSchema(db: PnwDbAdapter): void {
       tags TEXT NOT NULL DEFAULT '',
       createdAt TEXT DEFAULT (datetime('now'))
     );
+
+    CREATE TABLE IF NOT EXISTS systemFlags (
+      key TEXT PRIMARY KEY,
+      value TEXT NOT NULL
+    );
   `)
 
   // ---- 迁移：旧库列增量添加（须在 CREATE TABLE 之后） ----

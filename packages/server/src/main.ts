@@ -1,13 +1,9 @@
 import { createApp } from './app.js'
 import { config } from './config.js'
 import { getDb } from './db/connection.js'
-import { seedDatabase } from './seed.js'
 
-// 启动时自动初始化数据库
+// 启动时自动初始化数据库 + 基础种子（仅 admin + 字典，connection.ts 内自动处理）
 getDb()
-
-// 首次启动时自动填充种子数据（admin/123456 等），已有数据则跳过
-seedDatabase()
 
 const app = createApp()
 

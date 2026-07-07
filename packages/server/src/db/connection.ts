@@ -3,6 +3,7 @@ import { pnwCreateDb } from 'phoenix-wing/db/pnwDbAdapter'
 import type { PnwDbAdapter } from 'phoenix-wing/db/pnwDbAdapter'
 import { config } from '../config.js'
 import { runSchema } from './schema.js'
+import { seedEssential } from '../seed.js'
 import fs from 'fs'
 import path from 'path'
 
@@ -46,6 +47,8 @@ export function getDb(): PnwDbAdapter {
 
     db.exec('PRAGMA foreign_keys = OFF')
     runSchema(db)
+    // 首次初始化：自动创建 admin + 字典
+    seedEssential()
   }
   return db
 }

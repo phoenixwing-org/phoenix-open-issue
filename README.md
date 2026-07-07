@@ -29,19 +29,22 @@ Open Issue List 的目标是提供一个 **轻量、标准对齐、开箱即用*
 - **点检时间线** — 每个 Issue 可追加多条点检记录，逾期项高亮提醒
 - **多视图** — 简单/复杂/跟踪三种视图，适配点检会议、审计追溯等不同场景
 - **零配置启动** — SQLite 单文件数据库，`pnpm dev` 一键运行
+- **按需演示** — 首次登录弹窗询问是否添加演示数据，拒绝后不再打扰
 
 ## 快速启动
 
 ```bash
 pnpm install          # 安装所有依赖
-pnpm dev              # 一键启动 core + server + web（首次启动自动初始化数据库和演示账号）
+pnpm dev              # 一键启动 core + server + web（首次启动自动创建管理员账号）
 ```
 
 打开 http://localhost:5173 即可使用。
 
-**演示账号**：`admin` / `123456` 或 `zhangsan` / `123456`
+**默认管理员**：`admin` / `123456`
 
-> 如需重新填充演示数据：`pnpm seed`（或 `pnpm seed force` 强制清空重填）
+首次登录后，仪表盘会弹窗询问是否添加演示数据（示例列表、Issue、点检等）。选择「添加」可快速体验完整功能，选择「不需要」则不再询问。
+
+> CLI 强制重填：`pnpm seed`（或 `pnpm seed force` 清空后重填）
 
 ## 项目结构
 
@@ -84,7 +87,7 @@ pnpm dev             # 一键启动 core + server + web
 pnpm dev:web         # 仅启动前端 :5183
 pnpm dev:server      # 仅启动后端 :3400
 pnpm build           # 全部构建
-pnpm seed            # 重新填充演示数据
+pnpm seed            # CLI 重新填充演示数据（force 追加可清空）
 ```
 
 > phoenix-wing 本地联调自动检测：上级目录有 `phoenix-wing/` 就用本地源码，没有就用 npm 库。详见 [phoenix-wing 依赖配置](doc/phoenix-wing依赖配置.md)。

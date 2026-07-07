@@ -39,6 +39,9 @@ function wrap(fn: (req: any, res: any) => void) {
 }
 
  router.post('/seed', authMiddleware, wrap((req, res) => seedCtrl.run(req, res)))
+ router.get('/seed/status', authMiddleware, wrap((req, res) => seedCtrl.getSeedStatus(req, res)))
+ router.post('/seed/test-data', authMiddleware, wrap((req, res) => seedCtrl.addTestData(req, res)))
+ router.post('/seed/decline', authMiddleware, wrap((req, res) => seedCtrl.declineTestData(req, res)))
 // ---- Dict ----
  router.get('/dict/:groupName', authMiddleware, wrap((req, res) => dictCtrl.getByGroup(req, res)))
  router.get('/dict', authMiddleware, wrap((req, res) => dictCtrl.getAll(req, res)))

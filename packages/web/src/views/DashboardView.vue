@@ -2,7 +2,7 @@
 import { onMounted, ref, inject } from 'vue'
 import { useIssueListStore } from '@/stores/issueLists'
 import { ElMessage } from 'element-plus'
-import { runSeed } from '@/api/push'
+import { getSeedStatus, addTestData, declineTestData } from '@/api/push'
 import PnwPageHeader from 'phoenix-wing/layout/PnwPageHeader.vue'
 import PageHelpButton from '@/components/PageHelpButton.vue'
 
@@ -12,8 +12,32 @@ const showCreate = ref(false)
 const newListName = ref('')
 const newListType = ref('custom')
 const newListDesc = ref('')
-const seeding = ref(false)
 const listView = ref<'mine' | 'all' | 'archived'>('mine')
+
+// ── 测试数据提示 ──
+const showSeedPrompt = ref(false)
+const seeding = ref(false)
+
+async function onAddTestData() {
+  seeding.value = true
+  try {
+    await addTestData()
+    ElMessage.success('演示数据已添加！')
+    showSeedPrompt.value = false
+    await store.fetchLists()
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || '添加失败')
+  } finally {
+    seeding.value = false
+  }
+}
+
+async function onDeclineTestData() {
+  try {
+    await declineTestData()
+  } catch { /* ignore */ }
+  showSeedPrompt.value = false
+}
 
 async function switchView(view: 'mine' | 'all' | 'archived') {
   listView.value = view
@@ -40,8 +64,20 @@ const listTypeColor: Record<string, string> = {
   custom: '#909399',
 }
 
-onMounted(() => {
-  store.fetchLists()
+onMounted(async () => {
+  await store.fetchLists()
+
+  // 检查是否需要询问测试数据
+  let statusRes: any
+  try {
+    statusRes = await getSeedStatus()
+  } catch {
+    return // 网络错误，下次再检查
+  }
+  if (!statusRes.data.pending) return
+
+  // 使用原生 el-dialog 方式更可靠
+  showSeedPrompt.value = true
 })
 
 function goList(id: string, name: string) {
@@ -54,24 +90,6 @@ async function onCreate(data: { name: string; listType: string; description?: st
   showCreate.value = false
   ElMessage.success('列表创建成功')
 }
-
-async function onResetDemo() {
-  seeding.value = true
-  try {
-    const res = await runSeed(false)
-    const logs = res.data?.logs || []
-    if (logs.length === 1 && logs[0].includes('已有数据')) {
-      ElMessage.info('演示数据已存在，无需创建')
-    } else {
-      ElMessage.success('演示数据已创建！')
-      store.fetchLists()
-    }
-  } catch (e: any) {
-    ElMessage.error(e.response?.data?.message || '创建失败')
-  } finally {
-    seeding.value = false
-  }
-}
 </script>
 
 <template>
@@ -83,9 +101,6 @@ async function onResetDemo() {
           <el-radio-button value="all">🌐 所有</el-radio-button>
           <el-radio-button value="archived">📦 归档</el-radio-button>
         </el-radio-group>
-        <el-button size="small" :loading="seeding" @click="onResetDemo">
-          🗂️ 创建演示数据
-        </el-button>
         <el-button type="primary" @click="showCreate = true" data-tour="dashboard-create">
           <el-icon><Plus /></el-icon> 新建列表
         </el-button>
@@ -146,6 +161,28 @@ async function onResetDemo() {
       <template #footer>
         <el-button @click="showCreate = false">取消</el-button>
         <el-button type="primary" @click="onCreate({ name: newListName, listType: newListType, description: newListDesc }); showCreate = false; newListName = ''; newListDesc = ''">确认</el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 首次登录：询问是否添加演示数据 -->
+    <el-dialog
+      :model-value="showSeedPrompt"
+      title="欢迎使用 Open Issue"
+      width="460px"
+      :close-on-click-modal="false"
+      :close-on-press-escape="false"
+      @close="showSeedPrompt = false"
+    >
+      <p style="margin-bottom:12px">
+        系统已创建管理员账号 <code>admin / 123456</code>。
+      </p>
+      <p>是否添加演示数据？（示例列表、Issue、点检等）</p>
+      <p style="color:#909399;font-size:0.82rem;margin-top:8px">
+        选择"不需要"后将不再询问。
+      </p>
+      <template #footer>
+        <el-button @click="onDeclineTestData">不需要</el-button>
+        <el-button type="primary" :loading="seeding" @click="onAddTestData">添加演示数据</el-button>
       </template>
     </el-dialog>
   </div>

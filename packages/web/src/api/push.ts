@@ -27,3 +27,16 @@ export function handlePush(recordId: string, action: 'accepted' | 'rejected', re
 export function runSeed(force = false) {
   return request.post('/seed' + (force ? '?force=true' : ''))
 }
+
+// ── 测试数据管理 ──
+export function getSeedStatus() {
+  return request.get('/seed/status')
+}
+
+export function addTestData() {
+  return request.post('/seed/test-data')
+}
+
+export function declineTestData() {
+  return request.post('/seed/decline')
+}
