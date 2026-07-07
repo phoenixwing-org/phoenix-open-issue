@@ -22,6 +22,6 @@ export function deleteOrgUnit(id: string) {
   return request.delete(`/org-unit/${id}`)
 }
 
-export function getOrgUnitUsers(id: string) {
-  return request.get(`/org-unit/${id}/users`)
+export function getOrgUnitUsers(id: string, includeChildren = true) {
+  return request.get(`/org-unit/${id}/users`, { params: { includeChildren } })
 }

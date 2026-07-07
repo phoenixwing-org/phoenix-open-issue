@@ -2,8 +2,10 @@
 import { computed, nextTick, onMounted, ref } from 'vue'
 import { useOrgUnitStore } from '@/stores/orgUnits'
 import { useDictStore } from '@/stores/dict'
+import { useSettingsStore } from '@/stores/settings'
 
 const dict = useDictStore()
+const settings = useSettingsStore()
 import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
 import PageHelpButton from "@/components/PageHelpButton.vue"
 import { getOrgUnitUsers, createOrgUnit, deleteOrgUnit, updateOrgUnit } from '@/api/orgUnits'
@@ -66,7 +68,7 @@ async function reloadUsers() {
     await loadAllUsers()
     return
   }
-  const res = await getOrgUnitUsers(selectedUnit.value.id)
+  const res = await getOrgUnitUsers(selectedUnit.value.id, settings.orgIncludeChildren)
   unitUsers.value = res.data
 }
 
@@ -227,7 +229,8 @@ function unitHasChildren(unit: any) {
 
 function memberSectionTitle() {
   if (isAllRoot(selectedUnit.value)) return '全部人员'
-  return unitHasChildren(selectedUnit.value) ? '成员 (含下级组织)' : '成员'
+  if (!unitHasChildren(selectedUnit.value)) return '成员'
+  return settings.orgIncludeChildren ? '成员 (含下级组织)' : '成员 (仅本级)'
 }
 </script>
 
@@ -293,7 +296,15 @@ function memberSectionTitle() {
         </el-form>
 
         <div class="unit-users" style="margin-top:16px">
-          <h4>{{ memberSectionTitle() }} ({{ unitUsers.length }})</h4>
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:8px">
+            <h4 style="margin:0">{{ memberSectionTitle() }} ({{ unitUsers.length }})</h4>
+            <el-checkbox
+              v-if="!isAllRoot(selectedUnit) && unitHasChildren(selectedUnit)"
+              v-model="settings.orgIncludeChildren"
+              size="small"
+              @change="reloadUsers"
+            >包含下级组织</el-checkbox>
+          </div>
           <el-table
             :data="unitUsers"
             stripe

@@ -7,7 +7,7 @@ import PnwChoiceDialogHost from 'phoenix-wing/components/PnwChoiceDialogHost.vue
 import PnwAsyncProgressOverlay from 'phoenix-wing/components/PnwAsyncProgressOverlay.vue'
 import PnwAppModalOverlay from 'phoenix-wing/components/PnwAppModalOverlay.vue'
 import WelcomeView from '@/views/WelcomeView.vue'
-import { ref, computed, provide, watch } from 'vue'
+import { ref, computed, provide, watch, onMounted } from 'vue'
 import { usePnwDocumentTitle, pnwCreateWorkbench } from 'phoenix-wing'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -133,6 +133,58 @@ watch(() => route.fullPath, (path) => {
     if (newTab) tabPathMap.set(newTab.id, path)
   }
 }, { immediate: true })
+
+// ── Tab 持久化：刷新页面保留已打开标签 ──
+const SESSION_KEY = 'open-issue-tabs'
+
+// 启动时恢复
+function restoreTabs() {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY)
+    if (!raw) return
+    const saved = JSON.parse(raw) as { tabs: { id: string; pageId: string; title: string; contextKey?: string }[]; activeTabId: string; paths: Record<string, string> }
+    if (!saved.tabs?.length) return
+
+    for (const t of saved.tabs) {
+      const existing = wb.tabs.value.find(x => x.pageId === t.pageId)
+      if (!existing) {
+        wb.openTab({ pageId: t.pageId, title: t.title, contextKey: t.contextKey })
+      }
+    }
+    if (saved.activeTabId) wb.activateTab(saved.activeTabId)
+    // 恢复路由映射
+    for (const [tabId, path] of Object.entries(saved.paths || {})) {
+      tabPathMap.set(tabId, path as string)
+    }
+    // 导航到激活标签的路由
+    const activePath = saved.paths?.[saved.activeTabId]
+    if (activePath && route.fullPath !== activePath) {
+      router.replace(activePath)
+    }
+  } catch { /* ignore */ }
+}
+
+function saveTabs() {
+  const paths: Record<string, string> = {}
+  tabPathMap.forEach((v, k) => { paths[k] = v })
+  localStorage.setItem(SESSION_KEY, JSON.stringify({
+    tabs: wb.tabs.value.map(t => ({ id: t.id, pageId: t.pageId, title: t.title, contextKey: t.contextKey })),
+    activeTabId: wb.activeTabId.value,
+    paths,
+  }))
+}
+
+// 标签变化时自动保存
+watch(() => wb.tabs.value.length, saveTabs)
+watch(wb.activeTabId, saveTabs)
+
+// 页面关闭前保存
+window.addEventListener('beforeunload', saveTabs)
+
+// 首次挂载时恢复（在 route watcher 之后，避免覆盖）
+onMounted(() => {
+  if (wb.tabs.value.length <= 1) restoreTabs()
+})
 </script>
 
 <template>

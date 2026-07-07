@@ -33,7 +33,8 @@ export class OrgUnitController {
   }
 
   getUsers(req: Request, res: Response): void {
-    const users = orgUnitService.getUsers(req.params.id)
+    const includeChildren = req.query.includeChildren !== 'false'
+    const users = orgUnitService.getUsers(req.params.id, includeChildren)
     res.json(users)
   }
 }

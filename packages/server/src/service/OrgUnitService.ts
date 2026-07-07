@@ -43,7 +43,7 @@ export class OrgUnitService {
     db.run('DELETE FROM orgUnits WHERE id = ?', id)
   }
 
-  getUsers(orgUnitId: string) {
+  getUsers(orgUnitId: string, includeChildren = true) {
     const db = getDb()
     const userCols = 'id, username, email, displayName, orgUnitId, approved, createdAt, updatedAt'
     if (isPendingOrgUnit(db, orgUnitId)) {
@@ -51,6 +51,12 @@ export class OrgUnitService {
       return db.all(
         `SELECT ${userCols} FROM users WHERE orgUnitId = ? OR orgUnitId IS NULL ORDER BY approved ASC, displayName, username`,
         pendingId,
+      )
+    }
+    if (!includeChildren) {
+      return db.all(
+        `SELECT ${userCols} FROM users WHERE orgUnitId = ? ORDER BY approved ASC, displayName, username`,
+        orgUnitId,
       )
     }
     const all = db.all('SELECT id, parentId FROM orgUnits') as Pick<OrgUnit, 'id' | 'parentId'>[]
