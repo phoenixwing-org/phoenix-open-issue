@@ -24,21 +24,26 @@ const router = useRouter()
 const wb = pnwCreateWorkbench({
   pagePolicy: () => ({ maxTabs: 10, tabEnabled: true }),
   navLabel: (pageId) => {
+    // 带参数的 pageId → 取基础名
+    const base = pageId.split(':')[0]
     const labels: Record<string, string> = {
       dashboard: '仪表盘', lists: '列表管理', listDetail: '列表详情',
-      org: '组织架构', pushHistory: '推送历史', settings: '设置',
+      org: '组织架构', pushHistory: '推送历史', settings: '设置', issueDetail: 'Issue',
     }
-    return labels[pageId] || pageId
+    return labels[base] || pageId
   },
 })
 
 const pageLabel = computed(() => {
   const labels: Record<string, string> = {
     dashboard: '仪表盘', lists: '列表管理', listDetail: '列表详情',
-    org: '组织架构', pushHistory: '推送历史', settings: '设置', welcome: '欢迎',
+    org: '组织架构', pushHistory: '推送历史', settings: '设置', welcome: '欢迎', issueDetail: 'Issue 详情',
   }
   return labels[route.name as string] || String(route.name || '')
 })
+
+// 标签 → 完整路径映射（保留路由参数）
+const tabPathMap = new Map<string, string>()
 
 usePnwDocumentTitle({ workspaceShort: ref('Open Issue'), workspacePath: ref(''), pageLabel })
 
@@ -53,18 +58,24 @@ function onRibbonOpen(pageId: string) {
 
 function onSelectWbTab(tabId: string) {
   wb.activateTab(tabId)
-  const tab = wb.getTab(tabId)
-  if (tab) router.push(`/${tab.pageId}`)
+  const path = tabPathMap.get(tabId)
+  if (path) router.push(path)
 }
 
 async function onCloseWbTab(tabId: string) {
+  tabPathMap.delete(tabId)
   await wb.closeTab(tabId)
   const last = wb.tabs.value[wb.tabs.value.length - 1]
-  if (last) router.push(`/${last.pageId}`)
-  else router.push('/dashboard')
+  if (last) {
+    const path = tabPathMap.get(last.id)
+    if (path) router.push(path)
+  } else {
+    router.push('/dashboard')
+  }
 }
 
 async function onCloseAllWbTabs() {
+  tabPathMap.clear()
   await wb.closeAllTabs()
   router.push('/dashboard')
 }
@@ -75,17 +86,39 @@ provide('openTab', (pageId: string, title: string, contextKey?: string) => {
   router.push(contextKey ? `/${pageId}/${contextKey}` : `/${pageId}`)
 })
 
+// 让子页面更新当前标签标题
+function updateTabTitle(pageId: string, title: string) {
+  const tab = wb.tabs.value.find(t => t.pageId === pageId)
+  if (tab) tab.title = title
+}
+provide('updateTabTitle', updateTabTitle)
+
 function appendLog(msg: string) { logText.value += `[${new Date().toLocaleTimeString()}] ${msg}\n` }
 
-// 路由 ↔ 工作台标签同步：无标签时自动打开，有标签时激活对应标签
-watch(() => route.name, (name) => {
+// 路由 ↔ 工作台标签同步
+watch(() => route.fullPath, (path) => {
+  const name = route.name
   if (!name || name === 'welcome') return
-  const pageId = name as string
+
+  // 带参数的路由：name:param → 每个实体独立标签
+  let pageId = name as string
+  let title = pageLabel.value
+  if (name === 'issueDetail' && route.params.id) {
+    pageId = `issueDetail:${route.params.id}`
+    title = `Issue #${(route.params.id as string).slice(0, 8)}`
+  } else if (name === 'listDetail' && route.params.id) {
+    pageId = `listDetail:${route.params.id}`
+    title = `列表 #${(route.params.id as string).slice(0, 8)}`
+  }
+
   const existing = wb.tabs.value.find(t => t.pageId === pageId)
   if (existing) {
     wb.activateTab(existing.id)
+    tabPathMap.set(existing.id, path)
   } else {
-    wb.openTab({ pageId, title: pageLabel.value })
+    wb.openTab({ pageId, title })
+    const newTab = wb.tabs.value[wb.tabs.value.length - 1]
+    if (newTab) tabPathMap.set(newTab.id, path)
   }
 }, { immediate: true })
 </script>

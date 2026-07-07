@@ -274,7 +274,7 @@ async function onRepairLinks() {
     <el-tabs v-model="activeTab">
       <!-- ═══ 数据字典 ═══ -->
       <el-tab-pane label="📚 数据字典" name="dict">
-        <div style="margin-bottom:12px;display:flex;gap:8px">
+        <div style="margin-bottom:12px;display:flex;gap:8px" data-tour="settings-dict-toolbar">
           <el-button type="default" size="small" @click="onApplyPreset('automotive')">🚗 汽车默认值</el-button>
           <el-button type="default" size="small" @click="onApplyPreset('software')">💻 软件默认值</el-button>
           <el-button type="primary" size="small" @click="showAdd = true">+ 添加</el-button>

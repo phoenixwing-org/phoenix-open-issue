@@ -65,14 +65,14 @@ async function onDelete(id: string, name: string) {
   <div class="page">
     <PnwPageHeader title="列表管理">
       <template #actions>
-        <el-button type="primary" @click="showCreate = true">
+        <el-button type="primary" @click="showCreate = true" data-tour="lists-create">
           <el-icon><Plus /></el-icon> 新建列表
         </el-button>
       </template>
       <template #help><PageHelpButton page-id="lists" /></template>
     </PnwPageHeader>
 
-    <el-table :data="store.lists" v-loading="store.loading" stripe>
+    <el-table :data="store.lists" v-loading="store.loading" stripe data-tour="lists-table">
       <el-table-column prop="name" label="名称" min-width="180" fixed>
         <template #default="{ row }">
           <el-tooltip :content="row.name" placement="top" :show-after="500" :hide-after="0">

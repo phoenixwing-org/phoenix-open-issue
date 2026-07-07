@@ -42,12 +42,14 @@ function logout() { auth.logout(); router.push('/login') }
     </button>
 
     <PnwRibbonTabBar
+      data-tour="ribbon-tabbar"
       :tabs="ribbonTabs"
       :active-tab="activeRibbonTab"
       @update:active-tab="emit('update:active-ribbon-tab', $event)"
     />
 
     <PnwWorkbenchTabBar
+      data-tour="workbench-tabs"
       :tabs="wbTabs"
       :active-tab-id="activeWbTab"
       in-header

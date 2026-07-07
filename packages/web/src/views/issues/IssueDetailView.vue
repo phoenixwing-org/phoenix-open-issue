@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, computed } from 'vue'
+import { onMounted, ref, computed, inject } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useIssueStore } from '@/stores/issues'
 import { getCheckpoints, createCheckpoint, updateCheckpoint, deleteCheckpoint } from '@/api/checkpoints'
@@ -23,6 +23,15 @@ const route = useRoute()
 const router = useRouter()
 const issueStore = useIssueStore()
 const issueId = props.issueId || (route.params.id as string)
+const updateTabTitle = inject<(pageId: string, title: string) => void>('updateTabTitle', () => {})
+
+// 判断是否为模态模式（有 props.issueId 说明是弹窗）
+const isModal = computed(() => !!props.issueId)
+
+function openAsPage() {
+  emit('close')
+  router.push(`/issues/${issueId}`)
+}
 
 const checkpoints = ref<Checkpoint[]>([])
 const allUsers = ref<any[]>([])
@@ -45,6 +54,13 @@ const cpStatusColor: Record<string, string> = { pending: '#909399', done: '#67c2
 onMounted(async () => {
   dict.load()
   await issueStore.fetchIssue(issueId)
+  // 更新标签标题
+  if (!isModal.value && issueStore.currentIssue) {
+    const label = issueStore.currentIssue.title.length > 16
+      ? issueStore.currentIssue.title.slice(0, 16) + '…'
+      : issueStore.currentIssue.title
+    updateTabTitle(`issueDetail:${issueId}`, `📋 ${label}`)
+  }
   await loadCheckpoints()
   const res = await getAllUsers({ includeDisabled: true })
   allUsers.value = res.data
@@ -112,6 +128,9 @@ function goBack() {
   <div class="page">
     <PnwPageHeader :title="issueStore.currentIssue?.title || 'Issue 详情'">
       <template #actions>
+        <el-button v-if="isModal" size="small" plain @click="openAsPage" title="在页面中打开，可使用帮助和巡游">
+          <el-icon><FullScreen /></el-icon> 页面模式
+        </el-button>
         <el-button v-if="issueStore.currentIssue" size="small" type="primary" plain @click="showEdit = true">
           <el-icon><Edit /></el-icon> 编辑
         </el-button>
@@ -128,7 +147,7 @@ function goBack() {
     </PnwPageHeader>
 
     <div v-if="issueStore.currentIssue" class="issue-detail">
-      <div class="detail-meta">
+      <div class="detail-meta" data-tour="issue-meta">
         <span class="issue-no">{{ issueStore.currentIssue.issueNo }}</span>
         <el-tag :type="statusTag[issueStore.currentIssue.status]">
           {{ statusLabel[issueStore.currentIssue.status] }}
@@ -137,7 +156,7 @@ function goBack() {
       </div>
 
       <!-- 基本信息 -->
-      <el-descriptions title="基本信息" :column="2" border size="small" class="detail-desc-block">
+      <el-descriptions title="基本信息" :column="2" border size="small" class="detail-desc-block" data-tour="issue-basic">
         <el-descriptions-item label="严重度">
           <el-tag :type="severityTag[issueStore.currentIssue.severity]" size="small" effect="dark">
             {{ dict.getLabel('severity', issueStore.currentIssue.severity) }}
@@ -202,7 +221,7 @@ function goBack() {
     </div>
 
     <!-- 点检时间线 -->
-    <div class="checkpoints-section">
+    <div class="checkpoints-section" data-tour="issue-checkpoints">
       <div class="section-head">
         <h3>点检时间线</h3>
         <el-button type="primary" size="small" @click="showCpForm = true"><el-icon><Plus /></el-icon> 添加点检</el-button>

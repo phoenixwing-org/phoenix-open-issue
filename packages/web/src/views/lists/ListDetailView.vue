@@ -325,14 +325,14 @@ const defaultSort = computed(() => {
   <div class="page">
     <PnwPageHeader :title="currentList?.name || '列表详情'" :subtitle="currentList?.description">
       <template #actions>
-        <el-button @click="showMembers = true"><el-icon><User /></el-icon> 成员 ({{ members.length }})</el-button>
-        <el-button type="primary" @click="showCreateIssue = true"><el-icon><Plus /></el-icon> 新建 Issue</el-button>
+        <el-button @click="showMembers = true" data-tour="list-members"><el-icon><User /></el-icon> 成员 ({{ members.length }})</el-button>
+        <el-button type="primary" @click="showCreateIssue = true" data-tour="list-create-issue"><el-icon><Plus /></el-icon> 新建 Issue</el-button>
       </template>
-      <template #help><PageHelpButton page-id="lists" /></template>
+      <template #help><PageHelpButton page-id="listDetail" /></template>
     </PnwPageHeader>
 
     <!-- 筛选栏 -->
-    <div class="filters">
+    <div class="filters" data-tour="list-filters">
       <el-input v-model="searchText" placeholder="搜索标题/描述..." clearable style="width:200px" size="small" />
       <el-checkbox v-model="includeVoided" size="small" @change="loadData" style="margin-left:4px">显示已作废</el-checkbox>
       <el-select v-model="statusFilter" placeholder="状态" clearable size="small" style="width:110px">
@@ -359,7 +359,7 @@ const defaultSort = computed(() => {
           <el-option :label="'不简化'" :value="-1" />
         </el-select>
       </span>
-      <el-radio-group v-model="viewMode" size="small" class="view-toggle">
+      <el-radio-group v-model="viewMode" size="small" class="view-toggle" data-tour="list-view-toggle">
         <el-radio-button value="simple">📋 简单</el-radio-button>
         <el-radio-button value="complex">📋📋 复杂</el-radio-button>
         <el-radio-button value="timeline">📋📋📋 跟踪</el-radio-button>

@@ -78,7 +78,7 @@ async function onResetDemo() {
   <div class="page dashboard">
     <PnwPageHeader title="仪表盘">
       <template #actions>
-        <el-radio-group v-model="listView" size="small" @change="switchView">
+        <el-radio-group v-model="listView" size="small" @change="switchView" data-tour="dashboard-views">
           <el-radio-button value="mine">👤 我的</el-radio-button>
           <el-radio-button value="all">🌐 所有</el-radio-button>
           <el-radio-button value="archived">📦 归档</el-radio-button>
@@ -86,7 +86,7 @@ async function onResetDemo() {
         <el-button size="small" :loading="seeding" @click="onResetDemo">
           🗂️ 创建演示数据
         </el-button>
-        <el-button type="primary" @click="showCreate = true">
+        <el-button type="primary" @click="showCreate = true" data-tour="dashboard-create">
           <el-icon><Plus /></el-icon> 新建列表
         </el-button>
       </template>
