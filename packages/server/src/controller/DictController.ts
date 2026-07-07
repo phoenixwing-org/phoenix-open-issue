@@ -79,4 +79,11 @@ export class DictController {
     dictService.delete(req.params.id)
     res.status(204).send()
   }
+
+  /** 按标签批量删除字典项 */
+  deleteByTag(req: Request, res: Response): void {
+    const { tag } = req.params
+    const result = dictService.deleteByTag(tag)
+    res.json(result)
+  }
 }

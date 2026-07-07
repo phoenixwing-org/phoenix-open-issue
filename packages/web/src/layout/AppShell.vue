@@ -7,7 +7,7 @@ import PnwChoiceDialogHost from 'phoenix-wing/components/PnwChoiceDialogHost.vue
 import PnwAsyncProgressOverlay from 'phoenix-wing/components/PnwAsyncProgressOverlay.vue'
 import PnwAppModalOverlay from 'phoenix-wing/components/PnwAppModalOverlay.vue'
 import WelcomeView from '@/views/WelcomeView.vue'
-import { ref, computed, provide } from 'vue'
+import { ref, computed, provide, watch } from 'vue'
 import { usePnwDocumentTitle, pnwCreateWorkbench } from 'phoenix-wing'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -76,6 +76,18 @@ provide('openTab', (pageId: string, title: string, contextKey?: string) => {
 })
 
 function appendLog(msg: string) { logText.value += `[${new Date().toLocaleTimeString()}] ${msg}\n` }
+
+// 路由 ↔ 工作台标签同步：无标签时自动打开，有标签时激活对应标签
+watch(() => route.name, (name) => {
+  if (!name || name === 'welcome') return
+  const pageId = name as string
+  const existing = wb.tabs.value.find(t => t.pageId === pageId)
+  if (existing) {
+    wb.activateTab(existing.id)
+  } else {
+    wb.openTab({ pageId, title: pageLabel.value })
+  }
+}, { immediate: true })
 </script>
 
 <template>

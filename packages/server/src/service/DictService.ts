@@ -200,4 +200,41 @@ export class DictService {
     const db = getDb()
     db.run('DELETE FROM dict WHERE id = ?', id)
   }
+
+  /** 按标签批量删除字典项（逐个检查引用，无引用才删） */
+  deleteByTag(tag: string): { deleted: number; skipped: number; details: { id: string; label: string; groupName: string; reason: string }[] } {
+    const db = getDb()
+    const items = db.all("SELECT * FROM dict WHERE tags LIKE ?", [`%${tag}%`]) as DictItem[]
+
+    let deleted = 0
+    let skipped = 0
+    const details: { id: string; label: string; groupName: string; reason: string }[] = []
+
+    for (const item of items) {
+      // 检查该 tag 是否确实在 tags 列表中（避免 LIKE 误匹配，如 "auto" 匹配 "automotive" 外的其他 tag 前缀）
+      const tagList = (item.tags || '').split(',').map(t => t.trim()).filter(Boolean)
+      if (!tagList.includes(tag)) continue
+
+      const usage = this.checkUsage(item.id)
+      if (usage.length > 0) {
+        skipped++
+        details.push({
+          id: item.id,
+          label: item.label,
+          groupName: item.groupName,
+          reason: usage.map(u => `${u.label}: ${u.count} 条`).join('；'),
+        })
+        continue
+      }
+      db.run('DELETE FROM dict WHERE id = ?', item.id)
+      deleted++
+      details.push({
+        id: item.id,
+        label: item.label,
+        groupName: item.groupName,
+        reason: '已删除',
+      })
+    }
+    return { deleted, skipped, details }
+  }
 }

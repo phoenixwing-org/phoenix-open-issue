@@ -54,6 +54,7 @@ export const PAGE_HELP: Record<string, PageHelpContent> = {
       "支持按严重度、优先级、状态、责任人筛选排序。",
       "「+ 新建 Issue」创建新议题；点击行进入详情。",
       "「成员」按钮管理列表成员与权限。",
+      "状态下拉可作废 Issue（当前列表隐藏）；勾选「显示已作废」查看。",
     ],
     tourSteps: [
       step("[data-tour='list-views']", "视图切换", "不同视图适用于点检会议、审计追溯、跟踪讨论等场景。"),
@@ -87,8 +88,10 @@ export const PAGE_HELP: Record<string, PageHelpContent> = {
   settings: {
     title: "设置",
     bullets: [
-      "用户偏好与系统配置（待实现）。",
-      "可通过工具栏右侧或 Ribbon「系统」Tab 进入。",
+      "📚 数据字典：管理系统下拉选项（问题分类、发现阶段、严重度等）。",
+      "可追加汽车/软件行业预设值；按标签批量删除一类值。",
+      "🔑 修改密码 / 💾 数据备份（导出/导入 JSON）。",
+      "🔧 数据库修正：修复 Issue 链接记录。",
     ],
   },
 };

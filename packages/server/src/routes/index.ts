@@ -46,6 +46,7 @@ function wrap(fn: (req: any, res: any) => void) {
  router.post('/dict/presets', authMiddleware, wrap((req, res) => dictCtrl.applyPreset(req, res)))
  router.put('/dict/:id', authMiddleware, wrap((req, res) => dictCtrl.update(req, res)))
  router.delete('/dict/:id', authMiddleware, wrap((req, res) => dictCtrl.delete(req, res)))
+ router.delete('/dict/tag/:tag', authMiddleware, wrap((req, res) => dictCtrl.deleteByTag(req, res)))
 // ---- Auth ----
 router.post('/auth/register', wrap((req, res) => authCtrl.register(req, res)))
 router.post('/auth/login', wrap((req, res) => authCtrl.login(req, res)))

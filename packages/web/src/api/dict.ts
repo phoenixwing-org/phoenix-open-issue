@@ -23,3 +23,7 @@ export function deleteDictItem(id: string) {
 export function applyDictPreset(preset: string) {
   return request.post('/dict/presets', { preset })
 }
+
+export function deleteDictByTag(tag: string) {
+  return request.delete(`/dict/tag/${tag}`)
+}

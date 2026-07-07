@@ -167,9 +167,12 @@ async function loadMembers() {
 }
 
 async function loadAllUsers() {
-  const res = await getAllUsers()
+  const res = await getAllUsers({ includeDisabled: true })
   allUsers.value = res.data
 }
+
+// 表单下拉选择时排除已禁用用户
+const activeUsers = computed(() => allUsers.value.filter((u: any) => !u.disabled))
 
 watch([statusFilter, searchText], () => loadData())
 watch(viewMode, (mode) => {
@@ -401,6 +404,7 @@ const defaultSort = computed(() => {
       @header-dragend="onColResize"
       style="cursor:pointer"
       highlight-current-row
+      :row-class-name="(row: any) => row._voided ? 'row-voided' : ''"
     >
       <el-table-column type="index" label="#" width="45" align="center" fixed="left" />
       <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip fixed="left" sortable="custom" />
@@ -449,7 +453,8 @@ const defaultSort = computed(() => {
       </el-table-column>
       <el-table-column prop="status" label="状态" width="90" align="center" sortable="custom">
         <template #default="{ row }">
-          <el-tag :type="statusTag[row.status]" size="small">
+          <el-tag v-if="row._voided" type="info" size="small">已作废</el-tag>
+          <el-tag v-else :type="statusTag[row.status]" size="small">
             {{ statusLabel[row.status] || row.status }}
           </el-tag>
         </template>
@@ -484,17 +489,27 @@ const defaultSort = computed(() => {
 
       <el-table-column label="操作" fixed="right" align="right">
         <template #default="{ row }">
-          <el-button link type="warning" size="small" @click.stop="onPushIssue(row.id)" title="推送"><el-icon><Promotion /></el-icon></el-button>
-          <el-button link type="danger" size="small" @click.stop="onVoidIssue(row.id, row.title)" title="作废">作废</el-button>
-          <el-dropdown @command="(cmd: string) => cmd === 'delete' ? onDeleteIssue(row.id, row.title) : onStatusChange(row, cmd)" size="small" trigger="click">
+          <el-dropdown @command="(cmd: string) => {
+            if (cmd === 'delete') { ElMessage.warning('删除功能临时禁用'); return }
+            if (cmd === 'void') onVoidIssue(row.id, row.title)
+            else if (cmd === 'unvoid') onUnvoidIssue(row.id)
+            else onStatusChange(row, cmd)
+          }" size="small" trigger="click">
             <el-button link type="primary" size="small" @click.stop>状态 ▾</el-button>
             <template #dropdown>
               <el-dropdown-menu>
-                <el-dropdown-item command="open">待处理</el-dropdown-item>
-                <el-dropdown-item command="in_progress">进行中</el-dropdown-item>
-                <el-dropdown-item command="resolved">已解决</el-dropdown-item>
-                <el-dropdown-item command="closed">已关闭</el-dropdown-item>
-                <el-dropdown-item command="cancelled">已取消</el-dropdown-item>
+                <template v-if="row._voided">
+                  <el-dropdown-item command="unvoid" style="color:#67c23a">🔄 恢复</el-dropdown-item>
+                </template>
+                <template v-else>
+                  <el-dropdown-item command="open">待处理</el-dropdown-item>
+                  <el-dropdown-item command="in_progress">进行中</el-dropdown-item>
+                  <el-dropdown-item command="resolved">已解决</el-dropdown-item>
+                  <el-dropdown-item command="closed">已关闭</el-dropdown-item>
+                  <el-dropdown-item command="cancelled">已取消</el-dropdown-item>
+                  <el-dropdown-item command="delete" style="color:#f56c6c" divided>🗑 删除</el-dropdown-item>
+                  <el-dropdown-item command="void" style="color:#e6a23c" divided>📄 作废</el-dropdown-item>
+                </template>
               </el-dropdown-menu>
             </template>
           </el-dropdown>
@@ -506,11 +521,11 @@ const defaultSort = computed(() => {
       <template #empty><el-empty description="暂无 Issue" /></template>
     </el-table>
 
-    <IssueFormDialog v-if="showCreateIssue" :all-users="allUsers" @confirm="onCreateIssue" @close="showCreateIssue = false" />
+    <IssueFormDialog v-if="showCreateIssue" :all-users="activeUsers" @confirm="onCreateIssue" @close="showCreateIssue = false" />
     <MemberManageDialog
       v-if="showMembers"
       :members="members"
-      :all-users="allUsers"
+      :all-users="activeUsers"
       @add="onAddMember"
       @remove="onRemoveMember"
       @transfer-owner="onTransferOwner"
@@ -669,6 +684,8 @@ const defaultSort = computed(() => {
   .head-actions { flex-wrap: wrap; }
   .filters { flex-wrap: wrap; }
 }
+/* 作废行样式 */
+:deep(.row-voided) { opacity: 0.45; background: #fafafa; }
 </style>
 <style>
 .issue-detail-modal .pnw-modal-panel {

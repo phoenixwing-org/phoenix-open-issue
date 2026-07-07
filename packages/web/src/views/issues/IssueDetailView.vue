@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { onMounted, ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useIssueStore } from '@/stores/issues'
 import { getCheckpoints, createCheckpoint, updateCheckpoint, deleteCheckpoint } from '@/api/checkpoints'
@@ -46,9 +46,12 @@ onMounted(async () => {
   dict.load()
   await issueStore.fetchIssue(issueId)
   await loadCheckpoints()
-  const res = await getAllUsers()
+  const res = await getAllUsers({ includeDisabled: true })
   allUsers.value = res.data
 })
+
+// 表单下拉选择时排除已禁用用户
+const activeUsers = computed(() => allUsers.value.filter((u: any) => !u.disabled))
 
 async function loadCheckpoints() {
   const res = await getCheckpoints(issueId)
@@ -234,13 +237,13 @@ function goBack() {
 
     <CheckpointFormDialog
       v-if="showCpForm"
-      :users="allUsers"
+      :users="activeUsers"
       @confirm="onCreateCp"
       @close="showCpForm = false"
     />
     <IssueFormDialog
       v-if="showEdit"
-      :all-users="allUsers"
+      :all-users="activeUsers"
       :initial="issueStore.currentIssue"
       @confirm="onEditIssue"
       @close="showEdit = false"

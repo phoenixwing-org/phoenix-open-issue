@@ -24,61 +24,61 @@ export class IssueService {
     if (!role) throw new ForbiddenError('无权访问此列表')
 
     const { status, priority, search, sort, page = 1, size = 50, includeVoided } = opts
-    // 查询包含主列表 + 链接列表的 Issue
-    const voidedClause = includeVoided ? '' : ' AND (voided IS NULL OR voided = 0)'
-    const fromClause = `FROM issues WHERE id IN (
-      SELECT id FROM issues WHERE listId = ?
-      UNION
-      SELECT issueId FROM issueListLinks WHERE listId = ?${voidedClause}
-    )`
-    const params: unknown[] = [listId, listId]
+    // JOIN issueListLinks 获取 _voided 标记 + 统一过滤
+    const params: unknown[] = [listId]
     const conditions: string[] = []
 
+    // 默认排除已作废的链接
+    if (!includeVoided) {
+      conditions.push('(il.voided IS NULL OR il.voided = 0)')
+    }
+
     if (status) {
-      conditions.push('status = ?')
+      conditions.push('i.status = ?')
       params.push(status)
     }
     if (priority) {
-      conditions.push('priority = ?')
+      conditions.push('i.priority = ?')
       params.push(priority)
     }
     if (search) {
-      conditions.push('(title LIKE ? OR description LIKE ?)')
+      conditions.push('(i.title LIKE ? OR i.description LIKE ?)')
       params.push(`%${search}%`, `%${search}%`)
     }
 
     const where = conditions.length > 0 ? ' AND ' + conditions.join(' AND ') : ''
-    const total = db.get(`SELECT COUNT(*) as count ${fromClause}${where}`, params) as { count: number }
+    const fromJoin = `FROM issues i JOIN issueListLinks il ON i.id = il.issueId AND il.listId = ?`
+    const total = db.get(`SELECT COUNT(*) as count ${fromJoin}${where}`, params) as { count: number }
 
     // 排序：默认 createdAt DESC，可通过 sort 参数切换字段和方向
-    const SEVERITY_ORDER = "CASE severity WHEN 'fatal' THEN 1 WHEN 'major' THEN 2 WHEN 'minor' THEN 3 WHEN 'trivial' THEN 4 ELSE 5 END"
-    const PRIORITY_ORDER = "CASE priority WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 WHEN 'low' THEN 4 ELSE 5 END"
-    const STATUS_ORDER = "CASE status WHEN 'open' THEN 1 WHEN 'in_progress' THEN 2 WHEN 'resolved' THEN 3 WHEN 'closed' THEN 4 WHEN 'cancelled' THEN 5 ELSE 6 END"
+    const SEVERITY_ORDER = "CASE i.severity WHEN 'fatal' THEN 1 WHEN 'major' THEN 2 WHEN 'minor' THEN 3 WHEN 'trivial' THEN 4 ELSE 5 END"
+    const PRIORITY_ORDER = "CASE i.priority WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 WHEN 'low' THEN 4 ELSE 5 END"
+    const STATUS_ORDER = "CASE i.status WHEN 'open' THEN 1 WHEN 'in_progress' THEN 2 WHEN 'resolved' THEN 3 WHEN 'closed' THEN 4 WHEN 'cancelled' THEN 5 ELSE 6 END"
 
-    let orderBy = 'createdAt DESC, sortOrder ASC'
+    let orderBy = 'i.createdAt DESC, i.sortOrder ASC'
     if (sort) {
       const parts = sort.split(':')
       const field = parts[0]
       const dir = parts[1] || 'desc'
       const d = dir === 'asc' ? 'ASC' : 'DESC'
       switch (field) {
-        case 'createdAt':  orderBy = `createdAt ${d}, sortOrder ASC`; break
-        case 'severity':   orderBy = `${SEVERITY_ORDER} ${d}, createdAt DESC`; break
-        case 'priority':   orderBy = `${PRIORITY_ORDER} ${d}, createdAt DESC`; break
-        case 'status':     orderBy = `${STATUS_ORDER} ${d}, createdAt DESC`; break
-        case 'title':      orderBy = `title ${d}, createdAt DESC`; break
-        case 'issueNo':    orderBy = `issueNo ${d}, createdAt DESC`; break
-        case 'dueDate':    orderBy = `COALESCE(dueDate,'9999') ${d}, createdAt DESC`; break
-        case 'sortOrder':  orderBy = `sortOrder ASC, createdAt DESC`; break
+        case 'createdAt':  orderBy = `i.createdAt ${d}, i.sortOrder ASC`; break
+        case 'severity':   orderBy = `${SEVERITY_ORDER} ${d}, i.createdAt DESC`; break
+        case 'priority':   orderBy = `${PRIORITY_ORDER} ${d}, i.createdAt DESC`; break
+        case 'status':     orderBy = `${STATUS_ORDER} ${d}, i.createdAt DESC`; break
+        case 'title':      orderBy = `i.title ${d}, i.createdAt DESC`; break
+        case 'issueNo':    orderBy = `i.issueNo ${d}, i.createdAt DESC`; break
+        case 'dueDate':    orderBy = `COALESCE(i.dueDate,'9999') ${d}, i.createdAt DESC`; break
+        case 'sortOrder':  orderBy = `i.sortOrder ASC, i.createdAt DESC`; break
       }
     }
 
     const offset = (page - 1) * size
     const allParams = [...params, size, offset]
     const items = db.all(
-      `SELECT * ${fromClause}${where} ORDER BY ${orderBy} LIMIT ? OFFSET ?`,
+      `SELECT i.*, il.voided as _voided ${fromJoin}${where} ORDER BY ${orderBy} LIMIT ? OFFSET ?`,
       allParams,
-    ) as Issue[]
+    ) as (Issue & { _voided: number })[]
 
     return { items, total: total.count }
   }

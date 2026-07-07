@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { getAllDict, createDictItem, updateDictItem, deleteDictItem, applyDictPreset } from '@/api/dict'
+import { getAllDict, createDictItem, updateDictItem, deleteDictItem, applyDictPreset, deleteDictByTag } from '@/api/dict'
 import { ElMessage } from 'element-plus';
 import { pnwPromptChoice, pnwAlert } from 'phoenix-wing'
 import { changePassword } from '@/api/auth'
@@ -97,6 +97,67 @@ async function onDelete(id: string) {
     } else {
       ElMessage.error('删除失败')
     }
+  }
+}
+
+// ═══════════════════ 按标签批量删除 ═══════════════════
+const showDeleteByTag = ref(false)
+const selectedTag = ref('')
+const deletingByTag = ref(false)
+
+const availableTags = (): { value: string; label: string; count: number }[] => {
+  const tagMap: Record<string, { label: string; count: number }> = {}
+  for (const item of items.value) {
+    if (!item.tags) continue
+    const tagList = item.tags.split(',').map(t => t.trim()).filter(Boolean)
+    for (const t of tagList) {
+      if (!tagMap[t]) {
+        tagMap[t] = { label: t === 'automotive' ? '汽车' : t === 'software' ? '软件' : t, count: 0 }
+      }
+      tagMap[t].count++
+    }
+  }
+  return Object.entries(tagMap).map(([value, { label, count }]) => ({ value, label: `${label} (${count} 项)`, count }))
+}
+
+async function onDeleteByTag() {
+  if (!selectedTag.value) {
+    ElMessage.warning('请选择要删除的标签')
+    return
+  }
+  const tagInfo = availableTags().find(t => t.value === selectedTag.value)
+  const r = await pnwPromptChoice({
+    title: '确认删除一类值',
+    message: `将删除所有标签为「${tagInfo?.label || selectedTag.value}」的字典项。\n无引用的项会被删除，有引用的项会跳过。`,
+    choices: [
+      { id: 'delete', label: '删除', variant: 'danger' },
+      { id: 'cancel', label: '取消' },
+    ],
+  })
+  if (r.choiceId !== 'delete') return
+
+  deletingByTag.value = true
+  try {
+    const res = await deleteDictByTag(selectedTag.value)
+    const data = res.data as { deleted: number; skipped: number; details: { id: string; label: string; groupName: string; reason: string }[] }
+    if (data.skipped > 0) {
+      const skippedItems = data.details.filter(d => d.reason !== '已删除').map(d => `「${d.label}」— ${d.reason}`).join('\n')
+      await pnwAlert(
+        '部分删除',
+        `已删除 ${data.deleted} 项，跳过 ${data.skipped} 项（有引用）：\n${skippedItems}`
+      )
+    } else if (data.deleted > 0) {
+      ElMessage.success(`已删除 ${data.deleted} 项`)
+    } else {
+      ElMessage.info('没有可删除的项')
+    }
+    showDeleteByTag.value = false
+    selectedTag.value = ''
+    load()
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.error || '删除失败')
+  } finally {
+    deletingByTag.value = false
   }
 }
 
@@ -217,6 +278,7 @@ async function onRepairLinks() {
           <el-button type="default" size="small" @click="onApplyPreset('automotive')">🚗 汽车默认值</el-button>
           <el-button type="default" size="small" @click="onApplyPreset('software')">💻 软件默认值</el-button>
           <el-button type="primary" size="small" @click="showAdd = true">+ 添加</el-button>
+          <el-button type="danger" size="small" plain @click="showDeleteByTag = true">🗑 删除一类值</el-button>
         </div>
 
         <div v-loading="loading">
@@ -255,6 +317,30 @@ async function onRepairLinks() {
           </div>
           <el-empty v-if="!items.length && !loading" description="暂无字典数据，点击添加" />
         </div>
+
+        <el-dialog v-model="showDeleteByTag" title="删除一类值" width="450px">
+          <p style="margin-bottom:12px;color:#909399;font-size:0.88rem">
+            选择要删除的标签，系统将逐个检查引用关系：<strong>无引用的项会被删除，有引用的项会跳过</strong>。
+          </p>
+          <el-form label-position="top">
+            <el-form-item label="选择标签">
+              <el-select v-model="selectedTag" placeholder="请选择要删除的标签" style="width:100%">
+                <el-option
+                  v-for="t in availableTags()"
+                  :key="t.value"
+                  :label="t.label"
+                  :value="t.value"
+                />
+              </el-select>
+            </el-form-item>
+          </el-form>
+          <template #footer>
+            <el-button @click="showDeleteByTag = false; selectedTag = ''">取消</el-button>
+            <el-button type="danger" :loading="deletingByTag" :disabled="!selectedTag" @click="onDeleteByTag">
+              确认删除
+            </el-button>
+          </template>
+        </el-dialog>
 
         <el-dialog v-model="showAdd" title="添加字典项" width="400px">
           <el-form label-position="top">
