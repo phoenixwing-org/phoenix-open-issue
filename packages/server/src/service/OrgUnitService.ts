@@ -1,5 +1,5 @@
 import { getDb } from '../db/connection.js'
-import { v4 as uuid } from 'uuid'
+import { generateId } from '@open-issue/core'
 import { ConflictError } from '../utils/errors.js'
 import { getPendingOrgUnitId, isPendingOrgUnit, PENDING_ORG_UNIT_NAME } from '../utils/pendingOrgUnit.js'
 import type { OrgUnit, OrgTreeNode } from '@open-issue/core'
@@ -18,7 +18,7 @@ export class OrgUnitService {
 
   create(name: string, unitType: string, parentId: string | null): OrgUnit {
     const db = getDb()
-    const id = uuid()
+    const id = generateId()
     db.run(
       'INSERT INTO orgUnits (id, name, unitType, parentId) VALUES (?, ?, ?, ?)',
       [id, name, unitType, parentId],

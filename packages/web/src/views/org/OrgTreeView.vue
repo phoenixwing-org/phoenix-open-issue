@@ -7,7 +7,7 @@ const dict = useDictStore()
 import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
 import PageHelpButton from "@/components/PageHelpButton.vue"
 import { getOrgUnitUsers, createOrgUnit, deleteOrgUnit, updateOrgUnit } from '@/api/orgUnits'
-import { approveUser, updateUserOrg, updateUser, getAllUsers, getPendingUsers } from '@/api/auth'
+import { approveUser, updateUserOrg, updateUser, getAllUsers, getPendingUsers, disableUser, enableUser, adminResetPassword } from '@/api/auth'
 import { ElMessage } from 'element-plus'
 import { pnwPromptChoice } from 'phoenix-wing'
 
@@ -57,7 +57,7 @@ onMounted(async () => {
 })
 
 async function loadAllUsers() {
-  const [approvedRes, pendingRes] = await Promise.all([getAllUsers(), getPendingUsers()])
+  const [approvedRes, pendingRes] = await Promise.all([getAllUsers({ includeDisabled: 'true' }), getPendingUsers()])
   unitUsers.value = [...pendingRes.data, ...approvedRes.data]
 }
 
@@ -91,6 +91,37 @@ async function onApprove(userId: string, approved: boolean) {
   await reloadUsers()
 }
 
+async function onDisableUser(userId: string, name: string) {
+  const r = await pnwPromptChoice({
+    title: '确认禁用',
+    message: `确定禁用用户「${name}」？禁用后无法登录且不会出现在用户列表中。`,
+    choices: [
+      { id: 'confirm', label: '禁用', variant: 'danger' },
+      { id: 'cancel', label: '取消' },
+    ],
+  })
+  if (r.choiceId !== 'confirm') return
+  try {
+    await disableUser(userId)
+    ElMessage.success('已禁用')
+    await reloadUsers()
+  } catch (e: any) {
+    console.error('禁用失败', e)
+    ElMessage.error(e?.response?.data?.message || '禁用失败')
+  }
+}
+
+async function onEnableUser(userId: string) {
+  try {
+    await enableUser(userId)
+    ElMessage.success('已启用')
+    await reloadUsers()
+  } catch (e: any) {
+    console.error('启用失败', e)
+    ElMessage.error(e?.response?.data?.message || '启用失败')
+  }
+}
+
 async function onMoveUser(userId: string, newOrgId: string | null) {
   await updateUserOrg(userId, newOrgId)
   ElMessage.success('已更新组织')
@@ -102,12 +133,32 @@ const editUser = ref<any>(null)
 const editDisplayName = ref('')
 const editEmail = ref('')
 const editOrgId = ref<string | null>(null)
+const resetPasswordValue = ref('')
+const resetPasswordConfirm = ref('')
+
+async function onResetPassword() {
+  if (!editUser.value) return
+  if (resetPasswordValue.value !== resetPasswordConfirm.value) {
+    ElMessage.error('两次密码输入不一致')
+    return
+  }
+  if (resetPasswordValue.value.length < 6) {
+    ElMessage.error('密码长度不能少于6位')
+    return
+  }
+  await adminResetPassword(editUser.value.id, resetPasswordValue.value)
+  ElMessage.success('密码已重置')
+  resetPasswordValue.value = ''
+  resetPasswordConfirm.value = ''
+}
 
 function onEditUser(u: any) {
   editUser.value = u
   editDisplayName.value = u.displayName || ''
   editEmail.value = u.email || ''
   editOrgId.value = u.orgUnitId
+  resetPasswordValue.value = ''
+  resetPasswordConfirm.value = ''
   showEditUser.value = true
 }
 
@@ -259,9 +310,10 @@ function memberSectionTitle() {
             <el-table-column prop="email" label="邮箱" min-width="160" show-overflow-tooltip>
               <template #default="{ row }">{{ row.email || '—' }}</template>
             </el-table-column>
-            <el-table-column label="状态" width="90" align="center">
+            <el-table-column label="状态" width="100" align="center">
               <template #default="{ row }">
-                <el-tag v-if="row.approved" type="success" size="small">已批准</el-tag>
+                <el-tag v-if="row.disabled" type="danger" size="small">已禁用</el-tag>
+                <el-tag v-else-if="row.approved" type="success" size="small">已批准</el-tag>
                 <el-tag v-else type="warning" size="small">待批准</el-tag>
               </template>
             </el-table-column>
@@ -289,12 +341,16 @@ function memberSectionTitle() {
                 <span v-else class="text-muted">—</span>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="160" fixed="right" align="center">
+            <el-table-column label="操作" width="200" fixed="right" align="center">
               <template #default="{ row }">
                 <el-button link type="primary" size="small" @click="onEditUser(row)">编辑</el-button>
                 <template v-if="!row.approved">
                   <el-button link type="success" size="small" @click="onApprove(row.id, true)">批准</el-button>
                   <el-button link type="danger" size="small" @click="onApprove(row.id, false)">拒绝</el-button>
+                </template>
+                <template v-else>
+                  <el-button v-if="!row.disabled" link type="danger" size="small" @click="onDisableUser(row.id, row.displayName || row.username)">禁用</el-button>
+                  <el-button v-else link type="success" size="small" @click="onEnableUser(row.id)">启用</el-button>
                 </template>
               </template>
             </el-table-column>
@@ -343,6 +399,21 @@ function memberSectionTitle() {
             <el-option v-for="org in flattenUnits(store.tree)" :key="org.id" :label="'　'.repeat(org._depth) + org.name" :value="org.id" />
           </el-select>
         </el-form-item>
+        <el-divider />
+        <h4>密码重置（管理员）</h4>
+        <p style="color:#909399;font-size:12px;margin:0 0 8px">至少 6 位字符，留空则不修改</p>
+        <el-form-item label="新密码" :error="resetPasswordValue && resetPasswordValue.length < 6 ? '密码长度不能少于6位' : ''">
+          <el-input v-model="resetPasswordValue" type="password" show-password placeholder="输入新密码" autocomplete="new-password" />
+        </el-form-item>
+        <el-form-item v-if="resetPasswordValue" label="确认新密码" :error="resetPasswordConfirm && resetPasswordValue !== resetPasswordConfirm ? '两次密码输入不一致' : ''">
+          <el-input v-model="resetPasswordConfirm" type="password" show-password autocomplete="new-password" />
+        </el-form-item>
+        <el-button
+          v-if="resetPasswordValue"
+          type="warning" size="small"
+          :disabled="resetPasswordValue !== resetPasswordConfirm || resetPasswordValue.length < 6"
+          @click="onResetPassword"
+        >重置密码</el-button>
       </el-form>
       <template #footer>
         <el-button @click="showEditUser = false">取消</el-button>

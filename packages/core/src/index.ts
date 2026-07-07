@@ -19,3 +19,6 @@ export {
   isOverdue,
   calculateNextCheckpoint,
 } from './algorithms/index.js'
+
+// 工具
+export { generateId } from './utils/id.js'

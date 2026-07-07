@@ -12,8 +12,8 @@ export function getMe() {
   return request.get('/auth/me')
 }
 
-export function getAllUsers() {
-  return request.get('/users')
+export function getAllUsers(params?: Record<string, any>) {
+  return request.get('/users', { params })
 }
 
 export function getPendingUsers() {
@@ -30,4 +30,22 @@ export function updateUserOrg(userId: string, orgUnitId: string | null) {
 
 export function updateUser(userId: string, data: { displayName?: string; email?: string; orgUnitId?: string | null }) {
   return request.patch(`/users/${userId}`, data)
+}
+
+// ── 用户禁用 ──
+export function disableUser(userId: string) {
+  return request.patch(`/users/${userId}/disable`)
+}
+
+export function enableUser(userId: string) {
+  return request.patch(`/users/${userId}/enable`)
+}
+
+// ── 密码 ──
+export function changePassword(oldPassword: string, newPassword: string) {
+  return request.patch('/auth/change-password', { oldPassword, newPassword })
+}
+
+export function adminResetPassword(userId: string, newPassword: string) {
+  return request.patch(`/users/${userId}/reset-password`, { newPassword })
 }

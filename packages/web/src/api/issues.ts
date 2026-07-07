@@ -27,3 +27,12 @@ export function deleteIssue(id: string) {
 export function reorderIssues(listId: string, issueIds: string[]) {
   return request.put(`/lists/${listId}/issues/reorder`, { issueIds })
 }
+
+// ── Issue 作废（链接级） ──
+export function voidIssue(listId: string, issueId: string) {
+  return request.patch(`/lists/${listId}/issues/${issueId}/void`)
+}
+
+export function unvoidIssue(listId: string, issueId: string) {
+  return request.patch(`/lists/${listId}/issues/${issueId}/unvoid`)
+}

@@ -61,4 +61,20 @@ export class IssueListController {
     const lists = listService.getArchivedLists(req.user!.userId)
     res.json(lists)
   }
+
+  // ── Feature 3: Owner 转移 ──
+  transferOwner(req: Request, res: Response): void {
+    const list = listService.transferOwner(req.params.id, req.body.userId, req.user!.userId)
+    res.json(list)
+  }
+
+  updateMemberRole(req: Request, res: Response): void {
+    const member = listService.updateMemberRole(
+      req.params.id,
+      req.params.userId,
+      req.body.role,
+      req.user!.userId,
+    )
+    res.json(member)
+  }
 }

@@ -1,5 +1,5 @@
 import { getDb } from '../db/connection.js'
-import { v4 as uuid } from 'uuid'
+import { generateId } from '@open-issue/core'
 import type { DictItem } from '@open-issue/core'
 
 // ── 预设定义 ──
@@ -108,7 +108,7 @@ export class DictService {
 
   create(groupName: string, value: string, label: string, tags?: string): DictItem {
     const db = getDb()
-    const id = uuid()
+    const id = generateId()
     const maxSort = db.get('SELECT MAX(sortOrder) as m FROM dict WHERE groupName = ?', groupName) as { m: number | null }
     const sortOrder = (maxSort?.m ?? -1) + 1
     db.run('INSERT INTO dict (id, groupName, value, label, sortOrder, tags) VALUES (?, ?, ?, ?, ?, ?)',
@@ -151,7 +151,7 @@ export class DictService {
         }
         sortCache[item.groupName]++
         db.run('INSERT INTO dict (id, groupName, value, label, sortOrder, tags) VALUES (?, ?, ?, ?, ?, ?)',
-          [uuid(), item.groupName, item.value, item.label, sortCache[item.groupName], tag])
+          [generateId(), item.groupName, item.value, item.label, sortCache[item.groupName], tag])
         added++
       }
       db.exec('COMMIT')

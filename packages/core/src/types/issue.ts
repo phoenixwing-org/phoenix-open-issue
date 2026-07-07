@@ -113,3 +113,15 @@ export interface UpdateStatusInput {
 export interface ReorderInput {
   issueIds: string[]
 }
+
+// ── Issue-List 连接（链接而非复制） ──
+export interface IssueListLink {
+  id: string
+  issueId: string
+  listId: string
+  voided: number
+  voidedAt: string | null
+  voidedBy: string | null
+  linkedAt: string
+  linkedBy: string
+}

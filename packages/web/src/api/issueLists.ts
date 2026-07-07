@@ -43,3 +43,12 @@ export function addMember(listId: string, userId: string, role: string = 'editor
 export function removeMember(listId: string, userId: string) {
   return request.delete(`/lists/${listId}/members/${userId}`)
 }
+
+// ── Owner 转移 ──
+export function transferOwner(listId: string, userId: string) {
+  return request.patch(`/lists/${listId}/transfer-owner`, { userId })
+}
+
+export function updateMemberRole(listId: string, userId: string, role: string) {
+  return request.patch(`/lists/${listId}/members/${userId}/role`, { role })
+}

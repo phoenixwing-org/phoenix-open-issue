@@ -1,8 +1,7 @@
 import { getDb } from '../db/connection.js'
-import { v4 as uuid } from 'uuid'
 import { NotFoundError, ForbiddenError } from '../utils/errors.js'
-import { checkListAccess, canManageList, canDeleteListAsUser } from '@open-issue/core'
-import type { IssueList, IssueListMember, MemberWithUser, CreateListInput, UpdateListInput } from '@open-issue/core'
+import { generateId, checkListAccess, canManageList, canDeleteListAsUser } from '@open-issue/core'
+import type { IssueList, IssueListMember, MemberWithUser, CreateListInput, UpdateListInput, MemberRole } from '@open-issue/core'
 
 const NOT_DELETED = 'l.isDeleted = 0'
 
@@ -12,7 +11,11 @@ export class IssueListService {
     return db.all(`
       SELECT DISTINCT l.*,
         (SELECT COUNT(*) FROM issueListMembers WHERE listId = l.id) as memberCount,
-        (SELECT COUNT(*) FROM issues WHERE listId = l.id) as issueCount,
+        (SELECT COUNT(*) FROM (
+          SELECT id FROM issues WHERE listId = l.id
+          UNION
+          SELECT issueId FROM issueListLinks WHERE listId = l.id AND voided = 0
+        )) as issueCount,
         u.displayName as ownerName,
         (SELECT role FROM issueListMembers WHERE listId = l.id AND userId = ?) as myRole
       FROM issueLists l
@@ -28,7 +31,11 @@ export class IssueListService {
     return db.all(`
       SELECT l.*,
         (SELECT COUNT(*) FROM issueListMembers WHERE listId = l.id) as memberCount,
-        (SELECT COUNT(*) FROM issues WHERE listId = l.id) as issueCount,
+        (SELECT COUNT(*) FROM (
+          SELECT id FROM issues WHERE listId = l.id
+          UNION
+          SELECT issueId FROM issueListLinks WHERE listId = l.id AND voided = 0
+        )) as issueCount,
         u.displayName as ownerName,
         (SELECT role FROM issueListMembers WHERE listId = l.id AND userId = ?) as myRole
       FROM issueLists l LEFT JOIN users u ON u.id = l.ownerId
@@ -41,7 +48,11 @@ export class IssueListService {
     return db.all(`
       SELECT l.*,
         (SELECT COUNT(*) FROM issueListMembers WHERE listId = l.id) as memberCount,
-        (SELECT COUNT(*) FROM issues WHERE listId = l.id) as issueCount,
+        (SELECT COUNT(*) FROM (
+          SELECT id FROM issues WHERE listId = l.id
+          UNION
+          SELECT issueId FROM issueListLinks WHERE listId = l.id AND voided = 0
+        )) as issueCount,
         u.displayName as ownerName,
         (SELECT role FROM issueListMembers WHERE listId = l.id AND userId = ?) as myRole
       FROM issueLists l LEFT JOIN users u ON u.id = l.ownerId
@@ -65,8 +76,8 @@ export class IssueListService {
 
   create(input: CreateListInput, ownerId: string): IssueList {
     const db = getDb()
-    const listId = uuid()
-    const memberId = uuid()
+    const listId = generateId()
+    const memberId = generateId()
     const now = new Date().toISOString()
 
     db.run(
@@ -146,7 +157,7 @@ export class IssueListService {
     const existing = members.find(m => m.userId === userId)
     if (existing) return existing
 
-    const id = uuid()
+    const id = generateId()
     db.run(
       'INSERT INTO issueListMembers (id, listId, userId, role) VALUES (?, ?, ?, ?)',
       [id, listId, userId, role],
@@ -159,10 +170,77 @@ export class IssueListService {
     const members = this.getMembers(listId)
     const actorRole = checkListAccess(actorId, members)
     if (!canManageList(actorRole)) throw new ForbiddenError()
-    // 不能移除 owner
+
     const target = members.find(m => m.userId === targetUserId)
-    if (target?.role === 'owner') throw new ForbiddenError('不能移除列表所有者')
+    if (!target) throw new NotFoundError('成员')
+
+    if (target.role === 'owner') {
+      // 允许移除 owner，但至少保留一名
+      const ownerCount = members.filter(m => m.role === 'owner').length
+      if (ownerCount <= 1) throw new ForbiddenError('至少需要保留一名所有者')
+      // 不允许移除自己（用转让功能代替）
+      if (targetUserId === actorId) throw new ForbiddenError('不能移除自己，请使用转让功能')
+    }
 
     db.run('DELETE FROM issueListMembers WHERE listId = ? AND userId = ?', [listId, targetUserId])
+  }
+
+  // ── Feature 3: Owner 转移 ──
+  transferOwner(listId: string, newOwnerId: string, actorId: string): IssueList {
+    const db = getDb()
+    const list = this.getById(listId)
+    if (!list) throw new NotFoundError('列表')
+
+    const members = this.getMembers(listId)
+    const actorRole = checkListAccess(actorId, members)
+    if (actorRole !== 'owner') throw new ForbiddenError('只有所有者可以转让列表')
+
+    const newOwner = members.find(m => m.userId === newOwnerId)
+    if (!newOwner) throw new NotFoundError('目标用户不是列表成员')
+
+    const now = new Date().toISOString()
+
+    // 更新 issueLists.ownerId
+    db.run('UPDATE issueLists SET ownerId = ?, updatedAt = ? WHERE id = ?',
+      [newOwnerId, now, listId])
+
+    // actor 降级为 admin（如果转让给自己则保持不变）
+    if (actorId !== newOwnerId) {
+      db.run('UPDATE issueListMembers SET role = ? WHERE listId = ? AND userId = ?',
+        ['admin', listId, actorId])
+    }
+
+    // newOwner 升级为 owner
+    db.run('UPDATE issueListMembers SET role = ? WHERE listId = ? AND userId = ?',
+      ['owner', listId, newOwnerId])
+
+    console.log(`🔁 [TRANSFER] list "${list.name}" owner → "${newOwnerId}"`)
+    return db.get('SELECT * FROM issueLists WHERE id = ?', listId) as IssueList
+  }
+
+  updateMemberRole(listId: string, targetUserId: string, newRole: MemberRole, actorId: string): IssueListMember {
+    const db = getDb()
+    const members = this.getMembers(listId)
+    const actorRole = checkListAccess(actorId, members)
+    if (!canManageList(actorRole)) throw new ForbiddenError()
+
+    const target = members.find(m => m.userId === targetUserId)
+    if (!target) throw new NotFoundError('成员')
+
+    // 只有 owner 可以授予/降级 owner 角色
+    if ((newRole === 'owner' || target.role === 'owner') && actorRole !== 'owner') {
+      throw new ForbiddenError('只有所有者可以管理所有者角色')
+    }
+
+    // 降级最后一个 owner 时阻止
+    if (target.role === 'owner' && newRole !== 'owner') {
+      const ownerCount = members.filter(m => m.role === 'owner').length
+      if (ownerCount <= 1) throw new ForbiddenError('至少需要保留一名所有者')
+    }
+
+    db.run('UPDATE issueListMembers SET role = ? WHERE listId = ? AND userId = ?',
+      [newRole, listId, targetUserId])
+    return db.get('SELECT * FROM issueListMembers WHERE listId = ? AND userId = ?',
+      [listId, targetUserId]) as IssueListMember
   }
 }

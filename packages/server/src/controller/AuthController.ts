@@ -20,8 +20,9 @@ export class AuthController {
     res.json(user)
   }
 
-  getAllUsers(_req: Request, res: Response): void {
-    const users = authService.getAllUsers()
+  getAllUsers(req: Request, res: Response): void {
+    const includeDisabled = req.query.includeDisabled === 'true'
+    const users = authService.getAllUsers(includeDisabled)
     res.json(users)
   }
 
@@ -43,5 +44,29 @@ export class AuthController {
   updateUser(req: Request, res: Response): void {
     const user = authService.updateUser(req.params.userId, req.body)
     res.json(user)
+  }
+
+  // ── Feature 1: 用户禁用 ──
+  disableUser(req: Request, res: Response): void {
+    const user = authService.disableUser(req.params.userId, req.user!.userId)
+    res.json(user)
+  }
+
+  enableUser(req: Request, res: Response): void {
+    const user = authService.enableUser(req.params.userId)
+    res.json(user)
+  }
+
+  // ── Feature 4: 密码重置 ──
+  changePassword(req: Request, res: Response): void {
+    const { oldPassword, newPassword } = req.body
+    authService.changePassword(req.user!.userId, oldPassword, newPassword)
+    res.json({ message: '密码已修改' })
+  }
+
+  adminResetPassword(req: Request, res: Response): void {
+    const { newPassword } = req.body
+    authService.adminResetPassword(req.params.userId, newPassword, req.user!.userId)
+    res.json({ message: '密码已重置' })
   }
 }

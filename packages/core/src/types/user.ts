@@ -6,6 +6,7 @@ export interface User {
   displayName: string | null
   orgUnitId: string | null
   approved: number
+  disabled?: number
   createdAt: string
   updatedAt: string
 }
@@ -34,4 +35,13 @@ export interface RegisterResult {
   token: string | null
   user: UserPublic
   pending: boolean
+}
+
+export interface ChangePasswordInput {
+  oldPassword: string
+  newPassword: string
+}
+
+export interface AdminResetPasswordInput {
+  newPassword: string
 }

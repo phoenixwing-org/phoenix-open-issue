@@ -71,5 +71,17 @@ export const useIssueStore = defineStore('issues', () => {
     await api.reorderIssues(listId, issueIds)
   }
 
-  return { issues, currentIssue, total, loading, fetchIssues, fetchIssue, createIssue, updateIssue, updateStatus, deleteIssue, reorder }
+  async function voidIssue(listId: string, issueId: string) {
+    await api.voidIssue(listId, issueId)
+    ElMessage.success('已作废')
+    return true
+  }
+
+  async function unvoidIssue(listId: string, issueId: string) {
+    await api.unvoidIssue(listId, issueId)
+    ElMessage.success('已恢复')
+    return true
+  }
+
+  return { issues, currentIssue, total, loading, fetchIssues, fetchIssue, createIssue, updateIssue, updateStatus, deleteIssue, reorder, voidIssue, unvoidIssue }
 })

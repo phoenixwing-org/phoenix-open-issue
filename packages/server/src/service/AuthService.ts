@@ -1,8 +1,8 @@
 import { getDb } from '../db/connection.js'
-import { v4 as uuid } from 'uuid'
+import { generateId } from '@open-issue/core'
 import bcrypt from 'bcryptjs'
 import { signToken } from '../utils/jwt.js'
-import { ConflictError, UnauthorizedError } from '../utils/errors.js'
+import { ConflictError, UnauthorizedError, ForbiddenError, BadRequestError } from '../utils/errors.js'
 import { resolveOrgUnitId } from '../utils/pendingOrgUnit.js'
 import type { User, UserPublic, CreateUserInput, LoginResult, RegisterResult } from '@open-issue/core'
 
@@ -19,7 +19,7 @@ export class AuthService {
       throw new ConflictError('用户名已存在')
     }
 
-    const id = uuid()
+    const id = generateId()
     const passwordHash = bcrypt.hashSync(input.password, 10)
     const now = new Date().toISOString()
 
@@ -54,6 +54,10 @@ export class AuthService {
       throw new UnauthorizedError('账号尚未通过管理员批准')
     }
 
+    if (user.disabled) {
+      throw new UnauthorizedError('账号已被禁用，请联系管理员')
+    }
+
     const token = signToken({ userId: user.id, username: user.username })
     return { token, user: toPublic(user) }
   }
@@ -76,9 +80,12 @@ export class AuthService {
     return toPublic(user)
   }
 
-  getAllUsers(): UserPublic[] {
+  getAllUsers(includeDisabled = false): UserPublic[] {
     const db = getDb()
-    const users = db.all('SELECT * FROM users WHERE approved = 1 ORDER BY username') as User[]
+    const sql = includeDisabled
+      ? 'SELECT * FROM users WHERE approved = 1 ORDER BY username'
+      : 'SELECT * FROM users WHERE approved = 1 AND (disabled IS NULL OR disabled = 0) ORDER BY username'
+    const users = db.all(sql) as User[]
     return users.map(toPublic)
   }
 
@@ -118,5 +125,61 @@ export class AuthService {
       [data.displayName ?? null, data.email ?? null, orgUnitId, new Date().toISOString(), userId])
     console.log(`👤 [UPDATE] user "${user.username}"`)
     return toPublic(db.get('SELECT * FROM users WHERE id = ?', userId) as User)
+  }
+
+  // ── Feature 1: 用户禁用 ──
+  disableUser(userId: string, actorId: string): UserPublic {
+    const db = getDb()
+    const user = db.get('SELECT * FROM users WHERE id = ?', userId) as User | undefined
+    if (!user) throw new UnauthorizedError('用户不存在')
+    if (userId === actorId) throw new ForbiddenError('不能禁用自己')
+    db.run('UPDATE users SET disabled = 1, updatedAt = ? WHERE id = ?',
+      [new Date().toISOString(), userId])
+    console.log(`🚫 [DISABLE] user "${user.username}" disabled by "${actorId}"`)
+    return toPublic(db.get('SELECT * FROM users WHERE id = ?', userId) as User)
+  }
+
+  enableUser(userId: string): UserPublic {
+    const db = getDb()
+    const user = db.get('SELECT * FROM users WHERE id = ?', userId) as User | undefined
+    if (!user) throw new UnauthorizedError('用户不存在')
+    db.run('UPDATE users SET disabled = 0, updatedAt = ? WHERE id = ?',
+      [new Date().toISOString(), userId])
+    console.log(`✅ [ENABLE] user "${user.username}" re-enabled`)
+    return toPublic(db.get('SELECT * FROM users WHERE id = ?', userId) as User)
+  }
+
+  // ── Feature 4: 密码重置 ──
+  changePassword(userId: string, oldPassword: string, newPassword: string): void {
+    const db = getDb()
+    const user = db.get('SELECT * FROM users WHERE id = ?', userId) as User | undefined
+    if (!user) throw new UnauthorizedError('用户不存在')
+
+    const valid = bcrypt.compareSync(oldPassword, user.passwordHash)
+    if (!valid) throw new UnauthorizedError('当前密码错误')
+
+    if (newPassword.length < 6) {
+      throw new BadRequestError('新密码长度不能少于6位')
+    }
+
+    const passwordHash = bcrypt.hashSync(newPassword, 10)
+    db.run('UPDATE users SET passwordHash = ?, updatedAt = ? WHERE id = ?',
+      [passwordHash, new Date().toISOString(), userId])
+    console.log(`🔑 [CHANGE_PW] user "${user.username}" changed password`)
+  }
+
+  adminResetPassword(userId: string, newPassword: string, actorId: string): void {
+    const db = getDb()
+    const user = db.get('SELECT * FROM users WHERE id = ?', userId) as User | undefined
+    if (!user) throw new UnauthorizedError('用户不存在')
+
+    if (newPassword.length < 6) {
+      throw new BadRequestError('新密码长度不能少于6位')
+    }
+
+    const passwordHash = bcrypt.hashSync(newPassword, 10)
+    db.run('UPDATE users SET passwordHash = ?, updatedAt = ? WHERE id = ?',
+      [passwordHash, new Date().toISOString(), userId])
+    console.log(`🔑 [ADMIN_RESET_PW] user "${user.username}" password reset by "${actorId}"`)
   }
 }

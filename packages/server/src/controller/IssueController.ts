@@ -6,7 +6,7 @@ const issueService = new IssueService()
 
 export class IssueController {
   getIssues(req: Request, res: Response): void {
-    const { status, priority, search, sort, page, size } = req.query
+    const { status, priority, search, sort, page, size, includeVoided } = req.query
     const result = issueService.getIssues(req.params.listId, req.user!.userId, {
       status: status as string,
       priority: priority as string,
@@ -14,6 +14,7 @@ export class IssueController {
       sort: sort as string,
       page: page ? parseInt(page as string) : undefined,
       size: size ? parseInt(size as string) : undefined,
+      includeVoided: includeVoided === 'true',
     })
     res.json(result)
   }
@@ -47,5 +48,16 @@ export class IssueController {
   reorder(req: Request, res: Response): void {
     issueService.reorder(req.params.listId, req.body, req.user!.userId)
     res.status(204).send()
+  }
+
+  // ── Feature 2: 作废/恢复链接 ──
+  voidLink(req: Request, res: Response): void {
+    issueService.voidLink(req.params.issueId, req.params.listId, req.user!.userId)
+    res.json({ message: '已作废' })
+  }
+
+  unvoidLink(req: Request, res: Response): void {
+    issueService.unvoidLink(req.params.issueId, req.params.listId, req.user!.userId)
+    res.json({ message: '已恢复' })
   }
 }

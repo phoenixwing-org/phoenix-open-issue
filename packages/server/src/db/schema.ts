@@ -102,6 +102,17 @@ export function runSchema(db: PnwDbAdapter): void {
       note TEXT DEFAULT ''
     );
 
+    CREATE TABLE IF NOT EXISTS issueListLinks (
+      id TEXT PRIMARY KEY,
+      issueId TEXT NOT NULL,
+      listId TEXT NOT NULL,
+      voided INTEGER NOT NULL DEFAULT 0,
+      voidedAt TEXT,
+      voidedBy TEXT,
+      linkedAt TEXT DEFAULT (datetime('now')),
+      linkedBy TEXT NOT NULL
+    );
+
     CREATE TABLE IF NOT EXISTS dict (
       id TEXT PRIMARY KEY,
       groupName TEXT NOT NULL,
@@ -117,6 +128,7 @@ export function runSchema(db: PnwDbAdapter): void {
   // ---- 迁移：旧库列增量添加（须在 CREATE TABLE 之后） ----
   const migrations = [
     `ALTER TABLE users ADD COLUMN approved INTEGER NOT NULL DEFAULT 1`,
+    `ALTER TABLE users ADD COLUMN disabled INTEGER NOT NULL DEFAULT 0`,
     `ALTER TABLE issueLists ADD COLUMN archived INTEGER NOT NULL DEFAULT 0`,
     `ALTER TABLE issueLists ADD COLUMN isDeleted INTEGER NOT NULL DEFAULT 0`,
     `ALTER TABLE issueLists ADD COLUMN deletedAt TEXT`,

@@ -1,7 +1,6 @@
 import { getDb } from '../db/connection.js'
-import { v4 as uuid } from 'uuid'
 import { NotFoundError, ForbiddenError } from '../utils/errors.js'
-import { validatePush } from '@open-issue/core'
+import { generateId, validatePush } from '@open-issue/core'
 import type { PushRecord, PushRequest, PushValidationResult } from '@open-issue/core'
 import { IssueListService } from './IssueListService.js'
 
@@ -39,7 +38,7 @@ export class PushService {
           [issueId, req.fromListId]) as { id: string } | undefined
         if (!issue) continue
 
-        const recordId = uuid()
+        const recordId = generateId()
         const now = new Date().toISOString()
         db.run(
           `INSERT INTO pushRecords (id, fromListId, toListId, issueId, pushedBy, note)
@@ -132,48 +131,22 @@ export class PushService {
 
     console.log(`📋 [PUSH] ${action === 'accepted' ? '✅ 接受' : '❌ 拒绝'} push ${recordId} by ${userId}${rejectReason ? ` (理由: ${rejectReason})` : ''}`)
 
-    // 接受后复制 Issue 到目标列表
+    // 接受后创建 issueListLinks 链接（而非复制 Issue）
     if (action === 'accepted') {
       const issue = db.get('SELECT * FROM issues WHERE id = ?', record.issueId) as any
-      if (issue && issue.listId !== record.toListId) {
-        const newId = uuid()
-        const maxSort = db.get('SELECT MAX(sortOrder) as m FROM issues WHERE listId = ?', record.toListId) as { m: number | null }
-        const sortOrder = (maxSort?.m ?? 0) + 1
-
-        // 生成目标列表的编号
-        const year = new Date().getFullYear()
-        const count = db.get(
-          "SELECT COUNT(*) as c FROM issues WHERE listId = ? AND issueNo LIKE ?",
-          [record.toListId, `ISS-${year}-%`],
-        ) as { c: number }
-        const issueNo = `ISS-${year}-${String((count?.c ?? 0) + 1).padStart(4, '0')}`
-
-        db.run(
-          `INSERT INTO issues (id, listId, issueNo, title, description, status, priority, severity, category, detectionPhase,
-            reporterId, assigneeId, dueDate, containment, rootCause, correctiveAction,
-            sortOrder, createdBy, createdAt, updatedAt)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          [
-            newId, record.toListId, issueNo, issue.title, issue.description,
-            issue.status, issue.priority, issue.severity, issue.category, issue.detectionPhase,
-            issue.reporterId, issue.assigneeId, issue.dueDate,
-            issue.containment, issue.rootCause, issue.correctiveAction,
-            sortOrder, issue.createdBy, now, now,
-          ],
+      if (issue) {
+        // 检查是否已有链接
+        const existing = db.get(
+          'SELECT id FROM issueListLinks WHERE issueId = ? AND listId = ?',
+          [record.issueId, record.toListId],
         )
-
-        console.log(`   📋 已复制 Issue "${issue.title}" → 目标列表 (newId=${newId}, issueNo=${issueNo})`)
-
-        // 复制点检
-        const checkpoints = db.all('SELECT * FROM checkpoints WHERE issueId = ?', issue.id) as any[]
-        for (const cp of checkpoints) {
+        if (!existing) {
           db.run(
-            `INSERT INTO checkpoints (id, issueId, checkpointDate, description, status, responsibleUserId, sortOrder, createdAt, updatedAt)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            [uuid(), newId, cp.checkpointDate, cp.description, cp.status, cp.responsibleUserId, cp.sortOrder, now, now],
+            'INSERT INTO issueListLinks (id, issueId, listId, linkedBy) VALUES (?, ?, ?, ?)',
+            [generateId(), record.issueId, record.toListId, userId],
           )
+          console.log(`   🔗 已链接 Issue "${issue.title}" → 目标列表 (toListId=${record.toListId})`)
         }
-        console.log(`   📅 已复制 ${checkpoints.length} 条点检`)
       }
     }
 

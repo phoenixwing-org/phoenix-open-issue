@@ -1,5 +1,5 @@
 import type { PnwDbAdapter } from 'phoenix-wing/db/pnwDbAdapter'
-import { v4 as uuid } from 'uuid'
+import { generateId } from '@open-issue/core'
 
 export const PENDING_ORG_UNIT_NAME = '待定组'
 
@@ -12,7 +12,7 @@ export function getPendingOrgUnitId(db: PnwDbAdapter): string | null {
 export function ensurePendingOrgUnit(db: PnwDbAdapter): string {
   let id = getPendingOrgUnitId(db)
   if (!id) {
-    id = uuid()
+    id = generateId()
     db.run('INSERT INTO orgUnits (id, name, unitType, parentId) VALUES (?, ?, ?, ?)', [id, PENDING_ORG_UNIT_NAME, 'group', null])
     console.log(`🏢 [ORG] created "${PENDING_ORG_UNIT_NAME}" (${id})`)
   } else {

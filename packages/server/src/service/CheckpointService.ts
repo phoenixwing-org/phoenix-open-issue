@@ -1,7 +1,6 @@
 import { getDb } from '../db/connection.js'
-import { v4 as uuid } from 'uuid'
 import { NotFoundError, ForbiddenError } from '../utils/errors.js'
-import { checkListAccess, canModifyIssue } from '@open-issue/core'
+import { generateId, checkListAccess, canModifyIssue } from '@open-issue/core'
 import type { Checkpoint, CreateCheckpointInput, UpdateCheckpointInput, MemberRole } from '@open-issue/core'
 
 export class CheckpointService {
@@ -46,7 +45,7 @@ export class CheckpointService {
     const role = checkListAccess(userId, members)
     if (!canModifyIssue(role)) throw new ForbiddenError()
 
-    const id = uuid()
+    const id = generateId()
     const now = new Date().toISOString()
 
     const maxSort = db.get('SELECT MAX(sortOrder) as m FROM checkpoints WHERE issueId = ?', issueId) as { m: number | null }

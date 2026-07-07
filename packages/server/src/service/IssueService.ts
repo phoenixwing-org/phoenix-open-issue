@@ -1,7 +1,6 @@
 import { getDb } from '../db/connection.js'
-import { v4 as uuid } from 'uuid'
 import { NotFoundError, ForbiddenError } from '../utils/errors.js'
-import { checkListAccess, canModifyIssue } from '@open-issue/core'
+import { generateId, checkListAccess, canModifyIssue } from '@open-issue/core'
 import type { Issue, CreateIssueInput, UpdateIssueInput, ReorderInput, IssueStatus } from '@open-issue/core'
 import { IssueListService } from './IssueListService.js'
 
@@ -12,9 +11,10 @@ export class IssueService {
     status?: string
     priority?: string
     search?: string
-    sort?: string     // 如 "createdAt:desc" (默认) / "createdAt:asc"
+    sort?: string
     page?: number
     size?: number
+    includeVoided?: boolean
   } = {}): { items: Issue[]; total: number } {
     const db = getDb()
 
@@ -23,9 +23,16 @@ export class IssueService {
     const role = checkListAccess(userId, members)
     if (!role) throw new ForbiddenError('无权访问此列表')
 
-    const { status, priority, search, sort, page = 1, size = 50 } = opts
-    const conditions: string[] = ['listId = ?']
-    const params: unknown[] = [listId]
+    const { status, priority, search, sort, page = 1, size = 50, includeVoided } = opts
+    // 查询包含主列表 + 链接列表的 Issue
+    const voidedClause = includeVoided ? '' : ' AND (voided IS NULL OR voided = 0)'
+    const fromClause = `FROM issues WHERE id IN (
+      SELECT id FROM issues WHERE listId = ?
+      UNION
+      SELECT issueId FROM issueListLinks WHERE listId = ?${voidedClause}
+    )`
+    const params: unknown[] = [listId, listId]
+    const conditions: string[] = []
 
     if (status) {
       conditions.push('status = ?')
@@ -40,8 +47,8 @@ export class IssueService {
       params.push(`%${search}%`, `%${search}%`)
     }
 
-    const where = conditions.join(' AND ')
-    const total = db.get(`SELECT COUNT(*) as count FROM issues WHERE ${where}`, params) as { count: number }
+    const where = conditions.length > 0 ? ' AND ' + conditions.join(' AND ') : ''
+    const total = db.get(`SELECT COUNT(*) as count ${fromClause}${where}`, params) as { count: number }
 
     // 排序：默认 createdAt DESC，可通过 sort 参数切换字段和方向
     const SEVERITY_ORDER = "CASE severity WHEN 'fatal' THEN 1 WHEN 'major' THEN 2 WHEN 'minor' THEN 3 WHEN 'trivial' THEN 4 ELSE 5 END"
@@ -69,7 +76,7 @@ export class IssueService {
     const offset = (page - 1) * size
     const allParams = [...params, size, offset]
     const items = db.all(
-      `SELECT * FROM issues WHERE ${where} ORDER BY ${orderBy} LIMIT ? OFFSET ?`,
+      `SELECT * ${fromClause}${where} ORDER BY ${orderBy} LIMIT ? OFFSET ?`,
       allParams,
     ) as Issue[]
 
@@ -87,7 +94,7 @@ export class IssueService {
     const role = checkListAccess(userId, members)
     if (!canModifyIssue(role)) throw new ForbiddenError()
 
-    const id = uuid()
+    const id = generateId()
     const now = new Date().toISOString()
 
     // 计算下一个 sortOrder
@@ -115,6 +122,12 @@ export class IssueService {
         input.containment ?? '', input.rootCause ?? '', input.correctiveAction ?? '',
         sortOrder, userId, now, now,
       ],
+    )
+
+    // 创建 issueListLinks 链接记录（主列表）
+    db.run(
+      'INSERT INTO issueListLinks (id, issueId, listId, linkedBy) VALUES (?, ?, ?, ?)',
+      [generateId(), id, listId, userId],
     )
 
     return db.get('SELECT * FROM issues WHERE id = ?', id) as Issue
@@ -202,7 +215,29 @@ export class IssueService {
     if (!canModifyIssue(role)) throw new ForbiddenError()
 
     db.run('DELETE FROM checkpoints WHERE issueId = ?', id)
+    db.run('DELETE FROM issueListLinks WHERE issueId = ?', id)
+    db.run('DELETE FROM pushRecords WHERE issueId = ?', id)
     db.run('DELETE FROM issues WHERE id = ?', id)
+  }
+
+  // ── Feature 2: 作废链接 ──
+  voidLink(issueId: string, listId: string, userId: string): void {
+    const db = getDb()
+    const link = db.get('SELECT * FROM issueListLinks WHERE issueId = ? AND listId = ?',
+      [issueId, listId]) as Record<string, unknown> | undefined
+    if (!link) throw new NotFoundError('链接记录')
+    const now = new Date().toISOString()
+    db.run('UPDATE issueListLinks SET voided = 1, voidedAt = ?, voidedBy = ? WHERE issueId = ? AND listId = ?',
+      [now, userId, issueId, listId])
+  }
+
+  unvoidLink(issueId: string, listId: string, userId: string): void {
+    const db = getDb()
+    const link = db.get('SELECT * FROM issueListLinks WHERE issueId = ? AND listId = ?',
+      [issueId, listId]) as Record<string, unknown> | undefined
+    if (!link) throw new NotFoundError('链接记录')
+    db.run('UPDATE issueListLinks SET voided = 0, voidedAt = NULL, voidedBy = NULL WHERE issueId = ? AND listId = ?',
+      [issueId, listId])
   }
 
   reorder(listId: string, input: ReorderInput, userId: string): void {

@@ -7,7 +7,7 @@ import { useSettingsStore } from '@/stores/settings'
 import { useDictStore } from '@/stores/dict'
 
 const dict = useDictStore()
-import { getMembers, addMember, removeMember } from '@/api/issueLists'
+import { getMembers, addMember, removeMember, transferOwner } from '@/api/issueLists'
 import { getAllUsers } from '@/api/auth'
 import { getCheckpointsByList } from '@/api/checkpoints'
 import { getIncomingPushes, handlePush } from '@/api/push'
@@ -43,6 +43,7 @@ const pushIssueId = ref<string | null>(null)
 const statusFilter = ref('')
 const severityFilter = ref('')
 const categoryFilter = ref('')
+const includeVoided = ref(false)
 const searchText = ref('')
 const viewMode = ref<'simple' | 'complex' | 'timeline'>((settings.defaultViewMode as 'simple' | 'complex' | 'timeline') || 'complex')
 watch(viewMode, (v) => { settings.defaultViewMode = v })
@@ -88,6 +89,7 @@ async function loadData() {
       status: statusFilter.value || undefined,
       search: searchText.value || undefined,
       sort: settings.issueSort,
+      includeVoided: includeVoided.value || undefined,
     }),
     loadMembers(),
     loadAllUsers(),
@@ -207,10 +209,26 @@ function onPushIssue(issueId: string) {
 }
 
 async function onDeleteIssue(id: string, title: string) {
-  const r = await pnwPromptChoice({ title: '确认删除', message: `确定删除 Issue「」及其所有点检项？`, choices: [{ id: 'delete', label: '删除', variant: 'danger' }, { id: 'cancel', label: '取消' }] });
+  const r = await pnwPromptChoice({ title: '确认删除', message: `确定删除 Issue「${title}」及其所有点检项？`, choices: [{ id: 'delete', label: '删除', variant: 'danger' }, { id: 'cancel', label: '取消' }] });
   if (r.choiceId !== 'delete') return
   await issueStore.deleteIssue(id)
   ElMessage.success('已删除')
+  loadData()
+}
+
+async function onVoidIssue(id: string, title: string) {
+  const r = await pnwPromptChoice({
+    title: '确认作废',
+    message: `确定在本列表作废 Issue「${title}」？（其他列表不受影响）`,
+    choices: [{ id: 'void', label: '作废', variant: 'danger' }, { id: 'cancel', label: '取消' }],
+  })
+  if (r.choiceId !== 'void') return
+  await issueStore.voidIssue(listId.value, id)
+  loadData()
+}
+
+async function onUnvoidIssue(id: string) {
+  await issueStore.unvoidIssue(listId.value, id)
   loadData()
 }
 
@@ -224,6 +242,22 @@ async function onRemoveMember(userId: string) {
   await removeMember(listId.value, userId)
   ElMessage.success('成员已移除')
   loadMembers()
+}
+
+async function onTransferOwner(userId: string) {
+  const r = await pnwPromptChoice({
+    title: '确认转让',
+    message: '确定将列表所有者转让给该用户？您将自动降级为管理员。',
+    choices: [
+      { id: 'transfer', label: '转让', variant: 'primary' },
+      { id: 'cancel', label: '取消' },
+    ],
+  })
+  if (r.choiceId !== 'transfer') return
+  await transferOwner(listId.value, userId)
+  ElMessage.success('所有者已转让')
+  loadMembers()
+  loadData()
 }
 
 function formatDate(d: string | null) {
@@ -297,6 +331,7 @@ const defaultSort = computed(() => {
     <!-- 筛选栏 -->
     <div class="filters">
       <el-input v-model="searchText" placeholder="搜索标题/描述..." clearable style="width:200px" size="small" />
+      <el-checkbox v-model="includeVoided" size="small" @change="loadData" style="margin-left:4px">显示已作废</el-checkbox>
       <el-select v-model="statusFilter" placeholder="状态" clearable size="small" style="width:110px">
         <el-option v-for="(l, v) in statusLabel" :key="v" :label="l" :value="v" />
       </el-select>
@@ -450,6 +485,7 @@ const defaultSort = computed(() => {
       <el-table-column label="操作" fixed="right" align="right">
         <template #default="{ row }">
           <el-button link type="warning" size="small" @click.stop="onPushIssue(row.id)" title="推送"><el-icon><Promotion /></el-icon></el-button>
+          <el-button link type="danger" size="small" @click.stop="onVoidIssue(row.id, row.title)" title="作废">作废</el-button>
           <el-dropdown @command="(cmd: string) => cmd === 'delete' ? onDeleteIssue(row.id, row.title) : onStatusChange(row, cmd)" size="small" trigger="click">
             <el-button link type="primary" size="small" @click.stop>状态 ▾</el-button>
             <template #dropdown>
@@ -477,6 +513,7 @@ const defaultSort = computed(() => {
       :all-users="allUsers"
       @add="onAddMember"
       @remove="onRemoveMember"
+      @transfer-owner="onTransferOwner"
       @close="showMembers = false"
     />
     <PushDialog v-if="showPush" :list-id="listId" :preselected-issue-ids="pushIssueId ? [pushIssueId] : []" @close="showPush = false; pushIssueId = null" />
