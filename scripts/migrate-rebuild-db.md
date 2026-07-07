@@ -98,6 +98,45 @@ Mode:     unified (API + static)
 
 ---
 
+## 迁移后列表详情为空？补建 Issue 链接
+
+**现象**：列表能打开，但详情页显示「暂无 Issue」。
+
+**原因**：列表详情通过 `issueListLinks` 表关联 Issue，不是直接读 `issues.listId`。旧版 better-sqlite3 库可能只有 `issues` 数据、缺少 `issueListLinks` 链接记录，迁移后数据仍在，但详情页查不到。
+
+**修复（任选一种）**：
+
+### 方式 1：设置页（推荐）
+
+1. 登录系统
+2. **设置 → 🔧 数据库修正 → 修正 Issue 链接**
+3. 刷新列表详情页
+
+### 方式 2：API
+
+```bash
+# 先登录拿 token
+TOKEN=$(curl -s -X POST http://localhost:3400/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"admin","password":"你的密码"}' | jq -r .token)
+
+curl -X POST http://localhost:3400/api/db/repair-links \
+  -H "Authorization: Bearer $TOKEN"
+```
+
+### 方式 3：sqlite3 自检
+
+```bash
+# 查看某列表的 issues 与 links 数量（替换 listId）
+LIST_ID="29729184-c089-4c08-b1a2-3c6d467aaa7b"
+sqlite3 data/open-issue.sqlite "SELECT COUNT(*) AS issues FROM issues WHERE listId='$LIST_ID';"
+sqlite3 data/open-issue.sqlite "SELECT COUNT(*) AS links FROM issueListLinks WHERE listId='$LIST_ID' AND voided=0;"
+```
+
+若 `issues > 0` 但 `links = 0`，执行上面的「修正 Issue 链接」即可。
+
+---
+
 ## 失败时
 
 若重建后仍报 `SQLite3Error: unable to open database file`，改用 **方式 D**（JSON 导出/导入）：
