@@ -164,7 +164,7 @@ export function seedTestData(): string[] {
 
   const i3 = generateId()
   db.run(`INSERT INTO issues (id, listId, issueNo, title, description, status, priority, severity, category, detectionPhase, reporterId, assigneeId, dueDate, containment, rootCause, correctiveAction, sortOrder, createdBy, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [i3, list2Id, 'ISS-2026-0001', 'API 响应超时', '查询列表接口偶发 5s+ 超时', 'open', 'critical', 'fatal', 'function', 'audit', uid_ls, uid_admin, '2026-07-05', '增加查询超时熔断', 'SQLite WAL 锁竞争', '优化查询 + 加索引 + 连接池', 0, uid_ls, now, now])
+    [i3, list2Id, 'ISS-2026-0003', 'API 响应超时', '查询列表接口偶发 5s+ 超时', 'open', 'critical', 'fatal', 'function', 'audit', uid_ls, uid_admin, '2026-07-05', '增加查询超时熔断', 'SQLite WAL 锁竞争', '优化查询 + 加索引 + 连接池', 0, uid_ls, now, now])
   db.run('INSERT INTO checkpoints (id, issueId, checkpointDate, description, status, responsibleUserId, sortOrder, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
     [generateId(), i3, '2026-06-28', '排查数据库慢查询', 'done', uid_admin, 0, now, now])
   db.run('INSERT INTO checkpoints (id, issueId, checkpointDate, description, status, responsibleUserId, sortOrder, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
@@ -172,7 +172,7 @@ export function seedTestData(): string[] {
 
   const i4 = generateId()
   db.run(`INSERT INTO issues (id, listId, issueNo, title, description, status, priority, severity, category, detectionPhase, reporterId, assigneeId, dueDate, containment, rootCause, correctiveAction, sortOrder, createdBy, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [i4, list2Id, 'ISS-2026-0002', '数据库备份脚本', '缺少自动备份，存在数据丢失风险', 'in_progress', 'high', 'major', 'process', 'in_process', uid_admin, uid_ls, '2026-07-08', '手动每日备份', '未配置自动化', '编写 cron + 同步脚本', 1, uid_ls, now, now])
+    [i4, list2Id, 'ISS-2026-0004', '数据库备份脚本', '缺少自动备份，存在数据丢失风险', 'in_progress', 'high', 'major', 'process', 'in_process', uid_admin, uid_ls, '2026-07-08', '手动每日备份', '未配置自动化', '编写 cron + 同步脚本', 1, uid_ls, now, now])
   db.run('INSERT INTO checkpoints (id, issueId, checkpointDate, description, status, responsibleUserId, sortOrder, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
     [generateId(), i4, '2026-06-30', '调研备份方案', 'done', uid_ls, 0, now, now])
   db.run('INSERT INTO checkpoints (id, issueId, checkpointDate, description, status, responsibleUserId, sortOrder, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
@@ -190,7 +190,7 @@ export function seedTestData(): string[] {
 
   const i5 = generateId()
   db.run(`INSERT INTO issues (id, listId, issueNo, title, description, status, priority, severity, category, detectionPhase, reporterId, assigneeId, dueDate, containment, rootCause, correctiveAction, sortOrder, createdBy, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [i5, list3Id, 'ISS-2026-0001', '过程审核不符合项 #A12', '未按 WI-OP-003 执行首件检验记录', 'open', 'critical', 'fatal', 'process', 'audit', uid_admin, uid_ls, '2026-07-20', '临时增加检验员复核', '培训不到位 + 记录表格不清晰', '1.全员培训 WI-OP-003  2.更新记录表格为电子版  3.增加班组长抽查', 0, uid_admin, now, now])
+    [i5, list3Id, 'ISS-2026-0005', '过程审核不符合项 #A12', '未按 WI-OP-003 执行首件检验记录', 'open', 'critical', 'fatal', 'process', 'audit', uid_admin, uid_ls, '2026-07-20', '临时增加检验员复核', '培训不到位 + 记录表格不清晰', '1.全员培训 WI-OP-003  2.更新记录表格为电子版  3.增加班组长抽查', 0, uid_admin, now, now])
   db.run('INSERT INTO checkpoints (id, issueId, checkpointDate, description, status, responsibleUserId, sortOrder, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
     [generateId(), i5, '2026-07-01', '制定培训计划', 'done', uid_admin, 0, now, now])
   db.run('INSERT INTO checkpoints (id, issueId, checkpointDate, description, status, responsibleUserId, sortOrder, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
@@ -201,13 +201,28 @@ export function seedTestData(): string[] {
     [generateId(), i5, '2026-07-20', '内审复查关闭', 'pending', uid_admin, 3, now, now])
   console.log('  📋 List 3: "质量部 Q3 审核问题" — 1 issue (8D)')
 
-  // issueListLinks
+  // issueListLinks（seed 用 raw INSERT，需要手动建链接）
   db.run('INSERT INTO issueListLinks (id, issueId, listId, linkedBy, linkedAt) VALUES (?, ?, ?, ?, ?)', [generateId(), i1, list1Id, uid_admin, now])
   db.run('INSERT INTO issueListLinks (id, issueId, listId, linkedBy, linkedAt) VALUES (?, ?, ?, ?, ?)', [generateId(), i2, list1Id, uid_zs, now])
   db.run('INSERT INTO issueListLinks (id, issueId, listId, linkedBy, linkedAt) VALUES (?, ?, ?, ?, ?)', [generateId(), i3, list2Id, uid_ls, now])
   db.run('INSERT INTO issueListLinks (id, issueId, listId, linkedBy, linkedAt) VALUES (?, ?, ?, ?, ?)', [generateId(), i4, list2Id, uid_ls, now])
   db.run('INSERT INTO issueListLinks (id, issueId, listId, linkedBy, linkedAt) VALUES (?, ?, ?, ?, ?)', [generateId(), i5, list3Id, uid_admin, now])
-  console.log('  🔗 5 issueListLinks created')
+
+  // ── poiFunctions 示例数据 ──
+  const f1 = generateId()
+  const f2 = generateId()
+  const f3 = generateId()
+  db.run(`INSERT INTO poiFunctions (id, platform, externalId, functionName, targetYear, clientGroup, developGroup) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [f1, '演示平台', 'DN-001', '用户登录', '2025', '通用', 'NodeJs'])
+  db.run(`INSERT INTO poiFunctions (id, platform, externalId, functionName, targetYear, clientGroup, developGroup) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [f2, '演示平台', 'DN-002', '数据报表', '2025', '管理', 'Python'])
+  db.run(`INSERT INTO poiFunctions (id, platform, externalId, functionName, targetYear, clientGroup, developGroup) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [f3, '移动端', 'MB-001', '扫码签到', '2025', '通用', 'Flutter'])
+  // 关联几个 Issue 到功能
+  db.run("UPDATE issues SET functionId = ?, updatedAt = datetime('now') WHERE id = ?", [f1, i1])
+  db.run("UPDATE issues SET functionId = ?, updatedAt = datetime('now') WHERE id = ?", [f1, i3])
+  db.run("UPDATE issues SET functionId = ?, updatedAt = datetime('now') WHERE id = ?", [f2, i4])
+  console.log('  📋 3 poiFunctions + 3 issue-function links')
 
   // 推送演示
   db.run(`INSERT INTO pushRecords (id, fromListId, toListId, issueId, pushedBy, pushedAt, status, note) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,

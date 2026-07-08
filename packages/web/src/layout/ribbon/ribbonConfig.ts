@@ -1,6 +1,6 @@
 import type { PnwRibbonTabDef } from 'phoenix-wing'
 import { pnwRegisterRibbonIcons } from 'phoenix-wing'
-import { HomeFilled, Setting, List, Share, Odometer, TrendCharts } from '@element-plus/icons-vue'
+import { HomeFilled, Setting, List, Share, Odometer, TrendCharts, Collection } from '@element-plus/icons-vue'
 
 export const RIBBON_TABS: PnwRibbonTabDef[] = [
   {
@@ -27,6 +27,7 @@ export const RIBBON_TABS: PnwRibbonTabDef[] = [
         label: '管理',
         items: [
           { pageId: 'org', label: '组织架构' },
+          { pageId: 'functions', label: '功能' },
           { pageId: 'settings', label: '设置' },
         ],
       },
@@ -40,6 +41,7 @@ export function setupRibbonIcons() {
     lists: List,
     'push-history': TrendCharts,
     org: Share,
+    functions: Collection,
     settings: Setting,
     welcome: HomeFilled,
   })

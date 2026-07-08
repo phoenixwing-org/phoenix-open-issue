@@ -5,6 +5,9 @@ import { ElMessage } from 'element-plus';
 import { pnwPromptChoice, pnwAlert } from 'phoenix-wing'
 import { changePassword } from '@/api/auth'
 import { exportDb, importDb, repairIssueListLinks } from '@/api/backup'
+import { importFunctions } from '@/api/functions'
+import { mapXlsxRow } from '@open-issue/core'
+import * as XLSX from 'xlsx'
 import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
 import PageHelpButton from "@/components/PageHelpButton.vue"
 import type { DictItem } from '@open-issue/core'
@@ -250,6 +253,40 @@ async function onConfirmImport() {
 const repairing = ref(false)
 const repairResult = ref<{ created: number; skipped: number } | null>(null)
 
+// ═══════════════════ 功能导入 ═══════════════════
+const showFuncImport = ref(false)
+const funcImportPreview = ref<any[]>([])
+const funcImporting = ref(false)
+
+function onFuncImportFile(file: any) {
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    try {
+      const data = new Uint8Array(e.target?.result as ArrayBuffer)
+      const workbook = XLSX.read(data, { type: 'array' })
+      const sheet = workbook.Sheets[workbook.SheetNames[0]]
+      const json = XLSX.utils.sheet_to_json(sheet)
+      funcImportPreview.value = json.map((row: any) => mapXlsxRow(row))
+      showFuncImport.value = true
+    } catch {
+      ElMessage.error('XLSX 解析失败，请检查文件格式')
+    }
+  }
+  reader.readAsArrayBuffer(file.raw)
+}
+
+async function onFuncImportConfirm() {
+  if (!funcImportPreview.value.length) return
+  funcImporting.value = true
+  try {
+    const res = await importFunctions(funcImportPreview.value)
+    const data = res.data as { imported: number; updated: number }
+    ElMessage.success(`导入完成：新增 ${data.imported} 条，更新 ${data.updated} 条`)
+    showFuncImport.value = false
+    funcImportPreview.value = []
+  } finally { funcImporting.value = false }
+}
+
 async function onRepairLinks() {
   repairing.value = true
   repairResult.value = null
@@ -428,6 +465,35 @@ async function onRepairLinks() {
         <span v-if="repairResult" style="margin-left:12px;font-size:0.85rem;color:#67C23A">
           已补建 {{ repairResult.created }} 条，现有 {{ repairResult.skipped }} 条有效链接
         </span>
+      </el-tab-pane>
+
+      <!-- ═══ 功能导入 ═══ -->
+      <el-tab-pane label="📋 功能导入" name="function-import">
+        <p style="color:#909399;font-size:0.82rem;margin-bottom:12px">
+          从 <code>.xlsx</code> 文件导入功能表数据。已存在的 (平台+ID) 将更新，新的将新增。
+        </p>
+        <el-upload :auto-upload="false" :show-file-list="false" accept=".xlsx" @change="onFuncImportFile">
+          <el-button type="primary">📥 选择 XLSX 文件</el-button>
+        </el-upload>
+        <p style="margin-top:8px;color:#909399;font-size:0.78rem">
+          列名支持中文（平台/id/功能/目标年份/客户分组/开发组）或英文（platform/id/function/targetYear/clientGroup/developGroup）。
+        </p>
+
+        <el-dialog v-model="showFuncImport" title="导入预览" width="700px">
+          <p style="margin-bottom:8px;color:#909399">已解析 {{ funcImportPreview.length }} 条记录</p>
+          <el-table :data="funcImportPreview" max-height="360" size="small" stripe>
+            <el-table-column prop="platform" label="平台" width="120" />
+            <el-table-column prop="externalId" label="外部 ID" width="90" />
+            <el-table-column prop="functionName" label="功能名称" min-width="160" show-overflow-tooltip />
+            <el-table-column prop="targetYear" label="目标年份" width="90" />
+            <el-table-column prop="clientGroup" label="客户群体" width="100" />
+            <el-table-column prop="developGroup" label="开发组" width="100" />
+          </el-table>
+          <template #footer>
+            <el-button @click="showFuncImport = false; funcImportPreview = []">取消</el-button>
+            <el-button type="primary" :loading="funcImporting" @click="onFuncImportConfirm">确认导入</el-button>
+          </template>
+        </el-dialog>
       </el-tab-pane>
     </el-tabs>
   </div>

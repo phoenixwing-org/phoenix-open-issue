@@ -113,6 +113,16 @@ export const PAGE_HELP: Record<string, PageHelpContent> = {
       "支持接受/拒绝待审批推送。",
     ],
   },
+  functions: {
+    title: "功能表",
+    bullets: [
+      "管理所有功能/特性条目（来自不同平台的导入数据）。",
+      "支持 XLSX 文件导入，自动识别中英文列名（平台/id/功能 等）。",
+      "导入时 (平台 + 外部 ID) 联合去重，已存在则更新，否则新增。",
+      "导出为 JSON 格式，可用于备份或迁移。",
+      "Issue 可关联功能条目，列表和详情中显示关联的功能名。",
+    ],
+  },
   settings: {
     title: "设置",
     bullets: [

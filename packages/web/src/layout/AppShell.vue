@@ -24,7 +24,7 @@ const router = useRouter()
 const wb = pnwCreateWorkbench({
   pagePolicy: (pageId) => {
     // 这些页面仅允许单个 Tab，再次点击激活已有
-    const SINGLETON = new Set(['dashboard', 'lists', 'org', 'pushHistory', 'settings'])
+    const SINGLETON = new Set(['dashboard', 'lists', 'org', 'pushHistory', 'functions', 'settings'])
     const maxTabs = SINGLETON.has(pageId) ? 1 : 30
     return { maxTabs, tabEnabled: true }
   },
@@ -33,7 +33,7 @@ const wb = pnwCreateWorkbench({
     const base = pageId.split(':')[0]
     const labels: Record<string, string> = {
       dashboard: '仪表盘', lists: '列表管理', listDetail: '列表详情',
-      org: '组织架构', pushHistory: '推送历史', settings: '设置', issueDetail: 'Issue',
+      org: '组织架构', pushHistory: '推送历史', functions: '功能表', settings: '设置', issueDetail: 'Issue',
     }
     return labels[base] || pageId
   },
@@ -42,7 +42,7 @@ const wb = pnwCreateWorkbench({
 const pageLabel = computed(() => {
   const labels: Record<string, string> = {
     dashboard: '仪表盘', lists: '列表管理', listDetail: '列表详情',
-    org: '组织架构', pushHistory: '推送历史', settings: '设置', welcome: '欢迎', issueDetail: 'Issue 详情',
+    org: '组织架构', pushHistory: '推送历史', functions: '功能表', settings: '设置', welcome: '欢迎', issueDetail: 'Issue 详情',
   }
   return labels[route.name as string] || String(route.name || '')
 })
@@ -55,7 +55,7 @@ usePnwDocumentTitle({ workspaceShort: ref('Open Issue'), workspacePath: ref(''),
 function onRibbonOpen(pageId: string) {
   const labels: Record<string, string> = {
     dashboard: '仪表盘', lists: '列表管理', listDetail: '列表详情',
-    org: '组织架构', pushHistory: '推送历史', settings: '设置',
+    org: '组织架构', pushHistory: '推送历史', functions: '功能表', settings: '设置',
   }
   wb.openTab({ pageId, title: labels[pageId] || pageId })
   router.push(`/${pageId}`)

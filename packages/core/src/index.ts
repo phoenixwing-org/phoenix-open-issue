@@ -18,6 +18,8 @@ export {
   canEditOwnIssue,
   isOverdue,
   calculateNextCheckpoint,
+  mapXlsxRow,
+  diffImportRows,
 } from './algorithms/index.js'
 
 // 工具

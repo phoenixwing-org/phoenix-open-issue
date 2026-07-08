@@ -75,6 +75,7 @@ export function runSchema(db: PnwDbAdapter): void {
     CREATE INDEX IF NOT EXISTS idx_issues_issueNo ON issues(listId, issueNo);
     CREATE INDEX IF NOT EXISTS idx_issues_category ON issues(listId, category);
     CREATE INDEX IF NOT EXISTS idx_issues_detectionPhase ON issues(listId, detectionPhase);
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_issues_issueNo ON issues(issueNo);
 
     CREATE TABLE IF NOT EXISTS checkpoints (
       id TEXT PRIMARY KEY,
@@ -113,6 +114,8 @@ export function runSchema(db: PnwDbAdapter): void {
       linkedBy TEXT NOT NULL
     );
 
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_issueListLinks_unique ON issueListLinks(issueId, listId);
+
     CREATE TABLE IF NOT EXISTS dict (
       id TEXT PRIMARY KEY,
       groupName TEXT NOT NULL,
@@ -128,6 +131,19 @@ export function runSchema(db: PnwDbAdapter): void {
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS poiFunctions (
+      id TEXT PRIMARY KEY,
+      platform TEXT NOT NULL,
+      externalId TEXT NOT NULL,
+      functionName TEXT NOT NULL,
+      targetYear TEXT,
+      clientGroup TEXT,
+      developGroup TEXT,
+      createdAt TEXT DEFAULT (datetime('now')),
+      updatedAt TEXT DEFAULT (datetime('now')),
+      UNIQUE(platform, externalId)
+    );
   `)
 
   // ---- 迁移：旧库列增量添加（须在 CREATE TABLE 之后） ----
@@ -138,6 +154,9 @@ export function runSchema(db: PnwDbAdapter): void {
     `ALTER TABLE issueLists ADD COLUMN isDeleted INTEGER NOT NULL DEFAULT 0`,
     `ALTER TABLE issueLists ADD COLUMN deletedAt TEXT`,
     `ALTER TABLE dict ADD COLUMN tags TEXT NOT NULL DEFAULT ''`,
+    `ALTER TABLE issues ADD COLUMN functionId TEXT`,
+    // 清理重复的 issueListLinks（保留最早的一条）
+    `DELETE FROM issueListLinks WHERE id NOT IN (SELECT MIN(id) FROM issueListLinks GROUP BY issueId, listId)`,
   ]
   for (const sql of migrations) {
     try { db.exec(sql) } catch { /* column already exists */ }

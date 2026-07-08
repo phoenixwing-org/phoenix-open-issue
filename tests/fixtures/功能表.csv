@@ -1,0 +1,3 @@
+platform，id，function，targetYear，clientGroup，developGroup
+游戏软件，1，打地鼠，2024，娱乐，NodeJs
+教学软件，2，竞争分析，2024，教育，NodeJs

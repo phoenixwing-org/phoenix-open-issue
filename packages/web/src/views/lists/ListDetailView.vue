@@ -433,16 +433,25 @@ const defaultSort = computed(() => {
           <span v-else class="cell-na">—</span>
         </template>
       </el-table-column>
+      <el-table-column label="功能" width="120" show-overflow-tooltip>
+        <template #default="{ row }">
+          <span v-if="row._functionName" class="cell-text">{{ row._functionName }}</span>
+          <span v-else class="cell-na">—</span>
+        </template>
+      </el-table-column>
       <el-table-column v-if="viewMode === 'complex'" label="提出人" :width="colWidth('提出人', 80)" resizable>
         <template #default="{ row }">
-          {{ userMap[row.reporterId] || '—' }}
+          <template v-if="row.reporterId && userMap[row.reporterId]">
+            👤{{ userMap[row.reporterId] }}
+          </template>
+          <span v-else class="cell-na">—</span>
         </template>
       </el-table-column>
       <el-table-column label="责任人" :width="colWidth('责任人', 80)" resizable>
         <template #default="{ row }">
-          <el-tag v-if="row.assigneeId && userMap[row.assigneeId]" size="small" type="warning" effect="plain">
-            {{ userMap[row.assigneeId] }}
-          </el-tag>
+          <template v-if="row.assigneeId && userMap[row.assigneeId]">
+            👤{{ userMap[row.assigneeId] }}
+          </template>
           <span v-else class="cell-na">—</span>
         </template>
       </el-table-column>
@@ -686,6 +695,7 @@ const defaultSort = computed(() => {
 }
 /* 作废行样式 */
 :deep(.row-voided) { opacity: 0.45; background: #fafafa; }
+
 </style>
 <style>
 .issue-detail-modal .pnw-modal-panel {

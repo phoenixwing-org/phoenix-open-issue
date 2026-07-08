@@ -47,8 +47,8 @@ export class IssueService {
     }
 
     const where = conditions.length > 0 ? ' AND ' + conditions.join(' AND ') : ''
-    const fromJoin = `FROM issues i JOIN issueListLinks il ON i.id = il.issueId AND il.listId = ?`
-    const total = db.get(`SELECT COUNT(*) as count ${fromJoin}${where}`, params) as { count: number }
+    const fromJoin = `FROM issues i JOIN issueListLinks il ON i.id = il.issueId AND il.listId = ? LEFT JOIN poiFunctions f ON i.functionId = f.id`
+    const total = db.get(`SELECT COUNT(*) as count FROM issues i JOIN issueListLinks il ON i.id = il.issueId AND il.listId = ?${where}`, [listId, ...params.slice(1)]) as { count: number }
 
     // 排序：默认 createdAt DESC，可通过 sort 参数切换字段和方向
     const SEVERITY_ORDER = "CASE i.severity WHEN 'fatal' THEN 1 WHEN 'major' THEN 2 WHEN 'minor' THEN 3 WHEN 'trivial' THEN 4 ELSE 5 END"
@@ -76,7 +76,7 @@ export class IssueService {
     const offset = (page - 1) * size
     const allParams = [...params, size, offset]
     const items = db.all(
-      `SELECT i.*, il.voided as _voided ${fromJoin}${where} ORDER BY ${orderBy} LIMIT ? OFFSET ?`,
+      `SELECT i.*, il.voided as _voided, f.functionName as _functionName, f.platform as _functionPlatform, f.externalId as _functionExternalId ${fromJoin}${where} ORDER BY ${orderBy} LIMIT ? OFFSET ?`,
       allParams,
     ) as (Issue & { _voided: number })[]
 
@@ -85,7 +85,13 @@ export class IssueService {
 
   getById(id: string): Issue | undefined {
     const db = getDb()
-    return db.get('SELECT * FROM issues WHERE id = ?', id) as Issue | undefined
+    return db.get(
+      `SELECT i.*, f.functionName as _functionName, f.platform as _functionPlatform, f.externalId as _functionExternalId
+       FROM issues i
+       LEFT JOIN poiFunctions f ON i.functionId = f.id
+       WHERE i.id = ?`,
+      id,
+    ) as (Issue & { _functionName: string | null }) | undefined
   }
 
   create(listId: string, input: CreateIssueInput, userId: string): Issue {
@@ -101,26 +107,31 @@ export class IssueService {
     const maxSort = db.get('SELECT MAX(sortOrder) as m FROM issues WHERE listId = ?', listId) as { m: number | null }
     const sortOrder = (maxSort?.m ?? 0) + 1
 
-    // 生成可读编号：ISS-2026-0001（按年度+列表自增）
-    const year = new Date().getFullYear()
-    const count = db.get(
-      "SELECT COUNT(*) as c FROM issues WHERE listId = ? AND issueNo LIKE ?",
-      [listId, `ISS-${year}-%`],
-    ) as { c: number }
-    const issueNo = `ISS-${year}-${String((count?.c ?? 0) + 1).padStart(4, '0')}`
+    // 生成可读编号：ISS-2026-0001（全局自增，不按列表区分）
+    const year = input.issueNo
+      ? parseInt(input.issueNo.split('-')[1], 10) || new Date().getFullYear()
+      : new Date().getFullYear()
+    const issueNo = input.issueNo || (() => {
+      const maxRow = db.get(
+        "SELECT issueNo FROM issues WHERE issueNo LIKE ? ORDER BY issueNo DESC LIMIT 1",
+        [`ISS-${year}-%`],
+      ) as { issueNo: string } | undefined
+      const num = maxRow ? (parseInt(maxRow.issueNo.split('-')[2], 10) || 0) + 1 : 1
+      return `ISS-${year}-${String(num).padStart(4, '0')}`
+    })()
 
     db.run(
       `INSERT INTO issues (id, listId, issueNo, title, description, status, priority, severity, category, detectionPhase,
         reporterId, assigneeId, dueDate, containment, rootCause, correctiveAction,
-        sortOrder, createdBy, createdAt, updatedAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        functionId, sortOrder, createdBy, createdAt, updatedAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id, listId, issueNo, input.title, input.description ?? '',
         'open', input.priority ?? 'medium', input.severity ?? 'minor',
         input.category ?? null, input.detectionPhase ?? null,
         input.reporterId ?? null, input.assigneeId ?? null, input.dueDate ?? null,
         input.containment ?? '', input.rootCause ?? '', input.correctiveAction ?? '',
-        sortOrder, userId, now, now,
+        input.functionId ?? null, sortOrder, userId, now, now,
       ],
     )
 
@@ -130,7 +141,7 @@ export class IssueService {
       [generateId(), id, listId, userId],
     )
 
-    return db.get('SELECT * FROM issues WHERE id = ?', id) as Issue
+    return this.getById(id)!
   }
 
   update(id: string, input: UpdateIssueInput, userId: string): Issue {
@@ -145,6 +156,7 @@ export class IssueService {
       `UPDATE issues
        SET title = COALESCE(?, title),
            description = COALESCE(?, description),
+           issueNo = COALESCE(?, issueNo),
            status = COALESCE(?, status),
            priority = COALESCE(?, priority),
            severity = COALESCE(?, severity),
@@ -159,11 +171,13 @@ export class IssueService {
            containment = COALESCE(?, containment),
            rootCause = COALESCE(?, rootCause),
            correctiveAction = COALESCE(?, correctiveAction),
+           functionId = COALESCE(?, functionId),
            updatedAt = ?
        WHERE id = ?`,
       [
         input.title ?? null,
         input.description ?? null,
+        input.issueNo ?? null,
         input.status ?? null,
         input.priority ?? null,
         input.severity ?? null,
@@ -178,11 +192,12 @@ export class IssueService {
         input.containment ?? null,
         input.rootCause ?? null,
         input.correctiveAction ?? null,
+        input.functionId ?? null,
         new Date().toISOString(), id,
       ],
     )
 
-    return db.get('SELECT * FROM issues WHERE id = ?', id) as Issue
+    return this.getById(id)!
   }
 
   updateStatus(id: string, status: IssueStatus, userId: string): Issue {
@@ -203,7 +218,7 @@ export class IssueService {
         [status, now, id])
     }
 
-    return db.get('SELECT * FROM issues WHERE id = ?', id) as Issue
+    return this.getById(id)!
   }
 
   delete(id: string, userId: string): void {

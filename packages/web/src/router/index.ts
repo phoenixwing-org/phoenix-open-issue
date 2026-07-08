@@ -62,6 +62,11 @@ const router = createRouter({
           component: () => import('@/views/SettingsView.vue'),
         },
         {
+          path: 'functions',
+          name: 'functions',
+          component: () => import('@/views/functions/FunctionIndexView.vue'),
+        },
+        {
           path: 'test-runner',
           name: 'testRunner',
           component: () => import('@/views/TestRunnerView.vue'),

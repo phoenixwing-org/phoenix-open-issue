@@ -32,7 +32,7 @@ export const useIssueStore = defineStore('issues', () => {
   async function createIssue(listId: string, data: {
     title: string; description?: string; priority?: string
     severity?: string; category?: string; detectionPhase?: string
-    reporterId?: string; assigneeId?: string; dueDate?: string
+    reporterId?: string; assigneeId?: string; dueDate?: string; functionId?: string
   }) {
     const res = await api.createIssue(listId, data)
     issues.value.push(res.data)

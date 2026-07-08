@@ -2,10 +2,12 @@
 import { ref, onMounted } from 'vue'
 import { useDictStore } from '@/stores/dict'
 import { useAuthStore } from '@/stores/auth'
+import { useFunctionStore } from '@/stores/functions'
 import PnwDictSelect from 'phoenix-wing/components/PnwDictSelect.vue'
 
 const dict = useDictStore()
 const auth = useAuthStore()
+const funcStore = useFunctionStore()
 
 const props = defineProps<{
   allUsers: Array<{ id: string; username: string; displayName: string | null }>
@@ -13,16 +15,18 @@ const props = defineProps<{
 }>()
 const emit = defineEmits<{
   confirm: [data: {
-    title: string; description?: string; priority?: string
+    title: string; issueNo?: string; description?: string; priority?: string
     severity?: string; category?: string; detectionPhase?: string
     reporterId?: string; assigneeId?: string; dueDate?: string
+    functionId?: string
   }]
   close: []
 }>()
 
-onMounted(() => dict.load())
+onMounted(() => { dict.load(); funcStore.load() })
 
 const title = ref(props.initial?.title || '')
+const issueNo = ref(props.initial?.issueNo || '')
 const description = ref(props.initial?.description || '')
 const priority = ref(props.initial?.priority || 'medium')
 const severity = ref(props.initial?.severity || 'minor')
@@ -31,11 +35,13 @@ const detectionPhase = ref(props.initial?.detectionPhase || '')
 const reporterId = ref(props.initial?.reporterId || auth.user?.id || '')
 const assigneeId = ref(props.initial?.assigneeId || auth.user?.id || '')
 const dueDate = ref(props.initial?.dueDate || '')
+const functionId = ref(props.initial?.functionId || '')
 
 function submit() {
   if (!title.value.trim()) return
   emit('confirm', {
     title: title.value,
+    issueNo: issueNo.value || undefined,
     description: description.value || undefined,
     priority: priority.value,
     severity: severity.value,
@@ -44,6 +50,7 @@ function submit() {
     reporterId: reporterId.value || undefined,
     assigneeId: assigneeId.value || undefined,
     dueDate: dueDate.value || undefined,
+    functionId: functionId.value || undefined,
   })
 }
 </script>
@@ -51,10 +58,19 @@ function submit() {
 <template>
   <el-dialog :model-value="true" :title="props.initial ? '编辑 Issue' : '新建 Issue'" width="560px" @close="emit('close')">
     <el-form label-position="top" @submit.prevent="submit">
-      <!-- 基本信息 -->
-      <el-form-item label="标题" required>
-        <el-input v-model="title" placeholder="Issue 标题" />
-      </el-form-item>
+      <!-- 编号 + 标题 -->
+      <el-row :gutter="16">
+        <el-col :span="8">
+          <el-form-item label="编号">
+            <el-input v-model="issueNo" placeholder="ISS-2026-0001" />
+          </el-form-item>
+        </el-col>
+        <el-col :span="16">
+          <el-form-item label="标题" required>
+            <el-input v-model="title" placeholder="Issue 标题" />
+          </el-form-item>
+        </el-col>
+      </el-row>
 
       <el-row :gutter="16">
         <!-- 严重度 & 分类 -->
@@ -109,6 +125,16 @@ function submit() {
 
       <el-form-item label="计划完成日">
         <el-date-picker v-model="dueDate" type="date" placeholder="选择日期" style="width:100%" value-format="YYYY-MM-DD" />
+      </el-form-item>
+
+      <el-form-item label="关联功能">
+        <el-select v-model="functionId" :teleported="false" filterable placeholder="选择功能（可选）" clearable style="width:100%">
+          <el-option v-for="f in funcStore.items" :key="f.id" :label="`[${f.platform}] ${f.externalId} ${f.functionName}`" :value="f.id">
+            <span>{{ f.platform }}</span>
+            <el-tag size="small" type="info" style="margin:0 4px">{{ f.externalId }}</el-tag>
+            <span>{{ f.functionName }}</span>
+          </el-option>
+        </el-select>
       </el-form-item>
 
       <el-form-item label="描述">

@@ -1,0 +1,228 @@
+<script setup lang="ts">
+import { onMounted, ref } from 'vue'
+import { useFunctionStore } from '@/stores/functions'
+import { useSettingsStore } from '@/stores/settings'
+import { ElMessage } from 'element-plus'
+import { pnwPromptChoice } from 'phoenix-wing'
+import PnwPageHeader from 'phoenix-wing/layout/PnwPageHeader.vue'
+import PageHelpButton from '@/components/PageHelpButton.vue'
+import { mapXlsxRow } from '@open-issue/core'
+import * as XLSX from 'xlsx'
+import * as api from '@/api/functions'
+
+const store = useFunctionStore()
+const settings = useSettingsStore()
+
+// ── 列表 ──
+const sortField = ref('')
+const sortDir = ref('')
+
+onMounted(() => doLoad())
+
+async function doLoad() {
+  const params: Record<string, any> = {}
+  if (settings.funcSearch) params.search = settings.funcSearch
+  if (sortField.value) params.sort = `${sortField.value}:${sortDir.value || 'asc'}`
+  if (settings.funcNumericSort && sortField.value === 'externalId') params.numericSort = '1'
+  await store.load(params)
+}
+
+function onSortChange({ prop, order }: { prop: string; order: string | null }) {
+  sortField.value = order ? prop : ''
+  sortDir.value = order === 'ascending' ? 'asc' : 'desc'
+  doLoad()
+}
+
+// ── 新建/编辑 ──
+const showForm = ref(false)
+const editTarget = ref<any>(null)
+const form = ref({ platform: '', externalId: '', functionName: '', targetYear: '', clientGroup: '', developGroup: '' })
+
+function openCreate() {
+  editTarget.value = null
+  form.value = { platform: '', externalId: '', functionName: '', targetYear: '', clientGroup: '', developGroup: '' }
+  showForm.value = true
+}
+
+function openEdit(row: any) {
+  editTarget.value = row
+  form.value = {
+    platform: row.platform,
+    externalId: row.externalId,
+    functionName: row.functionName,
+    targetYear: row.targetYear || '',
+    clientGroup: row.clientGroup || '',
+    developGroup: row.developGroup || '',
+  }
+  showForm.value = true
+}
+
+async function onSubmit() {
+  const data = { ...form.value, targetYear: form.value.targetYear || undefined, clientGroup: form.value.clientGroup || undefined, developGroup: form.value.developGroup || undefined }
+  if (editTarget.value) {
+    await api.updateFunction(editTarget.value.id, data)
+    ElMessage.success('已更新')
+  } else {
+    await api.createFunction(data)
+    ElMessage.success('已创建')
+  }
+  showForm.value = false
+  store.refresh()
+}
+
+async function onDelete(row: any) {
+  const r = await pnwPromptChoice({
+    title: '确认删除',
+    message: `确定删除功能「${row.functionName}」？关联的 Issue 将被解除绑定。`,
+    choices: [{ id: 'delete', label: '删除', variant: 'danger' }, { id: 'cancel', label: '取消' }],
+  })
+  if (r.choiceId !== 'delete') return
+  await api.deleteFunction(row.id)
+  ElMessage.success('已删除')
+  store.refresh()
+}
+
+// ── 导入 ──
+const showImport = ref(false)
+const importPreview = ref<any[]>([])
+const importing = ref(false)
+
+function onImportFile(file: any) {
+  const reader = new FileReader()
+  reader.onload = (e) => {
+    try {
+      const data = new Uint8Array(e.target?.result as ArrayBuffer)
+      const workbook = XLSX.read(data, { type: 'array' })
+      const sheet = workbook.Sheets[workbook.SheetNames[0]]
+      const json = XLSX.utils.sheet_to_json(sheet)
+      importPreview.value = json.map((row: any) => mapXlsxRow(row))
+      showImport.value = true
+    } catch {
+      ElMessage.error('XLSX 解析失败，请检查文件格式')
+    }
+  }
+  reader.readAsArrayBuffer(file.raw)
+}
+
+async function onConfirmImport() {
+  if (!importPreview.value.length) return
+  importing.value = true
+  try {
+    const res = await api.importFunctions(importPreview.value)
+    const data = res.data as { imported: number; updated: number }
+    ElMessage.success(`导入完成：新增 ${data.imported} 条，更新 ${data.updated} 条`)
+    showImport.value = false
+    importPreview.value = []
+    store.refresh()
+  } finally {
+    importing.value = false
+  }
+}
+
+// ── 导出 ──
+const exporting = ref(false)
+async function onExport() {
+  exporting.value = true
+  try {
+    const res = await api.exportFunctions()
+    const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `functions-${new Date().toISOString().slice(0, 10)}.json`
+    a.click()
+    URL.revokeObjectURL(url)
+    ElMessage.success('导出成功')
+  } finally { exporting.value = false }
+}
+
+</script>
+
+<template>
+  <div class="page">
+    <PnwPageHeader title="功能表">
+      <template #actions>
+        <el-button type="primary" @click="openCreate">+ 新建</el-button>
+        <el-upload :auto-upload="false" :show-file-list="false" accept=".xlsx" @change="onImportFile">
+          <el-button>📥 导入 XLSX</el-button>
+        </el-upload>
+        <el-button :loading="exporting" @click="onExport">📤 导出 JSON</el-button>
+      </template>
+      <template #help><PageHelpButton page-id="functions" /></template>
+    </PnwPageHeader>
+
+    <div style="margin-bottom:12px;display:flex;gap:8px">
+      <el-input v-model="settings.funcSearch" placeholder="搜索功能名/平台/ID..." style="width:260px" clearable @input="doLoad" />
+      <el-checkbox v-model="settings.funcNumericSort" @change="doLoad" style="margin-left:12px">外部ID按数字排序</el-checkbox>
+    </div>
+
+    <el-table :data="store.items" v-loading="store.loading" stripe @sort-change="onSortChange">
+      <el-table-column prop="platform" label="平台" width="140" sortable="custom" />
+      <el-table-column prop="externalId" label="外部 ID" width="100" sortable="custom" />
+      <el-table-column prop="functionName" label="功能名称" min-width="180" show-overflow-tooltip sortable="custom" />
+      <el-table-column prop="targetYear" label="目标年份" width="100" align="center" />
+      <el-table-column prop="clientGroup" label="客户群体" width="120" />
+      <el-table-column prop="developGroup" label="开发组" width="120" />
+      <el-table-column prop="createdAt" label="创建时间" width="160" />
+      <el-table-column label="操作" width="140" align="center" fixed="right">
+        <template #default="{ row }">
+          <el-button link size="small" @click="openEdit(row)">编辑</el-button>
+          <el-button link size="small" type="danger" @click="onDelete(row)">删除</el-button>
+        </template>
+      </el-table-column>
+    </el-table>
+
+    <el-empty v-if="!store.loading && !store.items.length" description="暂无功能数据，点击「新建」或「导入 XLSX」" />
+
+    <!-- 新建/编辑对话框 -->
+    <el-dialog v-model="showForm" :title="editTarget ? '编辑功能' : '新建功能'" width="480px">
+      <el-form label-position="top">
+        <el-form-item label="平台" required>
+          <el-input v-model="form.platform" placeholder="如：游戏软件" />
+        </el-form-item>
+        <el-form-item label="外部 ID" required>
+          <el-input v-model="form.externalId" placeholder="来源平台的 ID" />
+        </el-form-item>
+        <el-form-item label="功能名称" required>
+          <el-input v-model="form.functionName" placeholder="如：打地鼠" />
+        </el-form-item>
+        <el-form-item label="目标年份">
+          <el-input v-model="form.targetYear" placeholder="如：2024" />
+        </el-form-item>
+        <el-form-item label="客户群体">
+          <el-input v-model="form.clientGroup" placeholder="如：娱乐" />
+        </el-form-item>
+        <el-form-item label="开发组">
+          <el-input v-model="form.developGroup" placeholder="如：NodeJs" />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="showForm = false">取消</el-button>
+        <el-button type="primary" :disabled="!form.platform || !form.externalId || !form.functionName" @click="onSubmit">
+          {{ editTarget ? '保存' : '创建' }}
+        </el-button>
+      </template>
+    </el-dialog>
+
+    <!-- 导入预览对话框 -->
+    <el-dialog v-model="showImport" title="导入预览" width="700px">
+      <p style="margin-bottom:8px;color:#909399">已解析 {{ importPreview.length }} 条记录。已存在的 (平台+ID) 将更新，新的将新增。</p>
+      <el-table :data="importPreview" max-height="360" size="small" stripe>
+        <el-table-column prop="platform" label="平台" width="120" />
+        <el-table-column prop="externalId" label="外部 ID" width="90" />
+        <el-table-column prop="functionName" label="功能名称" min-width="160" show-overflow-tooltip />
+        <el-table-column prop="targetYear" label="目标年份" width="90" />
+        <el-table-column prop="clientGroup" label="客户群体" width="100" />
+        <el-table-column prop="developGroup" label="开发组" width="100" />
+      </el-table>
+      <template #footer>
+        <el-button @click="showImport = false; importPreview = []">取消</el-button>
+        <el-button type="primary" :loading="importing" @click="onConfirmImport">确认导入</el-button>
+      </template>
+    </el-dialog>
+  </div>
+</template>
+
+<style scoped>
+.page { padding: 0; }
+</style>

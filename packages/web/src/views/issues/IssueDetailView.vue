@@ -175,18 +175,30 @@ function goBack() {
         <el-descriptions-item label="发现阶段">
           {{ dict.getLabel('detectionPhase', issueStore.currentIssue.detectionPhase) || '—' }}
         </el-descriptions-item>
+        <el-descriptions-item label="关联功能">
+          <template v-if="(issueStore.currentIssue as any)._functionName">
+            {{ (issueStore.currentIssue as any)._functionPlatform }}
+            <el-tag size="small" type="info" style="margin:0 6px">{{ (issueStore.currentIssue as any)._functionExternalId }}</el-tag>
+            {{ (issueStore.currentIssue as any)._functionName }}
+          </template>
+          <template v-else>—</template>
+        </el-descriptions-item>
       </el-descriptions>
 
       <!-- 人员与日期 -->
       <el-descriptions title="人员与日期" :column="2" border size="small" class="detail-desc-block">
-        <el-descriptions-item label="提出人">{{ getUserName(issueStore.currentIssue.reporterId) }}</el-descriptions-item>
-        <el-descriptions-item label="责任人">
-          <el-tag v-if="issueStore.currentIssue.assigneeId" size="small" type="warning" effect="plain">
-            {{ getUserName(issueStore.currentIssue.assigneeId) }}
-          </el-tag>
+        <el-descriptions-item label="提出人">
+          <template v-if="issueStore.currentIssue.reporterId">👤{{ getUserName(issueStore.currentIssue.reporterId) }}</template>
           <span v-else>—</span>
         </el-descriptions-item>
-        <el-descriptions-item label="录入人">{{ getUserName(issueStore.currentIssue.createdBy) }}</el-descriptions-item>
+        <el-descriptions-item label="责任人">
+          <template v-if="issueStore.currentIssue.assigneeId">👤{{ getUserName(issueStore.currentIssue.assigneeId) }}</template>
+          <span v-else>—</span>
+        </el-descriptions-item>
+        <el-descriptions-item label="录入人">
+          <template v-if="issueStore.currentIssue.createdBy">👤{{ getUserName(issueStore.currentIssue.createdBy) }}</template>
+          <span v-else>—</span>
+        </el-descriptions-item>
         <el-descriptions-item label="计划完成日">{{ formatDate(issueStore.currentIssue.dueDate) }}</el-descriptions-item>
         <el-descriptions-item label="实际完成日">{{ formatDate(issueStore.currentIssue.completedAt) }}</el-descriptions-item>
         <el-descriptions-item label="更新于">{{ new Date(issueStore.currentIssue.updatedAt).toLocaleString('zh-CN') }}</el-descriptions-item>

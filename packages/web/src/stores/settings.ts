@@ -11,6 +11,8 @@ export const useSettingsStore = defineStore('settings', () => {
   const cpYearThresholdMonths = ref<number>(data.cpYearThresholdMonths ?? 2)  // 点检日期隐藏年份的月数阈值
   const issueSort = ref<string>(data.issueSort || 'createdAt:desc')            // Issue 排序，格式 "field:dir"，如 "severity:desc"
   const orgIncludeChildren = ref<boolean>(data.orgIncludeChildren !== false)    // 组织架构：默认含下级
+  const funcNumericSort = ref<boolean>(data.funcNumericSort !== false)           // 功能表：外部ID按数字排序，默认勾选
+  const funcSearch = ref<string>(data.funcSearch || '')                          // 功能表：搜索关键词
 
   function persist() {
     localStorage.setItem('open-issue-settings', JSON.stringify({
@@ -20,6 +22,8 @@ export const useSettingsStore = defineStore('settings', () => {
       cpYearThresholdMonths: cpYearThresholdMonths.value,
       issueSort: issueSort.value,
       orgIncludeChildren: orgIncludeChildren.value,
+      funcNumericSort: funcNumericSort.value,
+      funcSearch: funcSearch.value,
     }))
   }
 
@@ -29,10 +33,12 @@ export const useSettingsStore = defineStore('settings', () => {
   watch(cpYearThresholdMonths, persist)
   watch(issueSort, persist)
   watch(orgIncludeChildren, persist)
+  watch(funcNumericSort, persist)
+  watch(funcSearch, persist)
 
   function setColWidth(col: string, width: number) {
     colWidths.value[col] = width
   }
 
-  return { colWidths, maxTimelineRows, defaultViewMode, cpYearThresholdMonths, issueSort, orgIncludeChildren, setColWidth }
+  return { colWidths, maxTimelineRows, defaultViewMode, cpYearThresholdMonths, issueSort, orgIncludeChildren, funcNumericSort, funcSearch, setColWidth }
 })

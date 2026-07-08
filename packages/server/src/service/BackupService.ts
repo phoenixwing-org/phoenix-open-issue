@@ -10,7 +10,7 @@ interface BackupData {
 
 const TABLE_NAMES = [
   'users', 'orgUnits', 'issueLists', 'issueListMembers',
-  'issues', 'issueListLinks', 'checkpoints', 'pushRecords', 'dict',
+  'issues', 'issueListLinks', 'checkpoints', 'pushRecords', 'dict', 'poiFunctions',
 ]
 
 export class BackupService {

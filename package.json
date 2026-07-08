@@ -6,7 +6,7 @@
     "dev:core": "pnpm -C packages/core build --watch",
     "dev:server": "pnpm -C packages/server dev",
     "dev:web": "pnpm -C packages/web dev",
-    "dev": "concurrently -n core,server,web -c blue,green,magenta \"pnpm dev:core\" \"pnpm dev:server\" \"pnpm dev:web\"",
+    "dev": "concurrently -k -n core,server,web -c blue,green,magenta \"pnpm dev:core\" \"pnpm dev:server\" \"pnpm dev:web\"",
     "build:core": "pnpm -C packages/core build",
     "build:server": "pnpm -C packages/server build",
     "build:web": "pnpm -C packages/web build",
@@ -15,7 +15,8 @@
     "start": "pnpm -C packages/server start",
     "start:prod": "pnpm -C packages/server exec tsx src/main.ts",
     "deploy": "pnpm build:deploy && pnpm start:prod",
-    "seed": "pnpm -C packages/server seed"
+    "seed": "pnpm -C packages/server seed",
+    "test": "vitest run"
   },
   "packageManager": "pnpm@9.15.9",
   "devDependencies": {

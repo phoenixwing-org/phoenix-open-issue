@@ -70,6 +70,9 @@ export interface Issue {
   createdBy: string
   createdAt: string
   updatedAt: string
+
+  // 关联功能
+  functionId: string | null
 }
 
 export interface CreateIssueInput {
@@ -82,14 +85,17 @@ export interface CreateIssueInput {
   reporterId?: string
   assigneeId?: string
   dueDate?: string
+  issueNo?: string
   containment?: string
   rootCause?: string
   correctiveAction?: string
+  functionId?: string
 }
 
 export interface UpdateIssueInput {
   title?: string
   description?: string
+  issueNo?: string
   status?: IssueStatus
   priority?: IssuePriority
   severity?: Severity
@@ -104,6 +110,7 @@ export interface UpdateIssueInput {
   containment?: string
   rootCause?: string
   correctiveAction?: string
+  functionId?: string
 }
 
 export interface UpdateStatusInput {

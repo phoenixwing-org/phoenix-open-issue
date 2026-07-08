@@ -8,6 +8,7 @@ import { PushController } from '../controller/PushController.js'
 import { SeedController } from '../controller/SeedController.js'
 import { DictController } from '../controller/DictController.js'
 import { BackupController } from '../controller/BackupController.js'
+import { FunctionController } from '../controller/FunctionController.js'
 import { authMiddleware } from '../middleware/auth.js'
 
 const router = Router()
@@ -20,6 +21,7 @@ const pushCtrl = new PushController()
 const seedCtrl = new SeedController()
 const dictCtrl = new DictController()
 const backupCtrl = new BackupController()
+const funcCtrl = new FunctionController()
 
 function wrap(fn: (req: any, res: any) => void) {
   return (req: any, res: any, next: any) => {
@@ -112,5 +114,14 @@ router.patch('/push/:id/handle',           authMiddleware, wrap((req, res) => pu
 router.get('/db/export',    authMiddleware, wrap((req, res) => backupCtrl.exportDb(req, res)))
 router.post('/db/import',   authMiddleware, wrap((req, res) => backupCtrl.importDb(req, res)))
 router.post('/db/repair-links', authMiddleware, wrap((req, res) => backupCtrl.repairLinks(req, res)))
+
+// ═══ Functions ═══
+router.get('/functions',          authMiddleware, wrap((req, res) => funcCtrl.list(req, res)))
+router.get('/functions/export',   authMiddleware, wrap((req, res) => funcCtrl.exportAll(req, res)))
+router.post('/functions',         authMiddleware, wrap((req, res) => funcCtrl.create(req, res)))
+router.post('/functions/import',  authMiddleware, wrap((req, res) => funcCtrl.importBatch(req, res)))
+router.get('/function/:id',       authMiddleware, wrap((req, res) => funcCtrl.getById(req, res)))
+router.put('/function/:id',       authMiddleware, wrap((req, res) => funcCtrl.update(req, res)))
+router.delete('/function/:id',    authMiddleware, wrap((req, res) => funcCtrl.delete(req, res)))
 
 export default router
