@@ -48,16 +48,16 @@ export const ISSUE_COLUMN_METAS: IssueColumnMeta[] = [
 ]
 
 const DEFAULT_SIMPLE: IssueColumnKey[] = [
-  'issueNo', 'severity', 'priority', 'assignee', 'status', 'createdAt',
+  'function', 'severity', 'priority', 'assignee', 'status', 'createdAt',
 ]
 
 const DEFAULT_COMPLEX: IssueColumnKey[] = [
-  'issueNo', 'severity', 'priority', 'category', 'detectionPhase', 'function',
+  'function', 'severity', 'priority', 'category', 'detectionPhase',
   'reporter', 'assignee', 'dueDate', 'attention', 'status', 'createdAt',
 ]
 
 const DEFAULT_TIMELINE: IssueColumnKey[] = [
-  'issueNo', 'severity', 'priority', 'function', 'assignee', 'attention',
+  'function', 'severity', 'priority', 'assignee', 'attention',
   'status', 'checkpoints', 'createdAt',
 ]
 

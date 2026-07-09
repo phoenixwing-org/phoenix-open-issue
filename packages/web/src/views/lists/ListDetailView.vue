@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, watch, computed, provide, reactive } from 'vue'
+import { onMounted, ref, watch, computed, provide, reactive, inject } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useIssueListStore } from '@/stores/issueLists'
 import { useIssueStore } from '@/stores/issues'
@@ -49,6 +49,7 @@ const router = useRouter()
 const listStore = useIssueListStore()
 const issueStore = useIssueStore()
 const auth = useAuthStore()
+const updateTabTitle = inject<(pageId: string, title: string) => void>('updateTabTitle', () => {})
 
 const listId = computed(() => route.params.id as string)
 const settings = useSettingsStore()
@@ -97,6 +98,18 @@ const priorityTag: Record<string, string | undefined> = { low: 'info', medium: '
 
 const currentList = computed(() => listStore.currentList)
 
+function listTabTitle(name: string) {
+  return name.length > 12 ? `${name.slice(0, 12)}…` : name
+}
+
+function syncListTabTitle() {
+  const name = currentList.value?.name
+  if (!name || listStore.currentList?.id !== listId.value) return
+  updateTabTitle(`listDetail:${listId.value}`, listTabTitle(name))
+}
+
+watch(() => currentList.value?.name, syncListTabTitle)
+
 const myMemberRole = computed(() => {
   const uid = auth.user?.id
   if (!uid) return null
@@ -138,6 +151,7 @@ const userMap = computed<Record<string, string>>(() => {
 
 onMounted(async () => {
   await listStore.fetchList(listId.value)
+  syncListTabTitle()
   await loadData()
 })
 
@@ -346,6 +360,7 @@ async function onEditList(data: { name: string; listType: string; description?: 
   await listStore.updateList(listId.value, data)
   showEditList.value = false
   ElMessage.success('列表已更新')
+  syncListTabTitle()
 }
 
 function onPushIssue(issueId: string) {

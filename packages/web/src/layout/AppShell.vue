@@ -145,7 +145,10 @@ provide('openTab', (pageId: string, title: string, contextKey?: string) => {
 function updateTabTitle(pageId: string, title: string) {
   const normalized = normalizePageId(pageId)
   const tab = wb.tabs.value.find(t => t.pageId === normalized)
-  if (tab) tab.title = title
+  if (tab) {
+    tab.title = title
+    saveTabs()
+  }
 }
 provide('updateTabTitle', updateTabTitle)
 
@@ -161,10 +164,10 @@ watch(() => route.fullPath, (path) => {
   let title = pageLabel.value
   if (name === 'issueDetail' && route.params.id) {
     pageId = `issueDetail:${route.params.id}`
-    title = `Issue #${(route.params.id as string).slice(0, 8)}`
+    title = PAGE_LABELS.issueDetail
   } else if (name === 'listDetail' && route.params.id) {
     pageId = `listDetail:${route.params.id}`
-    title = `列表 #${(route.params.id as string).slice(0, 8)}`
+    title = PAGE_LABELS.listDetail
   }
 
   const existing = wb.tabs.value.find(t => t.pageId === pageId)
@@ -202,7 +205,6 @@ function restoreTabs() {
 
     for (const t of saved.tabs) {
       const pageId = normalizePageId(t.pageId)
-      const title = pageTitle(pageId)
       if (saved.paths?.[t.pageId]) {
         pathByPageId.set(pageId, saved.paths[t.pageId])
       } else if (saved.paths?.[pageId]) {
@@ -211,7 +213,7 @@ function restoreTabs() {
         pathByPageId.set(pageId, saved.paths[t.id])
       }
       t.pageId = pageId
-      t.title = title
+      if (!t.title) t.title = pageTitle(pageId)
     }
 
     if (activePageId) activePageId = normalizePageId(activePageId)
@@ -220,6 +222,11 @@ function restoreTabs() {
       if (!wb.tabs.value.some(x => x.pageId === t.pageId)) {
         wb.openTab({ pageId: t.pageId, title: t.title, contextKey: t.contextKey })
       }
+    }
+
+    for (const t of saved.tabs) {
+      const tab = wb.tabs.value.find(x => x.pageId === t.pageId)
+      if (tab && t.title) tab.title = t.title
     }
 
     for (const tab of wb.tabs.value) {
