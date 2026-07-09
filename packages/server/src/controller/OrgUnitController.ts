@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express'
 import { OrgUnitService } from '../service/OrgUnitService.js'
 import { NotFoundError } from '../utils/errors.js'
+import { assertSystemAdmin } from '../utils/admin.js'
 
 const orgUnitService = new OrgUnitService()
 
@@ -17,17 +18,20 @@ export class OrgUnitController {
   }
 
   create(req: Request, res: Response): void {
+    assertSystemAdmin(req.user!.userId)
     const { name, unitType, parentId } = req.body
     const unit = orgUnitService.create(name, unitType, parentId ?? null)
     res.status(201).json(unit)
   }
 
   update(req: Request, res: Response): void {
+    assertSystemAdmin(req.user!.userId)
     const unit = orgUnitService.update(req.params.id, req.body)
     res.json(unit)
   }
 
   delete(req: Request, res: Response): void {
+    assertSystemAdmin(req.user!.userId)
     orgUnitService.delete(req.params.id)
     res.status(204).send()
   }

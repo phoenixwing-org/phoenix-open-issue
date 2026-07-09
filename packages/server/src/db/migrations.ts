@@ -1,0 +1,303 @@
+import type { PnwDbAdapter } from 'phoenix-wing/db/pnwDbAdapter'
+import { normalizeDictTags, hasDictTag, parseDictTags, formatDictTags } from '@open-issue/core'
+import { ensurePendingOrgUnit } from '../utils/pendingOrgUnit.js'
+import { dedupeDictEntries } from './dictDedupe.js'
+
+export { dedupeDictEntries, type DictDedupeResult, type DictDedupeDetail } from './dictDedupe.js'
+
+/** 旧库增量列：表名 → 列名 → ALTER 语句 */
+export const COLUMN_MIGRATIONS: { table: string; column: string; sql: string }[] = [
+  { table: 'users', column: 'approved', sql: 'ALTER TABLE users ADD COLUMN approved INTEGER NOT NULL DEFAULT 1' },
+  { table: 'users', column: 'disabled', sql: 'ALTER TABLE users ADD COLUMN disabled INTEGER NOT NULL DEFAULT 0' },
+  { table: 'users', column: 'systemRole', sql: "ALTER TABLE users ADD COLUMN systemRole TEXT NOT NULL DEFAULT 'editor'" },
+  { table: 'issueLists', column: 'archived', sql: 'ALTER TABLE issueLists ADD COLUMN archived INTEGER NOT NULL DEFAULT 0' },
+  { table: 'issueLists', column: 'isDeleted', sql: 'ALTER TABLE issueLists ADD COLUMN isDeleted INTEGER NOT NULL DEFAULT 0' },
+  { table: 'issueLists', column: 'deletedAt', sql: 'ALTER TABLE issueLists ADD COLUMN deletedAt TEXT' },
+  { table: 'dict', column: 'tags', sql: "ALTER TABLE dict ADD COLUMN tags TEXT NOT NULL DEFAULT ''" },
+  { table: 'issues', column: 'functionId', sql: 'ALTER TABLE issues ADD COLUMN functionId TEXT' },
+  { table: 'checkpoints', column: 'status', sql: "ALTER TABLE checkpoints ADD COLUMN status TEXT DEFAULT 'pending'" },
+  { table: 'checkpoints', column: 'responsibleUserId', sql: 'ALTER TABLE checkpoints ADD COLUMN responsibleUserId TEXT' },
+  { table: 'checkpoints', column: 'sortOrder', sql: 'ALTER TABLE checkpoints ADD COLUMN sortOrder INTEGER DEFAULT 0' },
+  { table: 'checkpoints', column: 'createdAt', sql: "ALTER TABLE checkpoints ADD COLUMN createdAt TEXT DEFAULT (datetime('now'))" },
+  { table: 'checkpoints', column: 'updatedAt', sql: "ALTER TABLE checkpoints ADD COLUMN updatedAt TEXT DEFAULT (datetime('now'))" },
+  { table: 'issueListLinks', column: 'voided', sql: 'ALTER TABLE issueListLinks ADD COLUMN voided INTEGER NOT NULL DEFAULT 0' },
+  { table: 'issueListLinks', column: 'voidedAt', sql: 'ALTER TABLE issueListLinks ADD COLUMN voidedAt TEXT' },
+  { table: 'issueListLinks', column: 'voidedBy', sql: 'ALTER TABLE issueListLinks ADD COLUMN voidedBy TEXT' },
+  { table: 'issueListLinks', column: 'linkedAt', sql: "ALTER TABLE issueListLinks ADD COLUMN linkedAt TEXT DEFAULT (datetime('now'))" },
+  { table: 'issueListLinks', column: 'linkedBy', sql: 'ALTER TABLE issueListLinks ADD COLUMN linkedBy TEXT' },
+  { table: 'issueListLinks', column: 'attentionLevel', sql: 'ALTER TABLE issueListLinks ADD COLUMN attentionLevel INTEGER NOT NULL DEFAULT 3' },
+  { table: 'issueListLinks', column: 'attentionUpdatedAt', sql: 'ALTER TABLE issueListLinks ADD COLUMN attentionUpdatedAt TEXT' },
+  { table: 'issueListLinks', column: 'attentionUpdatedBy', sql: 'ALTER TABLE issueListLinks ADD COLUMN attentionUpdatedBy TEXT' },
+]
+
+export function getTableColumns(db: PnwDbAdapter, table: string): Set<string> {
+  const rows = db.all(`PRAGMA table_info("${table}")`) as { name: string }[]
+  return new Set(rows.map(r => r.name))
+}
+
+export function tableExists(db: PnwDbAdapter, table: string): boolean {
+  const row = db.get(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
+    table,
+  ) as { name: string } | undefined
+  return !!row
+}
+
+/** 追加缺失列，返回新增的 表.列 列表 */
+export function applyColumnMigrations(db: PnwDbAdapter): string[] {
+  const added: string[] = []
+  for (const m of COLUMN_MIGRATIONS) {
+    if (!tableExists(db, m.table)) continue
+    const cols = getTableColumns(db, m.table)
+    if (cols.has(m.column)) continue
+    try {
+      db.exec(m.sql)
+      added.push(`${m.table}.${m.column}`)
+    } catch {
+      // 并发或约束冲突时忽略
+    }
+  }
+  return added
+}
+
+export function migrateUserSystemRole(db: PnwDbAdapter, force = false): { adminSet: number; editorSet: number } {
+  if (!force) {
+    const done = db.get("SELECT value FROM systemFlags WHERE key = 'migrate_user_systemRole'") as { value: string } | undefined
+    if (done?.value === '1') return { adminSet: 0, editorSet: 0 }
+  }
+
+  const adminRes = db.run("UPDATE users SET systemRole = 'admin' WHERE username = 'admin' AND systemRole != 'admin'")
+  const editorRes = db.run("UPDATE users SET systemRole = 'editor' WHERE systemRole IS NULL OR systemRole = ''")
+  db.run("INSERT OR REPLACE INTO systemFlags (key, value) VALUES ('migrate_user_systemRole', '1')")
+  return {
+    adminSet: adminRes.changes ?? 0,
+    editorSet: editorRes.changes ?? 0,
+  }
+}
+
+export function migrateIssueListsListType(db: PnwDbAdapter): boolean {
+  const done = db.get("SELECT value FROM systemFlags WHERE key = 'migrate_listType_no_check'") as { value: string } | undefined
+  if (done?.value === '1') return false
+
+  const sqlInfo = db.all("SELECT sql FROM sqlite_master WHERE type='table' AND name='issueLists'") as { sql: string }[]
+  const ddl = sqlInfo[0]?.sql || ''
+  if (!ddl.includes('CHECK(listType IN')) {
+    db.run("INSERT OR REPLACE INTO systemFlags (key, value) VALUES ('migrate_listType_no_check', '1')")
+    return false
+  }
+
+  db.exec(`
+    CREATE TABLE issueLists_new (
+      id TEXT PRIMARY KEY,
+      name TEXT NOT NULL,
+      description TEXT DEFAULT '',
+      listType TEXT NOT NULL,
+      ownerId TEXT NOT NULL,
+      orgUnitId TEXT,
+      archived INTEGER NOT NULL DEFAULT 0,
+      isDeleted INTEGER NOT NULL DEFAULT 0,
+      deletedAt TEXT,
+      createdAt TEXT DEFAULT (datetime('now')),
+      updatedAt TEXT DEFAULT (datetime('now'))
+    );
+    INSERT INTO issueLists_new SELECT id, name, description, listType, ownerId, orgUnitId, archived, isDeleted, deletedAt, createdAt, updatedAt FROM issueLists;
+    DROP TABLE issueLists;
+    ALTER TABLE issueLists_new RENAME TO issueLists;
+  `)
+  db.run("INSERT OR REPLACE INTO systemFlags (key, value) VALUES ('migrate_listType_no_check', '1')")
+  return true
+}
+
+/** 清理重复 issueListLinks，返回删除条数 */
+export function dedupeIssueListLinks(db: PnwDbAdapter): number {
+  const before = db.get('SELECT COUNT(*) as c FROM issueListLinks') as { c: number }
+  db.exec('DELETE FROM issueListLinks WHERE id NOT IN (SELECT MIN(id) FROM issueListLinks GROUP BY issueId, listId)')
+  const after = db.get('SELECT COUNT(*) as c FROM issueListLinks') as { c: number }
+  return before.c - after.c
+}
+
+/** 旧格式 core,general → ,core,general, */
+export function migrateDictTagsFormat(db: PnwDbAdapter): number {
+  if (!tableExists(db, 'dict')) return 0
+  const rows = db.all('SELECT id, tags FROM dict WHERE tags IS NOT NULL AND tags != \'\'') as { id: string; tags: string }[]
+  let updated = 0
+  for (const row of rows) {
+    const normalized = normalizeDictTags(row.tags)
+    if (normalized !== row.tags) {
+      db.run('UPDATE dict SET tags = ? WHERE id = ?', [normalized, row.id])
+      updated++
+    }
+  }
+  return updated
+}
+
+/** 点检表类型：内置项 (core) 不应带 general 标签 */
+export function migrateListTypeCoreTags(db: PnwDbAdapter): number {
+  if (!tableExists(db, 'dict')) return 0
+  const rows = db.all(`
+    SELECT id, tags FROM dict
+    WHERE groupName = 'listType' AND tags LIKE '%,core,%'
+  `) as { id: string; tags: string }[]
+  let updated = 0
+  for (const row of rows) {
+    if (!hasDictTag(row.tags, 'general')) continue
+    const next = formatDictTags(parseDictTags(row.tags).filter(t => t !== 'general'))
+    if (next !== normalizeDictTags(row.tags)) {
+      db.run('UPDATE dict SET tags = ? WHERE id = ?', [next, row.id])
+      updated++
+    }
+  }
+  return updated
+}
+
+/** 是否已建立 (groupName, value) 唯一索引 */
+export function hasDictUniqueIndex(db: PnwDbAdapter): boolean {
+  if (!tableExists(db, 'dict')) return true
+  const row = db.get(
+    "SELECT name FROM sqlite_master WHERE type='index' AND name='idx_dict_group_value'",
+  ) as { name: string } | undefined
+  return !!row
+}
+
+/** 同分组 value 仍重复的分组数 */
+export function countDictDuplicateGroups(db: PnwDbAdapter): number {
+  if (!tableExists(db, 'dict')) return 0
+  const row = db.get(`
+    SELECT COUNT(*) as c FROM (
+      SELECT groupName, value FROM dict GROUP BY groupName, value HAVING COUNT(*) > 1
+    )
+  `) as { c: number }
+  return row.c
+}
+
+export interface DictRepairResult {
+  tagsMigrated: number
+  listTypeCoreTagsFixed: number
+  removed: number
+  tagsMerged: number
+  indexOk: boolean
+  duplicateGroupsRemaining: number
+}
+
+/**
+ * 规范 tags、去重、尝试建唯一索引。不抛错，供启动与手动修正共用。
+ * 旧库有重复 value 时 indexOk=false，需用户在设置页执行「数据字典补全」。
+ */
+export function repairDictDataAndIndex(db: PnwDbAdapter): DictRepairResult {
+  const empty: DictRepairResult = {
+    tagsMigrated: 0,
+    listTypeCoreTagsFixed: 0,
+    removed: 0,
+    tagsMerged: 0,
+    indexOk: true,
+    duplicateGroupsRemaining: 0,
+  }
+  if (!tableExists(db, 'dict')) return empty
+
+  const tagsMigrated = migrateDictTagsFormat(db)
+  const listTypeCoreTagsFixed = migrateListTypeCoreTags(db)
+  let removed = 0
+  let tagsMerged = 0
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const dedupe = dedupeDictEntries(db)
+    removed += dedupe.removed
+    tagsMerged += dedupe.tagsMerged
+    if (dedupe.removed === 0) break
+  }
+
+  let indexOk = hasDictUniqueIndex(db)
+  if (!indexOk) {
+    try {
+      db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_dict_group_value ON dict(groupName, value)')
+      indexOk = true
+    } catch {
+      indexOk = false
+    }
+  }
+
+  const duplicateGroupsRemaining = countDictDuplicateGroups(db)
+  if (duplicateGroupsRemaining > 0) indexOk = false
+
+  return { tagsMigrated, listTypeCoreTagsFixed, removed, tagsMerged, indexOk, duplicateGroupsRemaining }
+}
+
+/** @deprecated 使用 repairDictDataAndIndex；失败时抛错 */
+export function ensureDictUniqueIndex(db: PnwDbAdapter): void {
+  const r = repairDictDataAndIndex(db)
+  if (!r.indexOk) {
+    throw new Error(
+      `dict 唯一索引未建立，仍有 ${r.duplicateGroupsRemaining} 组重复 (groupName, value)`,
+    )
+  }
+}
+
+/**
+ * voided → attentionLevel 迁移
+ * voided=1 → 0（不关注）；voided=0 → 3（默认三星）
+ */
+export function migrateIssueListLinkAttention(db: PnwDbAdapter, force = false): {
+  voidedMapped: number
+  timestampsCopied: number
+} {
+  if (!tableExists(db, 'issueListLinks')) return { voidedMapped: 0, timestampsCopied: 0 }
+
+  applyColumnMigrations(db)
+  const cols = getTableColumns(db, 'issueListLinks')
+
+  if (!force) {
+    const done = db.get("SELECT value FROM systemFlags WHERE key = 'migrate_link_attentionLevel'") as { value: string } | undefined
+    if (done?.value === '1') return { voidedMapped: 0, timestampsCopied: 0 }
+  }
+
+  let timestampsCopied = 0
+
+  if (cols.has('voidedAt') && cols.has('attentionUpdatedAt')) {
+    const r = db.run(`
+      UPDATE issueListLinks SET attentionUpdatedAt = voidedAt
+      WHERE voidedAt IS NOT NULL AND (attentionUpdatedAt IS NULL OR attentionUpdatedAt = '')
+    `)
+    timestampsCopied += r.changes ?? 0
+  }
+  if (cols.has('voidedBy') && cols.has('attentionUpdatedBy')) {
+    const r = db.run(`
+      UPDATE issueListLinks SET attentionUpdatedBy = voidedBy
+      WHERE voidedBy IS NOT NULL AND (attentionUpdatedBy IS NULL OR attentionUpdatedBy = '')
+    `)
+    timestampsCopied += r.changes ?? 0
+  }
+
+  let voidedMapped = 0
+  if (cols.has('voided') && cols.has('attentionLevel')) {
+    const r = db.run(`
+      UPDATE issueListLinks SET attentionLevel = CASE WHEN voided = 1 THEN 0 ELSE 3 END
+      WHERE voided IS NOT NULL
+    `)
+    voidedMapped = r.changes ?? 0
+  }
+
+  // 非法值归一
+  db.run('UPDATE issueListLinks SET attentionLevel = 3 WHERE attentionLevel IS NULL OR attentionLevel < 0 OR attentionLevel > 5')
+
+  db.run("INSERT OR REPLACE INTO systemFlags (key, value) VALUES ('migrate_link_attentionLevel', '1')")
+  return { voidedMapped, timestampsCopied }
+}
+
+export function runDataMigrations(db: PnwDbAdapter): {
+  userRole: { adminSet: number; editorSet: number }
+  listTypeRebuilt: boolean
+  pendingOrgCreated: boolean
+  linkAttention: { voidedMapped: number; timestampsCopied: number }
+} {
+  const userRole = migrateUserSystemRole(db, true)
+  const listTypeRebuilt = migrateIssueListsListType(db)
+  const linkAttention = migrateIssueListLinkAttention(db)
+  const pendingBefore = db.get("SELECT id FROM orgUnits WHERE name = '待定组'") as { id: string } | undefined
+  ensurePendingOrgUnit(db)
+  const pendingAfter = db.get("SELECT id FROM orgUnits WHERE name = '待定组'") as { id: string } | undefined
+  return {
+    userRole,
+    listTypeRebuilt,
+    pendingOrgCreated: !pendingBefore && !!pendingAfter,
+    linkAttention,
+  }
+}

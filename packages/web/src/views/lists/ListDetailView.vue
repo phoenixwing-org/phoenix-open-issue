@@ -7,7 +7,7 @@ import { useSettingsStore } from '@/stores/settings'
 import { useDictStore } from '@/stores/dict'
 
 const dict = useDictStore()
-import { getMembers, addMember, removeMember, transferOwner } from '@/api/issueLists'
+import { getMembers, addMember, removeMember, transferOwner, updateMemberRole } from '@/api/issueLists'
 import { getAllUsers } from '@/api/auth'
 import { getCheckpointsByList } from '@/api/checkpoints'
 import { getIncomingPushes, handlePush } from '@/api/push'
@@ -21,29 +21,33 @@ const showIssueModal = ref(false)
 const modalIssueId = ref('')
 import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
 import PageHelpButton from "@/components/PageHelpButton.vue"
-import { isOverdue } from '@open-issue/core'
+import { isOverdue, canAddMemberAsUser, canManageList, canTransferPrimaryOwnerAsUser, isSystemAdmin, ATTENTION_LEVEL_LABELS, DEFAULT_ATTENTION_LEVEL } from '@open-issue/core'
 import type { Checkpoint } from '@open-issue/core'
 import IssueFormDialog from '@/components/IssueFormDialog.vue'
+import ListFormDialog from '@/components/ListFormDialog.vue'
 import MemberManageDialog from '@/components/MemberManageDialog.vue'
 import PushDialog from '@/views/push/PushDialog.vue'
+import { useAuthStore } from '@/stores/auth'
 
 const route = useRoute()
 const router = useRouter()
 const listStore = useIssueListStore()
 const issueStore = useIssueStore()
+const auth = useAuthStore()
 
 const listId = computed(() => route.params.id as string)
 const settings = useSettingsStore()
 const members = ref<any[]>([])
 const allUsers = ref<any[]>([])
 const showCreateIssue = ref(false)
+const showEditList = ref(false)
 const showMembers = ref(false)
 const showPush = ref(false)
 const pushIssueId = ref<string | null>(null)
 const statusFilter = ref('')
 const severityFilter = ref('')
 const categoryFilter = ref('')
-const includeVoided = ref(false)
+const includeVoided = ref(false) // 兼容参数名：显示不关注(level=0)
 const searchText = ref('')
 const viewMode = ref<'simple' | 'complex' | 'timeline'>((settings.defaultViewMode as 'simple' | 'complex' | 'timeline') || 'complex')
 watch(viewMode, (v) => { settings.defaultViewMode = v })
@@ -68,6 +72,36 @@ const priorityTag: Record<string, string | undefined> = { low: 'info', medium: '
 
 const currentList = computed(() => listStore.currentList)
 
+const myMemberRole = computed(() => {
+  const uid = auth.user?.id
+  if (!uid) return null
+  return members.value.find(m => m.userId === uid)?.role ?? null
+})
+const isSysAdmin = computed(() => isSystemAdmin(auth.user ?? undefined))
+const canManageMembers = computed(() => canAddMemberAsUser(myMemberRole.value as any, auth.user ?? undefined))
+const canGrantOwner = computed(() => isSysAdmin.value || myMemberRole.value === 'owner' || myMemberRole.value === 'admin')
+const isOwner = computed(() => canTransferPrimaryOwnerAsUser(myMemberRole.value as any, auth.user ?? undefined))
+const canEditList = computed(() => {
+  if (isSysAdmin.value) return true
+  return canManageList(myMemberRole.value as any)
+})
+
+const primaryOwnerName = computed(() => {
+  const list = currentList.value
+  if (!list?.ownerId) return ''
+  if (list.ownerName) return list.ownerName
+  const m = members.value.find(mem => mem.userId === list.ownerId)
+  if (m) return m.displayName || m.username
+  return userMap.value[list.ownerId] || ''
+})
+
+const headerSubtitle = computed(() => {
+  const parts: string[] = []
+  if (currentList.value?.description) parts.push(currentList.value.description)
+  if (primaryOwnerName.value) parts.push(`主负责人：${primaryOwnerName.value}`)
+  return parts.length ? parts.join(' · ') : undefined
+})
+
 // 用户 ID → 显示名映射
 const userMap = computed<Record<string, string>>(() => {
   const map: Record<string, string> = {}
@@ -78,7 +112,6 @@ const userMap = computed<Record<string, string>>(() => {
 })
 
 onMounted(async () => {
-  dict.load()
   await listStore.fetchList(listId.value)
   await loadData()
 })
@@ -200,6 +233,12 @@ async function onCreateIssue(data: any) {
   loadData()
 }
 
+async function onEditList(data: { name: string; listType: string; description?: string; ownerId?: string }) {
+  await listStore.updateList(listId.value, data)
+  showEditList.value = false
+  ElMessage.success('列表已更新')
+}
+
 async function onStatusChange(issue: any, newStatus: string) {
   await issueStore.updateStatus(issue.id, newStatus)
   ElMessage.success('状态已更新')
@@ -221,9 +260,9 @@ async function onDeleteIssue(id: string, title: string) {
 
 async function onVoidIssue(id: string, title: string) {
   const r = await pnwPromptChoice({
-    title: '确认作废',
-    message: `确定在本列表作废 Issue「${title}」？（其他列表不受影响）`,
-    choices: [{ id: 'void', label: '作废', variant: 'danger' }, { id: 'cancel', label: '取消' }],
+    title: '设为不关注',
+    message: `在本列表将 Issue「${title}」设为不关注？（其他列表不受影响，数据保留）`,
+    choices: [{ id: 'void', label: '不关注', variant: 'danger' }, { id: 'cancel', label: '取消' }],
   })
   if (r.choiceId !== 'void') return
   await issueStore.voidIssue(listId.value, id)
@@ -235,6 +274,20 @@ async function onUnvoidIssue(id: string) {
   loadData()
 }
 
+async function onSetAttention(id: string, level: number) {
+  await issueStore.setAttentionLevel(listId.value, id, level)
+  loadData()
+}
+
+function linkAttention(row: { _attentionLevel?: number; _voided?: number }): number {
+  if (row._attentionLevel != null) return row._attentionLevel
+  return row._voided ? 0 : DEFAULT_ATTENTION_LEVEL
+}
+
+function isUnwatched(row: { _attentionLevel?: number; _voided?: number }) {
+  return linkAttention(row) === 0
+}
+
 async function onAddMember(userId: string, role: string) {
   await addMember(listId.value, userId, role)
   ElMessage.success('成员已添加')
@@ -242,25 +295,44 @@ async function onAddMember(userId: string, role: string) {
 }
 
 async function onRemoveMember(userId: string) {
-  await removeMember(listId.value, userId)
-  ElMessage.success('成员已移除')
-  loadMembers()
+  try {
+    await removeMember(listId.value, userId)
+    ElMessage.success('成员已移除')
+    await loadMembers()
+    listStore.fetchList(listId.value)
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || e?.response?.data?.error || '移除失败')
+  }
+}
+
+async function onUpdateMemberRole(userId: string, role: string) {
+  try {
+    await updateMemberRole(listId.value, userId, role)
+    ElMessage.success('权限已更新')
+    await loadMembers()
+    listStore.fetchList(listId.value)
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || e?.response?.data?.error || '更新失败')
+    loadMembers()
+  }
 }
 
 async function onTransferOwner(userId: string) {
+  const target = members.value.find(m => m.userId === userId)
+  const name = target?.displayName || target?.username || '该用户'
   const r = await pnwPromptChoice({
-    title: '确认转让',
-    message: '确定将列表所有者转让给该用户？您将自动降级为管理员。',
+    title: '设为主负责人',
+    message: `将主负责人设为「${name}」？\n仅变更列表展示与推送审批负责人，不改动各成员的权限级别。`,
     choices: [
-      { id: 'transfer', label: '转让', variant: 'primary' },
+      { id: 'transfer', label: '确认', variant: 'primary' },
       { id: 'cancel', label: '取消' },
     ],
   })
   if (r.choiceId !== 'transfer') return
   await transferOwner(listId.value, userId)
-  ElMessage.success('所有者已转让')
+  ElMessage.success('主负责人已更新')
   loadMembers()
-  loadData()
+  listStore.fetchList(listId.value)
 }
 
 function formatDate(d: string | null) {
@@ -323,9 +395,10 @@ const defaultSort = computed(() => {
 
 <template>
   <div class="page">
-    <PnwPageHeader :title="currentList?.name || '列表详情'" :subtitle="currentList?.description">
+    <PnwPageHeader :title="currentList?.name || '列表详情'" :subtitle="headerSubtitle">
       <template #actions>
         <el-button @click="showMembers = true" data-tour="list-members"><el-icon><User /></el-icon> 成员 ({{ members.length }})</el-button>
+        <el-button v-if="canEditList" @click="showEditList = true" data-tour="list-edit"><el-icon><Edit /></el-icon> 编辑</el-button>
         <el-button type="primary" @click="showCreateIssue = true" data-tour="list-create-issue"><el-icon><Plus /></el-icon> 新建 Issue</el-button>
       </template>
       <template #help><PageHelpButton page-id="listDetail" /></template>
@@ -334,7 +407,7 @@ const defaultSort = computed(() => {
     <!-- 筛选栏 -->
     <div class="filters" data-tour="list-filters">
       <el-input v-model="searchText" placeholder="搜索标题/描述..." clearable style="width:200px" size="small" />
-      <el-checkbox v-model="includeVoided" size="small" @change="loadData" style="margin-left:4px">显示已作废</el-checkbox>
+      <el-checkbox v-model="includeVoided" size="small" @change="loadData" style="margin-left:4px">显示不关注</el-checkbox>
       <el-select v-model="statusFilter" placeholder="状态" clearable size="small" style="width:110px">
         <el-option v-for="(l, v) in statusLabel" :key="v" :label="l" :value="v" />
       </el-select>
@@ -404,7 +477,12 @@ const defaultSort = computed(() => {
       @header-dragend="onColResize"
       style="cursor:pointer"
       highlight-current-row
-      :row-class-name="(row: any) => row._voided ? 'row-voided' : ''"
+      :row-class-name="(row: any) => {
+        const lv = linkAttention(row)
+        if (lv === 0) return 'row-unwatched'
+        if (lv >= 4) return 'row-attention-high'
+        return ''
+      }"
     >
       <el-table-column type="index" label="#" width="45" align="center" fixed="left" />
       <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip fixed="left" sortable="custom" />
@@ -460,10 +538,22 @@ const defaultSort = computed(() => {
           {{ formatDate(row.dueDate) }}
         </template>
       </el-table-column>
+      <el-table-column label="关注" width="88" align="center">
+        <template #default="{ row }">
+          <el-tag
+            v-if="linkAttention(row) === 0"
+            type="info" size="small"
+          >不关注</el-tag>
+          <el-tag
+            v-else
+            :type="linkAttention(row) >= 4 ? 'danger' : linkAttention(row) >= 3 ? 'warning' : 'success'"
+            size="small"
+          >{{ ATTENTION_LEVEL_LABELS[linkAttention(row) as 0|1|2|3|4|5] }}</el-tag>
+        </template>
+      </el-table-column>
       <el-table-column prop="status" label="状态" width="90" align="center" sortable="custom">
         <template #default="{ row }">
-          <el-tag v-if="row._voided" type="info" size="small">已作废</el-tag>
-          <el-tag v-else :type="statusTag[row.status]" size="small">
+          <el-tag :type="statusTag[row.status]" size="small">
             {{ statusLabel[row.status] || row.status }}
           </el-tag>
         </template>
@@ -502,13 +592,14 @@ const defaultSort = computed(() => {
             if (cmd === 'delete') { ElMessage.warning('删除功能临时禁用'); return }
             if (cmd === 'void') onVoidIssue(row.id, row.title)
             else if (cmd === 'unvoid') onUnvoidIssue(row.id)
+            else if (cmd.startsWith('att-')) onSetAttention(row.id, parseInt(cmd.slice(4), 10))
             else onStatusChange(row, cmd)
           }" size="small" trigger="click">
             <el-button link type="primary" size="small" @click.stop>状态 ▾</el-button>
             <template #dropdown>
               <el-dropdown-menu>
-                <template v-if="row._voided">
-                  <el-dropdown-item command="unvoid" style="color:#67c23a">🔄 恢复</el-dropdown-item>
+                <template v-if="isUnwatched(row)">
+                  <el-dropdown-item command="unvoid" style="color:#67c23a">🔄 恢复默认(三星)</el-dropdown-item>
                 </template>
                 <template v-else>
                   <el-dropdown-item command="open">待处理</el-dropdown-item>
@@ -517,7 +608,12 @@ const defaultSort = computed(() => {
                   <el-dropdown-item command="closed">已关闭</el-dropdown-item>
                   <el-dropdown-item command="cancelled">已取消</el-dropdown-item>
                   <el-dropdown-item command="delete" style="color:#f56c6c" divided>🗑 删除</el-dropdown-item>
-                  <el-dropdown-item command="void" style="color:#e6a23c" divided>📄 作废</el-dropdown-item>
+                  <el-dropdown-item command="void" style="color:#e6a23c" divided>⊘ 设为不关注</el-dropdown-item>
+                  <el-dropdown-item command="att-1" divided>★ 一星关注</el-dropdown-item>
+                  <el-dropdown-item command="att-2">★★ 二星关注</el-dropdown-item>
+                  <el-dropdown-item command="att-3">★★★ 三星关注</el-dropdown-item>
+                  <el-dropdown-item command="att-4">★★★★ 四星关注</el-dropdown-item>
+                  <el-dropdown-item command="att-5">★★★★★ 五星关注</el-dropdown-item>
                 </template>
               </el-dropdown-menu>
             </template>
@@ -531,12 +627,30 @@ const defaultSort = computed(() => {
     </el-table>
 
     <IssueFormDialog v-if="showCreateIssue" :all-users="activeUsers" @confirm="onCreateIssue" @close="showCreateIssue = false" />
+    <ListFormDialog
+      v-if="showEditList && currentList"
+      :initial="{
+        name: currentList.name,
+        description: currentList.description || '',
+        listType: currentList.listType,
+        ownerId: currentList.ownerId,
+      }"
+      :can-edit-owner="canGrantOwner"
+      @confirm="onEditList"
+      @close="showEditList = false"
+    />
     <MemberManageDialog
       v-if="showMembers"
       :members="members"
       :all-users="activeUsers"
+      :primary-owner-id="currentList?.ownerId"
+      :current-user-id="auth.user?.id"
+      :can-manage="canManageMembers"
+      :can-grant-owner="canGrantOwner"
+      :is-owner="isOwner"
       @add="onAddMember"
       @remove="onRemoveMember"
+      @update-role="onUpdateMemberRole"
       @transfer-owner="onTransferOwner"
       @close="showMembers = false"
     />
@@ -693,8 +807,9 @@ const defaultSort = computed(() => {
   .head-actions { flex-wrap: wrap; }
   .filters { flex-wrap: wrap; }
 }
-/* 作废行样式 */
-:deep(.row-voided) { opacity: 0.45; background: #fafafa; }
+/* 不关注行 */
+:deep(.row-unwatched) { opacity: 0.45; background: #fafafa; }
+:deep(.row-attention-high) { background: #fff7f0; }
 
 </style>
 <style>

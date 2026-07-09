@@ -31,6 +31,17 @@ export const useIssueListStore = defineStore('issueLists', () => {
     }
   }
 
+  async function fetchDeletedLists() {
+    loading.value = true
+    try {
+      const res = await api.getDeletedLists()
+      lists.value = res.data
+    } catch (e: any) {
+    } finally {
+      loading.value = false
+    }
+  }
+
   async function fetchArchivedLists() {
     loading.value = true
     try {
@@ -55,12 +66,11 @@ export const useIssueListStore = defineStore('issueLists', () => {
     return res.data as IssueList
   }
 
-  async function updateList(id: string, data: { name?: string; description?: string }) {
+  async function updateList(id: string, data: { name?: string; description?: string; listType?: string; ownerId?: string }) {
     const res = await api.updateList(id, data)
     const idx = lists.value.findIndex(l => l.id === id)
     if (idx >= 0) lists.value[idx] = res.data
     if (currentList.value?.id === id) currentList.value = res.data
-    ElMessage.success('列表已更新')
     return res.data as IssueList
   }
 
@@ -77,5 +87,11 @@ export const useIssueListStore = defineStore('issueLists', () => {
     ElMessage.success(archived ? '已归档' : '已取消归档')
   }
 
-  return { lists, currentList, loading, fetchLists, fetchAllLists, fetchArchivedLists, fetchList, createList, updateList, deleteList, archiveList }
+  async function restoreList(id: string) {
+    await api.restoreList(id)
+    lists.value = lists.value.filter(l => l.id !== id)
+    ElMessage.success('列表已恢复')
+  }
+
+  return { lists, currentList, loading, fetchLists, fetchAllLists, fetchArchivedLists, fetchDeletedLists, fetchList, createList, updateList, deleteList, archiveList, restoreList }
 })

@@ -16,7 +16,7 @@ export class IssueListController {
   }
 
   getById(req: Request, res: Response): void {
-    const list = listService.getById(req.params.id)
+    const list = listService.getEnrichedById(req.params.id, req.user!.userId)
     if (!list) throw new NotFoundError('列表')
     res.json(list)
   }
@@ -32,7 +32,7 @@ export class IssueListController {
   }
 
   delete(req: Request, res: Response): void {
-    listService.delete(req.params.id, req.user!.userId, req.user!.username)
+    listService.delete(req.params.id, req.user!.userId)
     res.status(204).send()
   }
 
@@ -60,6 +60,16 @@ export class IssueListController {
   getArchivedLists(req: Request, res: Response): void {
     const lists = listService.getArchivedLists(req.user!.userId)
     res.json(lists)
+  }
+
+  getDeletedLists(req: Request, res: Response): void {
+    const lists = listService.getDeletedLists(req.user!.userId)
+    res.json(lists)
+  }
+
+  restoreList(req: Request, res: Response): void {
+    const list = listService.restoreList(req.params.id, req.user!.userId)
+    res.json(list)
   }
 
   // ── Feature 3: Owner 转移 ──

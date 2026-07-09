@@ -4,7 +4,8 @@ import bcrypt from 'bcryptjs'
 import { signToken } from '../utils/jwt.js'
 import { ConflictError, UnauthorizedError, ForbiddenError, BadRequestError } from '../utils/errors.js'
 import { resolveOrgUnitId } from '../utils/pendingOrgUnit.js'
-import type { User, UserPublic, CreateUserInput, LoginResult, RegisterResult } from '@open-issue/core'
+import { assertSystemAdmin } from '../utils/admin.js'
+import type { User, UserPublic, CreateUserInput, LoginResult, RegisterResult, SystemRole } from '@open-issue/core'
 
 function toPublic(user: User): UserPublic {
   const { passwordHash: _, ...pub } = user
@@ -27,9 +28,9 @@ export class AuthService {
     const orgId = resolveOrgUnitId(db, input.orgUnitId)
 
     db.run(
-      `INSERT INTO users (id, username, email, passwordHash, displayName, orgUnitId, approved, createdAt, updatedAt)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [id, input.username, input.email ?? null, passwordHash, input.displayName ?? null, orgId, 0, now, now],
+      `INSERT INTO users (id, username, email, passwordHash, displayName, orgUnitId, approved, systemRole, createdAt, updatedAt)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [id, input.username, input.email ?? null, passwordHash, input.displayName ?? null, orgId, 0, 'editor', now, now],
     )
 
     const user = db.get('SELECT * FROM users WHERE id = ?', id) as User
@@ -89,13 +90,15 @@ export class AuthService {
     return users.map(toPublic)
   }
 
-  getPendingUsers(): UserPublic[] {
+  getPendingUsers(actorId: string): UserPublic[] {
+    assertSystemAdmin(actorId)
     const db = getDb()
     const users = db.all('SELECT * FROM users WHERE approved = 0 ORDER BY createdAt DESC') as User[]
     return users.map(toPublic)
   }
 
-  approveUser(userId: string, approved: boolean): UserPublic {
+  approveUser(userId: string, approved: boolean, actorId: string): UserPublic {
+    assertSystemAdmin(actorId)
     const db = getDb()
     const user = db.get('SELECT * FROM users WHERE id = ?', userId) as User | undefined
     if (!user) throw new UnauthorizedError('用户不存在')
@@ -105,7 +108,8 @@ export class AuthService {
     return toPublic(db.get('SELECT * FROM users WHERE id = ?', userId) as User)
   }
 
-  updateUserOrg(userId: string, orgUnitId: string | null): UserPublic {
+  updateUserOrg(userId: string, orgUnitId: string | null, actorId: string): UserPublic {
+    assertSystemAdmin(actorId)
     const db = getDb()
     const user = db.get('SELECT * FROM users WHERE id = ?', userId) as User | undefined
     if (!user) throw new UnauthorizedError('用户不存在')
@@ -116,19 +120,36 @@ export class AuthService {
     return toPublic(db.get('SELECT * FROM users WHERE id = ?', userId) as User)
   }
 
-  updateUser(userId: string, data: { displayName?: string; email?: string; orgUnitId?: string | null }): UserPublic {
+  updateUser(userId: string, data: { displayName?: string; email?: string; orgUnitId?: string | null; systemRole?: SystemRole }, actorId: string): UserPublic {
+    assertSystemAdmin(actorId)
     const db = getDb()
     const user = db.get('SELECT * FROM users WHERE id = ?', userId) as User | undefined
     if (!user) throw new UnauthorizedError('用户不存在')
+
+    if (data.systemRole !== undefined) {
+      if (userId === actorId && data.systemRole !== 'admin') {
+        throw new ForbiddenError('不能降低自己的管理员权限')
+      }
+    }
+
     const orgUnitId = 'orgUnitId' in data ? resolveOrgUnitId(db, data.orgUnitId) : user.orgUnitId
-    db.run('UPDATE users SET displayName = COALESCE(?, displayName), email = COALESCE(?, email), orgUnitId = ?, updatedAt = ? WHERE id = ?',
-      [data.displayName ?? null, data.email ?? null, orgUnitId, new Date().toISOString(), userId])
+    db.run(
+      `UPDATE users SET
+        displayName = COALESCE(?, displayName),
+        email = COALESCE(?, email),
+        orgUnitId = ?,
+        systemRole = COALESCE(?, systemRole),
+        updatedAt = ?
+       WHERE id = ?`,
+      [data.displayName ?? null, data.email ?? null, orgUnitId, data.systemRole ?? null, new Date().toISOString(), userId],
+    )
     console.log(`👤 [UPDATE] user "${user.username}"`)
     return toPublic(db.get('SELECT * FROM users WHERE id = ?', userId) as User)
   }
 
   // ── Feature 1: 用户禁用 ──
   disableUser(userId: string, actorId: string): UserPublic {
+    assertSystemAdmin(actorId)
     const db = getDb()
     const user = db.get('SELECT * FROM users WHERE id = ?', userId) as User | undefined
     if (!user) throw new UnauthorizedError('用户不存在')
@@ -139,7 +160,8 @@ export class AuthService {
     return toPublic(db.get('SELECT * FROM users WHERE id = ?', userId) as User)
   }
 
-  enableUser(userId: string): UserPublic {
+  enableUser(userId: string, actorId?: string): UserPublic {
+    if (actorId) assertSystemAdmin(actorId)
     const db = getDb()
     const user = db.get('SELECT * FROM users WHERE id = ?', userId) as User | undefined
     if (!user) throw new UnauthorizedError('用户不存在')
@@ -169,6 +191,7 @@ export class AuthService {
   }
 
   adminResetPassword(userId: string, newPassword: string, actorId: string): void {
+    assertSystemAdmin(actorId)
     const db = getDb()
     const user = db.get('SELECT * FROM users WHERE id = ?', userId) as User | undefined
     if (!user) throw new UnauthorizedError('用户不存在')

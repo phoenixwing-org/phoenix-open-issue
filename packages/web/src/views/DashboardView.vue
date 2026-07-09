@@ -1,17 +1,17 @@
 <script setup lang="ts">
 import { onMounted, ref, inject } from 'vue'
 import { useIssueListStore } from '@/stores/issueLists'
+import { useDictGroup } from '@/composables/useDictGroup'
 import { ElMessage } from 'element-plus'
 import { getSeedStatus, addTestData, declineTestData } from '@/api/push'
 import PnwPageHeader from 'phoenix-wing/layout/PnwPageHeader.vue'
 import PageHelpButton from '@/components/PageHelpButton.vue'
+import ListFormDialog from '@/components/ListFormDialog.vue'
 
 const store = useIssueListStore()
+const listTypeDict = useDictGroup('listType')
 const openTab = inject<(pageId: string, title: string, contextKey?: string) => void>('openTab')!
 const showCreate = ref(false)
-const newListName = ref('')
-const newListType = ref('custom')
-const newListDesc = ref('')
 const listView = ref<'mine' | 'all' | 'archived'>('mine')
 
 // ── 测试数据提示 ──
@@ -48,20 +48,6 @@ async function switchView(view: 'mine' | 'all' | 'archived') {
 
 async function onArchive(listId: string) {
   await store.archiveList(listId, true)
-}
-
-const listTypeLabel: Record<string, string> = {
-  yearly: '年度',
-  monthly: '月度',
-  project: '项目',
-  custom: '自定义',
-}
-
-const listTypeColor: Record<string, string> = {
-  yearly: '#409eff',
-  monthly: '#67c23a',
-  project: '#e6a23c',
-  custom: '#909399',
 }
 
 onMounted(async () => {
@@ -117,8 +103,8 @@ async function onCreate(data: { name: string; listType: string; description?: st
           class="list-card"
           @click="goList(list.id, list.name)"
         >
-          <div class="card-type" :style="{ background: listTypeColor[list.listType] }">
-            {{ listTypeLabel[list.listType] }}
+          <div class="card-type" :style="{ background: listTypeDict.color(list.listType) }">
+            {{ listTypeDict.label(list.listType) }}
           </div>
           <div class="card-body">
             <h3>{{ list.name }}</h3>
@@ -141,28 +127,7 @@ async function onCreate(data: { name: string; listType: string; description?: st
       </div>
     </div>
 
-    <el-dialog v-if="showCreate" :model-value="true" title="新建列表" width="450px" @close="showCreate = false">
-      <el-form label-position="top">
-        <el-form-item label="名称" required>
-          <el-input v-model="newListName" placeholder="如：2026年7月点检" />
-        </el-form-item>
-        <el-form-item label="类型">
-          <el-select v-model="newListType">
-            <el-option label="年度" value="yearly" />
-            <el-option label="月度" value="monthly" />
-            <el-option label="项目" value="project" />
-            <el-option label="自定义" value="custom" />
-          </el-select>
-        </el-form-item>
-        <el-form-item label="描述">
-          <el-input v-model="newListDesc" type="textarea" :rows="2" placeholder="可选" />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <el-button @click="showCreate = false">取消</el-button>
-        <el-button type="primary" @click="onCreate({ name: newListName, listType: newListType, description: newListDesc }); showCreate = false; newListName = ''; newListDesc = ''">确认</el-button>
-      </template>
-    </el-dialog>
+    <ListFormDialog v-if="showCreate" @confirm="onCreate" @close="showCreate = false" />
 
     <!-- 首次登录：询问是否添加演示数据 -->
     <el-dialog

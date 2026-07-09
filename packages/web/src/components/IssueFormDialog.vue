@@ -23,7 +23,7 @@ const emit = defineEmits<{
   close: []
 }>()
 
-onMounted(() => { dict.load(); funcStore.load() })
+onMounted(() => { funcStore.load() })
 
 const title = ref(props.initial?.title || '')
 const issueNo = ref(props.initial?.issueNo || '')

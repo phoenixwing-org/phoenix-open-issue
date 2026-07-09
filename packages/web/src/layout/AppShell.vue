@@ -7,6 +7,7 @@ import PnwChoiceDialogHost from 'phoenix-wing/components/PnwChoiceDialogHost.vue
 import PnwAsyncProgressOverlay from 'phoenix-wing/components/PnwAsyncProgressOverlay.vue'
 import PnwAppModalOverlay from 'phoenix-wing/components/PnwAppModalOverlay.vue'
 import WelcomeView from '@/views/WelcomeView.vue'
+import { useDictStore } from '@/stores/dict'
 import { ref, computed, provide, watch, onMounted } from 'vue'
 import { usePnwDocumentTitle, pnwCreateWorkbench } from 'phoenix-wing'
 import { useRoute, useRouter } from 'vue-router'
@@ -19,51 +20,91 @@ const logExpanded = ref(false)
 const logText = ref('')
 const route = useRoute()
 const router = useRouter()
+const dict = useDictStore()
+
+function normalizePageId(pageId: string): string {
+  if (pageId === 'push-history') return 'pushHistory'
+  return pageId
+}
+
+const PAGE_LABELS: Record<string, string> = {
+  dashboard: '仪表盘',
+  lists: '列表管理',
+  listDetail: '列表详情',
+  org: '组织架构',
+  pushHistory: '推送历史',
+  functions: '功能表',
+  settings: '设置',
+  issueDetail: 'Issue',
+  welcome: '欢迎',
+}
+
+function pageTitle(pageId: string): string {
+  const base = normalizePageId(pageId).split(':')[0]
+  return PAGE_LABELS[base] ?? pageId
+}
 
 // Workbench engine
 const wb = pnwCreateWorkbench({
   pagePolicy: (pageId) => {
-    // 这些页面仅允许单个 Tab，再次点击激活已有
+    const base = normalizePageId(pageId).split(':')[0]
     const SINGLETON = new Set(['dashboard', 'lists', 'org', 'pushHistory', 'functions', 'settings'])
-    const maxTabs = SINGLETON.has(pageId) ? 1 : 30
+    const maxTabs = SINGLETON.has(base) ? 1 : 30
     return { maxTabs, tabEnabled: true }
   },
-  navLabel: (pageId) => {
-    // 带参数的 pageId → 取基础名
-    const base = pageId.split(':')[0]
-    const labels: Record<string, string> = {
-      dashboard: '仪表盘', lists: '列表管理', listDetail: '列表详情',
-      org: '组织架构', pushHistory: '推送历史', functions: '功能表', settings: '设置', issueDetail: 'Issue',
-    }
-    return labels[base] || pageId
-  },
+  navLabel: (pageId) => pageTitle(pageId),
 })
 
-const pageLabel = computed(() => {
-  const labels: Record<string, string> = {
-    dashboard: '仪表盘', lists: '列表管理', listDetail: '列表详情',
-    org: '组织架构', pushHistory: '推送历史', functions: '功能表', settings: '设置', welcome: '欢迎', issueDetail: 'Issue 详情',
-  }
-  return labels[route.name as string] || String(route.name || '')
-})
+const pageLabel = computed(() => pageTitle(normalizePageId(String(route.name || ''))))
 
 // 标签 → 完整路径映射（保留路由参数）
 const tabPathMap = new Map<string, string>()
 
+const STATIC_PAGE_PATHS: Record<string, string> = {
+  dashboard: '/dashboard',
+  lists: '/lists',
+  org: '/org',
+  pushHistory: '/push-history',
+  settings: '/settings',
+  functions: '/functions',
+  testRunner: '/test-runner',
+}
+
+function pathFromPageId(pageId: string, contextKey?: string): string {
+  const normalized = normalizePageId(pageId)
+  if (normalized.startsWith('listDetail:')) {
+    return `/list/${contextKey || normalized.split(':')[1]}`
+  }
+  if (normalized.startsWith('issueDetail:')) {
+    return `/issue/${contextKey || normalized.split(':')[1]}`
+  }
+  const base = normalized.split(':')[0]
+  return STATIC_PAGE_PATHS[base] ?? `/${base}`
+}
+
+function resolveTabPath(tabId: string): string | undefined {
+  const mapped = tabPathMap.get(tabId)
+  if (mapped) return mapped
+  const tab = wb.tabs.value.find(t => t.id === tabId)
+  if (!tab) return undefined
+  return pathFromPageId(tab.pageId, tab.contextKey)
+}
+
+function ensureTabPath(tabId: string, pageId: string, contextKey?: string, path?: string) {
+  tabPathMap.set(tabId, path ?? pathFromPageId(pageId, contextKey))
+}
+
 usePnwDocumentTitle({ workspaceShort: ref('Open Issue'), workspacePath: ref(''), pageLabel })
 
 function onRibbonOpen(pageId: string) {
-  const labels: Record<string, string> = {
-    dashboard: '仪表盘', lists: '列表管理', listDetail: '列表详情',
-    org: '组织架构', pushHistory: '推送历史', functions: '功能表', settings: '设置',
-  }
-  wb.openTab({ pageId, title: labels[pageId] || pageId })
-  router.push(`/${pageId}`)
+  const normalized = normalizePageId(pageId)
+  wb.openTab({ pageId: normalized, title: pageTitle(normalized) })
+  router.push(pathFromPageId(normalized))
 }
 
 function onSelectWbTab(tabId: string) {
   wb.activateTab(tabId)
-  const path = tabPathMap.get(tabId)
+  const path = resolveTabPath(tabId)
   if (path) router.push(path)
 }
 
@@ -72,7 +113,7 @@ async function onCloseWbTab(tabId: string) {
   await wb.closeTab(tabId)
   const last = wb.tabs.value[wb.tabs.value.length - 1]
   if (last) {
-    const path = tabPathMap.get(last.id)
+    const path = resolveTabPath(last.id)
     if (path) router.push(path)
   } else {
     router.push('/dashboard')
@@ -87,20 +128,22 @@ async function onCloseAllWbTabs() {
 
 // expose for child pages
 provide('openTab', (pageId: string, title: string, contextKey?: string) => {
-  wb.openTab({ pageId, title, contextKey })
+  const normalized = normalizePageId(pageId)
+  wb.openTab({ pageId: normalized, title, contextKey })
   // URL: listDetail:<id> → /list/<id>, issueDetail:<id> → /issue/<id>
-  if (pageId.startsWith('listDetail:')) {
-    router.push(`/list/${contextKey || pageId.split(':')[1]}`)
-  } else if (pageId.startsWith('issueDetail:')) {
-    router.push(`/issue/${contextKey || pageId.split(':')[1]}`)
+  if (normalized.startsWith('listDetail:')) {
+    router.push(`/list/${contextKey || normalized.split(':')[1]}`)
+  } else if (normalized.startsWith('issueDetail:')) {
+    router.push(`/issue/${contextKey || normalized.split(':')[1]}`)
   } else {
-    router.push(contextKey ? `/${pageId}/${contextKey}` : `/${pageId}`)
+    router.push(pathFromPageId(normalized, contextKey))
   }
 })
 
 // 让子页面更新当前标签标题
 function updateTabTitle(pageId: string, title: string) {
-  const tab = wb.tabs.value.find(t => t.pageId === pageId)
+  const normalized = normalizePageId(pageId)
+  const tab = wb.tabs.value.find(t => t.pageId === normalized)
   if (tab) tab.title = title
 }
 provide('updateTabTitle', updateTabTitle)
@@ -113,7 +156,7 @@ watch(() => route.fullPath, (path) => {
   if (!name || name === 'welcome') return
 
   // 带参数的路由：name:param → 每个实体独立标签
-  let pageId = name as string
+  let pageId = normalizePageId(name as string)
   let title = pageLabel.value
   if (name === 'issueDetail' && route.params.id) {
     pageId = `issueDetail:${route.params.id}`
@@ -126,11 +169,11 @@ watch(() => route.fullPath, (path) => {
   const existing = wb.tabs.value.find(t => t.pageId === pageId)
   if (existing) {
     wb.activateTab(existing.id)
-    tabPathMap.set(existing.id, path)
+    ensureTabPath(existing.id, pageId, existing.contextKey, path)
   } else {
     wb.openTab({ pageId, title })
     const newTab = wb.tabs.value[wb.tabs.value.length - 1]
-    if (newTab) tabPathMap.set(newTab.id, path)
+    if (newTab) ensureTabPath(newTab.id, pageId, newTab.contextKey, path)
   }
 }, { immediate: true })
 
@@ -142,34 +185,74 @@ function restoreTabs() {
   try {
     const raw = localStorage.getItem(SESSION_KEY)
     if (!raw) return
-    const saved = JSON.parse(raw) as { tabs: { id: string; pageId: string; title: string; contextKey?: string }[]; activeTabId: string; paths: Record<string, string> }
+    const saved = JSON.parse(raw) as {
+      tabs: { id?: string; pageId: string; title: string; contextKey?: string }[]
+      activeTabId?: string
+      activePageId?: string
+      paths?: Record<string, string>
+    }
     if (!saved.tabs?.length) return
 
+    const pathByPageId = new Map<string, string>()
+    let activePageId = saved.activePageId
+    if (!activePageId && saved.activeTabId) {
+      activePageId = saved.tabs.find(t => t.id === saved.activeTabId)?.pageId
+    }
+
     for (const t of saved.tabs) {
-      const existing = wb.tabs.value.find(x => x.pageId === t.pageId)
-      if (!existing) {
+      const pageId = normalizePageId(t.pageId)
+      const title = pageTitle(pageId)
+      if (saved.paths?.[t.pageId]) {
+        pathByPageId.set(pageId, saved.paths[t.pageId])
+      } else if (saved.paths?.[pageId]) {
+        pathByPageId.set(pageId, saved.paths[pageId])
+      } else if (t.id && saved.paths?.[t.id]) {
+        pathByPageId.set(pageId, saved.paths[t.id])
+      }
+      t.pageId = pageId
+      t.title = title
+    }
+
+    if (activePageId) activePageId = normalizePageId(activePageId)
+
+    for (const t of saved.tabs) {
+      if (!wb.tabs.value.some(x => x.pageId === t.pageId)) {
         wb.openTab({ pageId: t.pageId, title: t.title, contextKey: t.contextKey })
       }
     }
-    if (saved.activeTabId) wb.activateTab(saved.activeTabId)
-    // 恢复路由映射
-    for (const [tabId, path] of Object.entries(saved.paths || {})) {
-      tabPathMap.set(tabId, path as string)
+
+    for (const tab of wb.tabs.value) {
+      ensureTabPath(
+        tab.id,
+        tab.pageId,
+        tab.contextKey,
+        pathByPageId.get(tab.pageId) ?? pathFromPageId(tab.pageId, tab.contextKey),
+      )
     }
-    // 导航到激活标签的路由
-    const activePath = saved.paths?.[saved.activeTabId]
-    if (activePath && route.fullPath !== activePath) {
-      router.replace(activePath)
+
+    if (activePageId) {
+      const activeTab = wb.tabs.value.find(t => t.pageId === activePageId)
+      if (activeTab) {
+        wb.activateTab(activeTab.id)
+        const activePath = resolveTabPath(activeTab.id)
+        if (activePath && route.fullPath !== activePath) {
+          router.replace(activePath)
+        }
+      }
     }
   } catch { /* ignore */ }
 }
 
 function saveTabs() {
   const paths: Record<string, string> = {}
-  tabPathMap.forEach((v, k) => { paths[k] = v })
+  for (const tab of wb.tabs.value) {
+    const path = tabPathMap.get(tab.id)
+    if (path) paths[tab.pageId] = path
+  }
+  const activeTab = wb.tabs.value.find(t => t.id === wb.activeTabId.value)
   localStorage.setItem(SESSION_KEY, JSON.stringify({
-    tabs: wb.tabs.value.map(t => ({ id: t.id, pageId: t.pageId, title: t.title, contextKey: t.contextKey })),
-    activeTabId: wb.activeTabId.value,
+    tabs: wb.tabs.value.map(t => ({ pageId: t.pageId, title: t.title, contextKey: t.contextKey })),
+    activePageId: activeTab?.pageId ?? null,
     paths,
   }))
 }
@@ -183,7 +266,8 @@ window.addEventListener('beforeunload', saveTabs)
 
 // 首次挂载时恢复（在 route watcher 之后，避免覆盖）
 onMounted(() => {
-  if (wb.tabs.value.length <= 1) restoreTabs()
+  dict.ensureLoaded()
+  if (localStorage.getItem(SESSION_KEY)) restoreTabs()
 })
 </script>
 

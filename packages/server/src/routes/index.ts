@@ -41,6 +41,7 @@ router.get('/dict/:groupName', authMiddleware, wrap((req, res) => dictCtrl.getBy
 router.get('/dict',            authMiddleware, wrap((req, res) => dictCtrl.getAll(req, res)))
 router.post('/dict',           authMiddleware, wrap((req, res) => dictCtrl.create(req, res)))
 router.post('/dict/presets',   authMiddleware, wrap((req, res) => dictCtrl.applyPreset(req, res)))
+router.post('/dict/dedupe',    authMiddleware, wrap((req, res) => dictCtrl.dedupe(req, res)))
 router.put('/dict/:id',        authMiddleware, wrap((req, res) => dictCtrl.update(req, res)))
 router.delete('/dict/:id',     authMiddleware, wrap((req, res) => dictCtrl.delete(req, res)))
 router.delete('/dict/tag/:tag', authMiddleware, wrap((req, res) => dictCtrl.deleteByTag(req, res)))
@@ -62,22 +63,24 @@ router.patch('/user/:userId/enable',       authMiddleware, wrap((req, res) => au
 router.patch('/user/:userId/reset-password', authMiddleware, wrap((req, res) => authCtrl.adminResetPassword(req, res)))
 
 // ═══ Org Unit ═══
-router.get('/org-units',        wrap((req, res) => orgCtrl.getTree(req, res)))
-router.get('/org-unit/:id',     wrap((req, res) => orgCtrl.getById(req, res)))
-router.post('/org-unit',        wrap((req, res) => orgCtrl.create(req, res)))
-router.put('/org-unit/:id',     wrap((req, res) => orgCtrl.update(req, res)))
-router.delete('/org-unit/:id',  wrap((req, res) => orgCtrl.delete(req, res)))
-router.get('/org-unit/:id/users', wrap((req, res) => orgCtrl.getUsers(req, res)))
+router.get('/org-units',        authMiddleware, wrap((req, res) => orgCtrl.getTree(req, res)))
+router.get('/org-unit/:id',     authMiddleware, wrap((req, res) => orgCtrl.getById(req, res)))
+router.post('/org-unit',        authMiddleware, wrap((req, res) => orgCtrl.create(req, res)))
+router.put('/org-unit/:id',     authMiddleware, wrap((req, res) => orgCtrl.update(req, res)))
+router.delete('/org-unit/:id',  authMiddleware, wrap((req, res) => orgCtrl.delete(req, res)))
+router.get('/org-unit/:id/users', authMiddleware, wrap((req, res) => orgCtrl.getUsers(req, res)))
 
 // ═══ List ═══
 router.get('/lists',           authMiddleware, wrap((req, res) => listCtrl.getMyLists(req, res)))
 router.get('/lists/all',       authMiddleware, wrap((req, res) => listCtrl.getAllLists(req, res)))
 router.get('/lists/archived',  authMiddleware, wrap((req, res) => listCtrl.getArchivedLists(req, res)))
+router.get('/lists/deleted',   authMiddleware, wrap((req, res) => listCtrl.getDeletedLists(req, res)))
 router.post('/list',           authMiddleware, wrap((req, res) => listCtrl.create(req, res)))
 router.get('/list/:id',        authMiddleware, wrap((req, res) => listCtrl.getById(req, res)))
 router.put('/list/:id',        authMiddleware, wrap((req, res) => listCtrl.update(req, res)))
 router.delete('/list/:id',     authMiddleware, wrap((req, res) => listCtrl.delete(req, res)))
 router.patch('/list/:id/archive', authMiddleware, wrap((req, res) => listCtrl.archiveList(req, res)))
+router.patch('/list/:id/restore', authMiddleware, wrap((req, res) => listCtrl.restoreList(req, res)))
 router.get('/list/:id/members',   authMiddleware, wrap((req, res) => listCtrl.getMembers(req, res)))
 router.post('/list/:id/member',   authMiddleware, wrap((req, res) => listCtrl.addMember(req, res)))
 router.delete('/list/:id/member/:userId', authMiddleware, wrap((req, res) => listCtrl.removeMember(req, res)))
@@ -92,6 +95,7 @@ router.get('/issue/:id',        authMiddleware, wrap((req, res) => issueCtrl.get
 router.put('/issue/:id',        authMiddleware, wrap((req, res) => issueCtrl.update(req, res)))
 router.patch('/issue/:id/status', authMiddleware, wrap((req, res) => issueCtrl.updateStatus(req, res)))
 router.delete('/issue/:id',     authMiddleware, wrap((req, res) => issueCtrl.delete(req, res)))
+router.patch('/list/:listId/issue/:issueId/attention', authMiddleware, wrap((req, res) => issueCtrl.setAttention(req, res)))
 router.patch('/list/:listId/issue/:issueId/void',   authMiddleware, wrap((req, res) => issueCtrl.voidLink(req, res)))
 router.patch('/list/:listId/issue/:issueId/unvoid', authMiddleware, wrap((req, res) => issueCtrl.unvoidLink(req, res)))
 
@@ -114,6 +118,8 @@ router.patch('/push/:id/handle',           authMiddleware, wrap((req, res) => pu
 router.get('/db/export',    authMiddleware, wrap((req, res) => backupCtrl.exportDb(req, res)))
 router.post('/db/import',   authMiddleware, wrap((req, res) => backupCtrl.importDb(req, res)))
 router.post('/db/repair-links', authMiddleware, wrap((req, res) => backupCtrl.repairLinks(req, res)))
+router.post('/db/repair',       authMiddleware, wrap((req, res) => backupCtrl.repair(req, res)))
+router.post('/db/repair/:task', authMiddleware, wrap((req, res) => backupCtrl.repair(req, res)))
 
 // ═══ Functions ═══
 router.get('/functions',          authMiddleware, wrap((req, res) => funcCtrl.list(req, res)))

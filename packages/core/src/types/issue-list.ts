@@ -1,4 +1,5 @@
-export type ListType = 'yearly' | 'monthly' | 'project' | 'custom'
+/** 点检表类型，值来自数据字典 listType 分组 */
+export type ListType = string
 
 export type MemberRole = 'owner' | 'admin' | 'editor' | 'reporter' | 'viewer'
 
@@ -44,4 +45,6 @@ export interface CreateListInput {
 export interface UpdateListInput {
   name?: string
   description?: string
+  listType?: ListType
+  ownerId?: string
 }

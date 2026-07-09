@@ -1,7 +1,10 @@
 import type { Request, Response } from 'express'
 import { BackupService } from '../service/BackupService.js'
+import { DbRepairService, type RepairTaskId } from '../service/DbRepairService.js'
+import { assertSystemAdmin } from '../utils/admin.js'
 
 const backupService = new BackupService()
+const repairService = new DbRepairService()
 
 export class BackupController {
   exportDb(_req: Request, res: Response): void {
@@ -18,8 +21,17 @@ export class BackupController {
     res.json({ message: '导入完成', ...result })
   }
 
-  repairLinks(_req: Request, res: Response): void {
-    const result = backupService.repairIssueListLinks()
-    res.json({ message: '修正完成', ...result })
+  repairLinks(req: Request, res: Response): void {
+    assertSystemAdmin(req.user!.userId)
+    const result = repairService.repairIssueListLinks()
+    res.json({ message: result.message, created: result.fixed, skipped: 0, ...result })
+  }
+
+  repair(req: Request, res: Response): void {
+    assertSystemAdmin(req.user!.userId)
+    const task = (req.body?.task ?? req.params.task ?? 'all') as RepairTaskId
+    const results = repairService.runTask(task)
+    const totalFixed = results.reduce((s, r) => s + r.fixed, 0)
+    res.json({ message: '修正完成', task, totalFixed, results })
   }
 }

@@ -1,3 +1,6 @@
+/** 系统级权限（与列表成员 role 无关） */
+export type SystemRole = 'admin' | 'editor' | 'viewer'
+
 export interface User {
   id: string
   username: string
@@ -7,6 +10,7 @@ export interface User {
   orgUnitId: string | null
   approved: number
   disabled?: number
+  systemRole: SystemRole
   createdAt: string
   updatedAt: string
 }

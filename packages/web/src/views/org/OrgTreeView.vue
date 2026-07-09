@@ -12,6 +12,18 @@ import { getOrgUnitUsers, createOrgUnit, deleteOrgUnit, updateOrgUnit } from '@/
 import { approveUser, updateUserOrg, updateUser, getAllUsers, getPendingUsers, disableUser, enableUser, adminResetPassword } from '@/api/auth'
 import { ElMessage } from 'element-plus'
 import { pnwPromptChoice } from 'phoenix-wing'
+import type { SystemRole } from '@open-issue/core'
+import { isSystemAdmin } from '@open-issue/core'
+import { useAuthStore } from '@/stores/auth'
+
+const auth = useAuthStore()
+const isAdmin = computed(() => isSystemAdmin(auth.user ?? undefined))
+
+const SYSTEM_ROLE_OPTIONS: { value: SystemRole; label: string }[] = [
+  { value: 'admin', label: '管理员' },
+  { value: 'editor', label: '编辑' },
+  { value: 'viewer', label: '查看' },
+]
 
 const store = useOrgUnitStore()
 const treeRef = ref<any>(null)
@@ -51,7 +63,6 @@ function flattenUnits(nodes: any[], depth = 0): any[] {
 
 onMounted(async () => {
   await store.fetchTree()
-  dict.load()
   selectedUnit.value = allRootSelection()
   await loadAllUsers()
   await nextTick()
@@ -59,8 +70,13 @@ onMounted(async () => {
 })
 
 async function loadAllUsers() {
-  const [approvedRes, pendingRes] = await Promise.all([getAllUsers({ includeDisabled: 'true' }), getPendingUsers()])
-  unitUsers.value = [...pendingRes.data, ...approvedRes.data]
+  if (isAdmin.value) {
+    const [approvedRes, pendingRes] = await Promise.all([getAllUsers({ includeDisabled: 'true' }), getPendingUsers()])
+    unitUsers.value = [...pendingRes.data, ...approvedRes.data]
+  } else {
+    const approvedRes = await getAllUsers({ includeDisabled: 'true' })
+    unitUsers.value = approvedRes.data
+  }
 }
 
 async function reloadUsers() {
@@ -130,11 +146,18 @@ async function onMoveUser(userId: string, newOrgId: string | null) {
   await reloadUsers()
 }
 
+async function onChangeSystemRole(userId: string, role: SystemRole) {
+  await updateUser(userId, { systemRole: role })
+  ElMessage.success('权限已更新')
+  await reloadUsers()
+}
+
 const showEditUser = ref(false)
 const editUser = ref<any>(null)
 const editDisplayName = ref('')
 const editEmail = ref('')
 const editOrgId = ref<string | null>(null)
+const editSystemRole = ref<SystemRole>('editor')
 const resetPasswordValue = ref('')
 const resetPasswordConfirm = ref('')
 
@@ -159,6 +182,7 @@ function onEditUser(u: any) {
   editDisplayName.value = u.displayName || ''
   editEmail.value = u.email || ''
   editOrgId.value = u.orgUnitId
+  editSystemRole.value = u.systemRole || 'editor'
   resetPasswordValue.value = ''
   resetPasswordConfirm.value = ''
   showEditUser.value = true
@@ -170,6 +194,7 @@ async function onSaveUser() {
     displayName: editDisplayName.value || undefined,
     email: editEmail.value || undefined,
     orgUnitId: editOrgId.value,
+    systemRole: editSystemRole.value,
   })
   ElMessage.success('已更新')
   showEditUser.value = false
@@ -214,8 +239,7 @@ async function onDelete(id: string, name: string) {
   treeRef.value?.setCurrentKey(ALL_ROOT_ID)
 }
 
-const unitTypeLabel: Record<string, string> = { all: '全部', group: '小组', department: '科室', division: '部' }
-const unitTypeColor: Record<string, string> = { all: '#409eff', group: '#67c23a', department: '#409eff', division: '#e6a23c' }
+const unitTypeLabel: Record<string, string> = { all: '全部' }
 
 function orgName(orgUnitId: string | null | undefined) {
   if (!orgUnitId) return '—'
@@ -232,16 +256,34 @@ function memberSectionTitle() {
   if (!unitHasChildren(selectedUnit.value)) return '成员'
   return settings.orgIncludeChildren ? '成员 (含下级组织)' : '成员 (仅本级)'
 }
+
+/** 统一判断用户是否禁用（与节点无关，兼容 0/1 与 boolean） */
+function isUserDisabled(row: { disabled?: number | boolean | null }) {
+  return !!row.disabled
+}
+
+/** 统一用户状态展示：禁用 > 待批准 > 已批准 */
+function userStatusTag(row: { disabled?: number | boolean | null; approved?: number | boolean | null }) {
+  if (isUserDisabled(row)) return { type: 'danger' as const, label: '已禁用' }
+  if (row.approved) return { type: 'success' as const, label: '已批准' }
+  return { type: 'warning' as const, label: '待批准' }
+}
+
+function systemRoleLabel(role: string | undefined) {
+  return SYSTEM_ROLE_OPTIONS.find(o => o.value === role)?.label ?? role ?? '—'
+}
 </script>
 
 <template>
   <div class="page">
     <PnwPageHeader title="组织架构">
       <template #actions>
-        <el-button type="primary" size="small" @click="showCreate = true"><el-icon><Plus /></el-icon> 新建节点</el-button>
+        <el-button v-if="isAdmin" type="primary" size="small" @click="showCreate = true"><el-icon><Plus /></el-icon> 新建节点</el-button>
       </template>
       <template #help><PageHelpButton page-id="org" /></template>
     </PnwPageHeader>
+
+    <p v-if="!isAdmin" class="panel-hint" style="margin-bottom:12px">仅系统管理员可编辑组织节点、审批用户及管理成员。</p>
 
     <div class="org-layout">
       <div class="org-tree-panel">
@@ -257,8 +299,8 @@ function memberSectionTitle() {
         >
           <template #default="{ data }">
             <span class="tree-node" :class="{ 'tree-node-all': data.isAllRoot }">
-              <el-tag :color="unitTypeColor[data.unitType] ?? '#909399'" size="small" style="color:#fff;border:none">
-                {{ unitTypeLabel[data.unitType] ?? data.unitType }}
+              <el-tag :color="data.unitType === 'all' ? '#409eff' : dict.getGroupColor('orgUnitType', data.unitType)" size="small" style="color:#fff;border:none">
+                {{ unitTypeLabel[data.unitType] ?? dict.getLabel('orgUnitType', data.unitType) }}
               </el-tag>
               <span style="margin-left:6px">{{ data.name }}</span>
             </span>
@@ -269,10 +311,10 @@ function memberSectionTitle() {
       <div class="org-detail-panel">
         <template v-if="selectedUnit && !editingUnit">
           <h3>{{ selectedUnit.name }}</h3>
-          <el-tag size="small" :color="unitTypeColor[selectedUnit.unitType] ?? '#909399'" style="color:#fff;border:none">
-            {{ unitTypeLabel[selectedUnit.unitType] ?? selectedUnit.unitType }}
+          <el-tag size="small" :color="dict.getGroupColor('orgUnitType', selectedUnit.unitType)" style="color:#fff;border:none">
+            {{ dict.getLabel('orgUnitType', selectedUnit.unitType) }}
           </el-tag>
-          <el-button v-if="!isAllRoot(selectedUnit)" size="small" style="margin-left:8px" @click="onEditUnit">编辑</el-button>
+          <el-button v-if="isAdmin && !isAllRoot(selectedUnit)" size="small" style="margin-left:8px" @click="onEditUnit">编辑</el-button>
           <p v-if="isAllRoot(selectedUnit)" class="panel-hint">汇总所有组织节点下的人员</p>
         </template>
         <el-form v-else-if="selectedUnit && editingUnit" label-position="top" size="small">
@@ -314,7 +356,12 @@ function memberSectionTitle() {
           >
             <el-table-column label="显示名称" min-width="120">
               <template #default="{ row }">
-                <span class="user-name-link" @click="onEditUser(row)">{{ row.displayName || row.username }}</span>
+                <span
+                  v-if="isAdmin"
+                  class="user-name-link"
+                  @click="onEditUser(row)"
+                >{{ row.displayName || row.username }}</span>
+                <span v-else>{{ row.displayName || row.username }}</span>
               </template>
             </el-table-column>
             <el-table-column prop="username" label="账号" min-width="100" />
@@ -323,15 +370,28 @@ function memberSectionTitle() {
             </el-table-column>
             <el-table-column label="状态" width="100" align="center">
               <template #default="{ row }">
-                <el-tag v-if="row.disabled" type="danger" size="small">已禁用</el-tag>
-                <el-tag v-else-if="row.approved" type="success" size="small">已批准</el-tag>
-                <el-tag v-else type="warning" size="small">待批准</el-tag>
+                <el-tag :type="userStatusTag(row).type" size="small">{{ userStatusTag(row).label }}</el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column label="权限" width="110" align="center">
+              <template #default="{ row }">
+                <el-select
+                  v-if="isAdmin && row.approved"
+                  size="small"
+                  :model-value="row.systemRole || 'editor'"
+                  @change="(v: SystemRole) => onChangeSystemRole(row.id, v)"
+                  @click.stop
+                >
+                  <el-option v-for="o in SYSTEM_ROLE_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
+                </el-select>
+                <span v-else-if="row.approved">{{ systemRoleLabel(row.systemRole) }}</span>
+                <span v-else class="text-muted">—</span>
               </template>
             </el-table-column>
             <el-table-column label="归属组织" min-width="140" show-overflow-tooltip>
               <template #default="{ row }">{{ orgName(row.orgUnitId) }}</template>
             </el-table-column>
-            <el-table-column label="更换组织" min-width="150">
+            <el-table-column v-if="isAdmin" label="更换组织" min-width="150">
               <template #default="{ row }">
                 <el-select
                   v-if="row.approved"
@@ -352,7 +412,7 @@ function memberSectionTitle() {
                 <span v-else class="text-muted">—</span>
               </template>
             </el-table-column>
-            <el-table-column label="操作" width="200" fixed="right" align="center">
+            <el-table-column v-if="isAdmin" label="操作" width="200" fixed="right" align="center">
               <template #default="{ row }">
                 <el-button link type="primary" size="small" @click="onEditUser(row)">编辑</el-button>
                 <template v-if="!row.approved">
@@ -360,7 +420,7 @@ function memberSectionTitle() {
                   <el-button link type="danger" size="small" @click="onApprove(row.id, false)">拒绝</el-button>
                 </template>
                 <template v-else>
-                  <el-button v-if="!row.disabled" link type="danger" size="small" @click="onDisableUser(row.id, row.displayName || row.username)">禁用</el-button>
+                  <el-button v-if="!isUserDisabled(row)" link type="danger" size="small" @click="onDisableUser(row.id, row.displayName || row.username)">禁用</el-button>
                   <el-button v-else link type="success" size="small" @click="onEnableUser(row.id)">启用</el-button>
                 </template>
               </template>
@@ -408,6 +468,11 @@ function memberSectionTitle() {
         <el-form-item label="组织">
           <el-select v-model="editOrgId" clearable placeholder="选择组织（清空→待定组）" style="width:100%">
             <el-option v-for="org in flattenUnits(store.tree)" :key="org.id" :label="'　'.repeat(org._depth) + org.name" :value="org.id" />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="系统权限">
+          <el-select v-model="editSystemRole" style="width:100%">
+            <el-option v-for="o in SYSTEM_ROLE_OPTIONS" :key="o.value" :label="o.label" :value="o.value" />
           </el-select>
         </el-form-item>
         <el-divider />

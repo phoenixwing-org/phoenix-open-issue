@@ -20,6 +20,9 @@ const DICT_USAGE: Record<string, { table: string; column: string; label: string 
   orgUnitType: [
     { table: 'orgUnits', column: 'unitType', label: '组织类型' },
   ],
+  listType: [
+    { table: 'issueLists', column: 'listType', label: '点检表类型' },
+  ],
 }
 
 export class DictController {
@@ -66,6 +69,13 @@ export class DictController {
   }
 
   delete(req: Request, res: Response): void {
+    if (dictService.isCore(req.params.id)) {
+      res.status(403).json({
+        error: '内置字典项不可删除',
+        message: '年度、月度、项目、自定义为系统内置类型，不可删除',
+      })
+      return
+    }
     const usage = dictService.checkUsage(req.params.id)
     if (usage.length > 0) {
       const details = usage.map(u => `${u.label}: ${u.count} 条`).join('；')
@@ -84,6 +94,12 @@ export class DictController {
   deleteByTag(req: Request, res: Response): void {
     const { tag } = req.params
     const result = dictService.deleteByTag(tag)
+    res.json(result)
+  }
+
+  /** 同分组 value 去重（引用按 value，不影响 Issue 等） */
+  dedupe(_req: Request, res: Response): void {
+    const result = dictService.dedupe()
     res.json(result)
   }
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { checkListAccess, canManageList, canDeleteList, canDeleteListAsUser, canAddMember, canModifyIssue, canCreateIssue, canEditOwnIssue } from './permission.js'
+import { checkListAccess, canManageList, canDeleteList, canDeleteListAsUser, canAddMember, canAddMemberAsUser, canTransferPrimaryOwnerAsUser, canModifyIssue, canCreateIssue, canEditOwnIssue } from './permission.js'
 
 const members = [
   { userId: 'u1', role: 'owner' as const },
@@ -79,6 +79,29 @@ describe('canAddMember', () => {
   it('editor and below cannot add members', () => {
     expect(canAddMember('editor')).toBe(false)
     expect(canAddMember('viewer')).toBe(false)
+  })
+})
+
+describe('canAddMemberAsUser', () => {
+  it('system admin can manage members without list role', () => {
+    expect(canAddMemberAsUser(null, { systemRole: 'admin' })).toBe(true)
+    expect(canAddMemberAsUser(null, 'admin')).toBe(true)
+  })
+
+  it('non-admin still needs owner or admin list role', () => {
+    expect(canAddMemberAsUser('owner', { systemRole: 'editor' })).toBe(true)
+    expect(canAddMemberAsUser('editor', { systemRole: 'editor' })).toBe(false)
+  })
+})
+
+describe('canTransferPrimaryOwnerAsUser', () => {
+  it('system admin can transfer without being list owner member', () => {
+    expect(canTransferPrimaryOwnerAsUser(null, { systemRole: 'admin' })).toBe(true)
+  })
+
+  it('list owner role member can transfer', () => {
+    expect(canTransferPrimaryOwnerAsUser('owner', { systemRole: 'editor' })).toBe(true)
+    expect(canTransferPrimaryOwnerAsUser('admin', { systemRole: 'editor' })).toBe(false)
   })
 })
 

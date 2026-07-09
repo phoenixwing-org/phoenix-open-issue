@@ -45,7 +45,7 @@ export class OrgUnitService {
 
   getUsers(orgUnitId: string, includeChildren = true) {
     const db = getDb()
-    const userCols = 'id, username, email, displayName, orgUnitId, approved, createdAt, updatedAt'
+    const userCols = 'id, username, email, displayName, orgUnitId, approved, disabled, systemRole, createdAt, updatedAt'
     if (isPendingOrgUnit(db, orgUnitId)) {
       const pendingId = getPendingOrgUnitId(db) ?? orgUnitId
       return db.all(

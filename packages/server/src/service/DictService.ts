@@ -1,6 +1,17 @@
 import { getDb } from '../db/connection.js'
-import { generateId } from '@open-issue/core'
+import { repairDictDataAndIndex } from '../db/migrations.js'
+import type { DictDedupeResult } from '../db/dictDedupe.js'
+import {
+  generateId,
+  hasDictTag,
+  normalizeDictTags,
+  mergeDictTags,
+  dictTagLikePattern,
+} from '@open-issue/core'
 import type { DictItem } from '@open-issue/core'
+import { ConflictError } from '../utils/errors.js'
+
+export { hasDictTag } from '@open-issue/core'
 
 // ── 预设定义 ──
 export interface PresetEntry { v: string; l: string }
@@ -90,6 +101,9 @@ export const DICT_PRESETS: Record<string, PresetGroup> = {
   },
 }
 
+/** 内置字典项标签，带此标签的项不可删除 */
+export const DICT_CORE_TAG = 'core'
+
 export class DictService {
   /** 获取某个分组的字典项 */
   getByGroup(groupName: string): DictItem[] {
@@ -108,11 +122,20 @@ export class DictService {
 
   create(groupName: string, value: string, label: string, tags?: string): DictItem {
     const db = getDb()
+    const trimmed = value.trim()
+    if (!trimmed) throw new ConflictError('字典值不能为空')
+
+    const dup = db.get(
+      'SELECT id FROM dict WHERE groupName = ? AND value = ?',
+      [groupName, trimmed],
+    ) as { id: string } | undefined
+    if (dup) throw new ConflictError(`分组「${groupName}」中值「${trimmed}」已存在`)
+
     const id = generateId()
     const maxSort = db.get('SELECT MAX(sortOrder) as m FROM dict WHERE groupName = ?', groupName) as { m: number | null }
     const sortOrder = (maxSort?.m ?? -1) + 1
     db.run('INSERT INTO dict (id, groupName, value, label, sortOrder, tags) VALUES (?, ?, ?, ?, ?, ?)',
-      [id, groupName, value, label, sortOrder, tags || ''])
+      [id, groupName, trimmed, label, sortOrder, normalizeDictTags(tags)])
     return db.get('SELECT * FROM dict WHERE id = ?', id) as DictItem
   }
 
@@ -129,15 +152,14 @@ export class DictService {
     db.exec('BEGIN TRANSACTION')
     try {
       for (const item of items) {
+        const val = item.value.trim()
+        if (!val) continue
         const row = db.get('SELECT id, tags FROM dict WHERE groupName = ? AND value = ?',
-          [item.groupName, item.value]) as { id: string; tags: string } | undefined
+          [item.groupName, val]) as { id: string; tags: string } | undefined
         if (row) {
-          // 已存在 → 追加 tag（如果还没有）
-          const existingTags = row.tags || ''
-          const tagSet = new Set(existingTags.split(',').map(t => t.trim()).filter(Boolean))
-          if (!tagSet.has(tag)) {
-            tagSet.add(tag)
-            db.run('UPDATE dict SET tags = ? WHERE id = ?', [[...tagSet].join(','), row.id])
+          const merged = mergeDictTags(row.tags, tag)
+          if (merged !== normalizeDictTags(row.tags)) {
+            db.run('UPDATE dict SET tags = ? WHERE id = ?', [merged, row.id])
             tagged++
           } else {
             skipped++
@@ -151,7 +173,7 @@ export class DictService {
         }
         sortCache[item.groupName]++
         db.run('INSERT INTO dict (id, groupName, value, label, sortOrder, tags) VALUES (?, ?, ?, ?, ?, ?)',
-          [generateId(), item.groupName, item.value, item.label, sortCache[item.groupName], tag])
+          [generateId(), item.groupName, val, item.label, sortCache[item.groupName], normalizeDictTags(tag)])
         added++
       }
       db.exec('COMMIT')
@@ -162,10 +184,33 @@ export class DictService {
     return { added, skipped, tagged }
   }
 
-  update(id: string, data: { label?: string; value?: string; enabled?: number; sortOrder?: number }): DictItem {
+  update(id: string, data: { label?: string; value?: string; enabled?: number; sortOrder?: number; tags?: string }): DictItem {
     const db = getDb()
-    db.run('UPDATE dict SET label = COALESCE(?, label), value = COALESCE(?, value), enabled = COALESCE(?, enabled), sortOrder = COALESCE(?, sortOrder) WHERE id = ?',
-      [data.label ?? null, data.value ?? null, data.enabled ?? null, data.sortOrder ?? null, id])
+    if (data.value !== undefined) {
+      const current = db.get('SELECT groupName FROM dict WHERE id = ?', id) as { groupName: string } | undefined
+      if (!current) throw new ConflictError('字典项不存在')
+      const trimmed = data.value.trim()
+      if (!trimmed) throw new ConflictError('字典值不能为空')
+      const dup = db.get(
+        'SELECT id FROM dict WHERE groupName = ? AND value = ? AND id != ?',
+        [current.groupName, trimmed, id],
+      ) as { id: string } | undefined
+      if (dup) throw new ConflictError(`同分组中值「${trimmed}」已存在`)
+      data = { ...data, value: trimmed }
+    }
+    if (data.tags !== undefined) {
+      data = { ...data, tags: normalizeDictTags(data.tags) }
+    }
+    db.run(
+      `UPDATE dict SET
+        label = COALESCE(?, label),
+        value = COALESCE(?, value),
+        enabled = COALESCE(?, enabled),
+        sortOrder = COALESCE(?, sortOrder),
+        tags = COALESCE(?, tags)
+       WHERE id = ?`,
+      [data.label ?? null, data.value ?? null, data.enabled ?? null, data.sortOrder ?? null, data.tags ?? null, id],
+    )
     return db.get('SELECT * FROM dict WHERE id = ?', id) as DictItem
   }
 
@@ -181,6 +226,7 @@ export class DictService {
       severity:         { table: 'issues', column: 'severity', label: 'Issue 严重度' },
       closeReason:      { table: 'issues', column: 'closeReason', label: 'Issue 关闭理由' },
       orgUnitType:      { table: 'orgUnits', column: 'unitType', label: '组织类型' },
+      listType:         { table: 'issueLists', column: 'listType', label: '点检表类型' },
     }
 
     const result: { table: string; column: string; label: string; count: number }[] = []
@@ -196,6 +242,13 @@ export class DictService {
     return result
   }
 
+  /** 是否为内置字典项（不可删除） */
+  isCore(id: string): boolean {
+    const db = getDb()
+    const item = db.get('SELECT tags FROM dict WHERE id = ?', id) as { tags: string } | undefined
+    return item ? hasDictTag(item.tags, DICT_CORE_TAG) : false
+  }
+
   delete(id: string): void {
     const db = getDb()
     db.run('DELETE FROM dict WHERE id = ?', id)
@@ -204,16 +257,25 @@ export class DictService {
   /** 按标签批量删除字典项（逐个检查引用，无引用才删） */
   deleteByTag(tag: string): { deleted: number; skipped: number; details: { id: string; label: string; groupName: string; reason: string }[] } {
     const db = getDb()
-    const items = db.all("SELECT * FROM dict WHERE tags LIKE ?", [`%${tag}%`]) as DictItem[]
+    const items = db.all('SELECT * FROM dict WHERE tags LIKE ?', [dictTagLikePattern(tag)]) as DictItem[]
 
     let deleted = 0
     let skipped = 0
     const details: { id: string; label: string; groupName: string; reason: string }[] = []
 
     for (const item of items) {
-      // 检查该 tag 是否确实在 tags 列表中（避免 LIKE 误匹配，如 "auto" 匹配 "automotive" 外的其他 tag 前缀）
-      const tagList = (item.tags || '').split(',').map(t => t.trim()).filter(Boolean)
-      if (!tagList.includes(tag)) continue
+      if (!hasDictTag(item.tags, tag)) continue
+
+      if (hasDictTag(item.tags, DICT_CORE_TAG)) {
+        skipped++
+        details.push({
+          id: item.id,
+          label: item.label,
+          groupName: item.groupName,
+          reason: '内置项，不可删除',
+        })
+        continue
+      }
 
       const usage = this.checkUsage(item.id)
       if (usage.length > 0) {
@@ -236,5 +298,20 @@ export class DictService {
       })
     }
     return { deleted, skipped, details }
+  }
+
+  /**
+   * 同分组 value 去重：保留一条（core 标签优先），合并 tags，删除重复行。
+   * Issue / 列表 / 组织等引用的是 value，非 dict.id，去重不影响引用。
+   */
+  dedupe(): DictDedupeResult & { indexOk: boolean; duplicateGroupsRemaining: number } {
+    const repair = repairDictDataAndIndex(getDb())
+    return {
+      removed: repair.removed,
+      tagsMerged: repair.tagsMerged,
+      details: [],
+      indexOk: repair.indexOk,
+      duplicateGroupsRemaining: repair.duplicateGroupsRemaining,
+    }
   }
 }

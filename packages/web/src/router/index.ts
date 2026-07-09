@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
+import { useDictStore } from '@/stores/dict'
 
 const router = createRouter({
   history: createWebHistory(),
@@ -83,6 +84,9 @@ router.beforeEach((to, _from, next) => {
   } else if (to.name === 'login' && auth.token) {
     next({ name: 'dashboard' })
   } else {
+    if (auth.token && to.meta.requiresAuth !== false) {
+      useDictStore().ensureLoaded()
+    }
     next()
   }
 })

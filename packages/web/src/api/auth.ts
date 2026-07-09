@@ -30,7 +30,7 @@ export function updateUserOrg(userId: string, orgUnitId: string | null) {
   return request.patch(`/user/${userId}/org`, { orgUnitId })
 }
 
-export function updateUser(userId: string, data: { displayName?: string; email?: string; orgUnitId?: string | null }) {
+export function updateUser(userId: string, data: { displayName?: string; email?: string; orgUnitId?: string | null; systemRole?: string }) {
   return request.patch(`/user/${userId}`, data)
 }
 

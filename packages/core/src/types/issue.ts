@@ -126,9 +126,10 @@ export interface IssueListLink {
   id: string
   issueId: string
   listId: string
-  voided: number
-  voidedAt: string | null
-  voidedBy: string | null
+  /** 0=不关注（列表默认隐藏），1~5=关注递增 */
+  attentionLevel: number
+  attentionUpdatedAt: string | null
+  attentionUpdatedBy: string | null
   linkedAt: string
   linkedBy: string
 }

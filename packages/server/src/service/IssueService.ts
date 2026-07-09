@@ -1,6 +1,6 @@
 import { getDb } from '../db/connection.js'
 import { NotFoundError, ForbiddenError } from '../utils/errors.js'
-import { generateId, checkListAccess, canModifyIssue } from '@open-issue/core'
+import { generateId, checkListAccess, canModifyIssue, DEFAULT_ATTENTION_LEVEL, normalizeAttentionLevel } from '@open-issue/core'
 import type { Issue, CreateIssueInput, UpdateIssueInput, ReorderInput, IssueStatus } from '@open-issue/core'
 import { IssueListService } from './IssueListService.js'
 
@@ -24,13 +24,15 @@ export class IssueService {
     if (!role) throw new ForbiddenError('无权访问此列表')
 
     const { status, priority, search, sort, page = 1, size = 50, includeVoided } = opts
-    // JOIN issueListLinks 获取 _voided 标记 + 统一过滤
+    // JOIN issueListLinks 获取 _attentionLevel + 统一过滤
     const params: unknown[] = [listId]
     const conditions: string[] = []
 
-    // 默认排除已作废的链接
+    // 默认排除不关注（attentionLevel=0，兼容旧 voided=1）
     if (!includeVoided) {
-      conditions.push('(il.voided IS NULL OR il.voided = 0)')
+      conditions.push(`(
+        COALESCE(il.attentionLevel, CASE WHEN il.voided = 1 THEN 0 ELSE ${DEFAULT_ATTENTION_LEVEL} END) > 0
+      )`)
     }
 
     if (status) {
@@ -76,9 +78,11 @@ export class IssueService {
     const offset = (page - 1) * size
     const allParams = [...params, size, offset]
     const items = db.all(
-      `SELECT i.*, il.voided as _voided, f.functionName as _functionName, f.platform as _functionPlatform, f.externalId as _functionExternalId ${fromJoin}${where} ORDER BY ${orderBy} LIMIT ? OFFSET ?`,
+      `SELECT i.*,
+        COALESCE(il.attentionLevel, CASE WHEN il.voided = 1 THEN 0 ELSE ${DEFAULT_ATTENTION_LEVEL} END) as _attentionLevel,
+        f.functionName as _functionName, f.platform as _functionPlatform, f.externalId as _functionExternalId ${fromJoin}${where} ORDER BY ${orderBy} LIMIT ? OFFSET ?`,
       allParams,
-    ) as (Issue & { _voided: number })[]
+    ) as (Issue & { _attentionLevel: number })[]
 
     return { items, total: total.count }
   }
@@ -137,8 +141,8 @@ export class IssueService {
 
     // 创建 issueListLinks 链接记录（主列表）
     db.run(
-      'INSERT INTO issueListLinks (id, issueId, listId, linkedBy) VALUES (?, ?, ?, ?)',
-      [generateId(), id, listId, userId],
+      'INSERT INTO issueListLinks (id, issueId, listId, linkedBy, attentionLevel) VALUES (?, ?, ?, ?, ?)',
+      [generateId(), id, listId, userId, DEFAULT_ATTENTION_LEVEL],
     )
 
     return this.getById(id)!
@@ -235,24 +239,33 @@ export class IssueService {
     db.run('DELETE FROM issues WHERE id = ?', id)
   }
 
-  // ── Feature 2: 作废链接 ──
-  voidLink(issueId: string, listId: string, userId: string): void {
+  // ── 链接关注系数 ──
+  setAttentionLevel(issueId: string, listId: string, level: number, userId: string): void {
     const db = getDb()
     const link = db.get('SELECT * FROM issueListLinks WHERE issueId = ? AND listId = ?',
       [issueId, listId]) as Record<string, unknown> | undefined
     if (!link) throw new NotFoundError('链接记录')
+
+    const attentionLevel = normalizeAttentionLevel(level)
     const now = new Date().toISOString()
-    db.run('UPDATE issueListLinks SET voided = 1, voidedAt = ?, voidedBy = ? WHERE issueId = ? AND listId = ?',
-      [now, userId, issueId, listId])
+    db.run(
+      `UPDATE issueListLinks SET
+        attentionLevel = ?,
+        attentionUpdatedAt = ?,
+        attentionUpdatedBy = ?
+       WHERE issueId = ? AND listId = ?`,
+      [attentionLevel, now, userId, issueId, listId],
+    )
   }
 
+  /** @deprecated 兼容：设为不关注(0) */
+  voidLink(issueId: string, listId: string, userId: string): void {
+    this.setAttentionLevel(issueId, listId, 0, userId)
+  }
+
+  /** @deprecated 兼容：恢复默认三星关注 */
   unvoidLink(issueId: string, listId: string, userId: string): void {
-    const db = getDb()
-    const link = db.get('SELECT * FROM issueListLinks WHERE issueId = ? AND listId = ?',
-      [issueId, listId]) as Record<string, unknown> | undefined
-    if (!link) throw new NotFoundError('链接记录')
-    db.run('UPDATE issueListLinks SET voided = 0, voidedAt = NULL, voidedBy = NULL WHERE issueId = ? AND listId = ?',
-      [issueId, listId])
+    this.setAttentionLevel(issueId, listId, DEFAULT_ATTENTION_LEVEL, userId)
   }
 
   reorder(listId: string, input: ReorderInput, userId: string): void {

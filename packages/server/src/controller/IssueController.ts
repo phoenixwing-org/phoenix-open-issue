@@ -50,14 +50,25 @@ export class IssueController {
     res.status(204).send()
   }
 
-  // ── Feature 2: 作废/恢复链接 ──
+  // ── 链接关注系数（void/unvoid 为兼容快捷方式） ──
+  setAttention(req: Request, res: Response): void {
+    const { attentionLevel } = req.body
+    issueService.setAttentionLevel(
+      req.params.issueId,
+      req.params.listId,
+      attentionLevel,
+      req.user!.userId,
+    )
+    res.json({ message: '关注级别已更新', attentionLevel: attentionLevel ?? 3 })
+  }
+
   voidLink(req: Request, res: Response): void {
     issueService.voidLink(req.params.issueId, req.params.listId, req.user!.userId)
-    res.json({ message: '已作废' })
+    res.json({ message: '已设为不关注', attentionLevel: 0 })
   }
 
   unvoidLink(req: Request, res: Response): void {
     issueService.unvoidLink(req.params.issueId, req.params.listId, req.user!.userId)
-    res.json({ message: '已恢复' })
+    res.json({ message: '已恢复默认关注', attentionLevel: 3 })
   }
 }

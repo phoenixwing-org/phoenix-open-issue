@@ -13,7 +13,7 @@ export const RIBBON_TABS: PnwRibbonTabDef[] = [
         items: [
           { pageId: 'dashboard', label: '仪表盘' },
           { pageId: 'lists', label: '列表管理' },
-          { pageId: 'push-history', label: '推送历史' },
+          { pageId: 'pushHistory', label: '推送历史' },
         ],
       },
     ],
@@ -39,7 +39,7 @@ export function setupRibbonIcons() {
   pnwRegisterRibbonIcons({
     dashboard: Odometer,
     lists: List,
-    'push-history': TrendCharts,
+    pushHistory: TrendCharts,
     org: Share,
     functions: Collection,
     settings: Setting,

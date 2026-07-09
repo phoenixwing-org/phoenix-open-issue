@@ -1,5 +1,13 @@
 import type { PnwDbAdapter } from 'phoenix-wing/db/pnwDbAdapter'
 import { ensurePendingOrgUnit } from '../utils/pendingOrgUnit.js'
+import {
+  applyColumnMigrations,
+  dedupeIssueListLinks,
+  migrateIssueListsListType,
+  migrateUserSystemRole,
+  migrateIssueListLinkAttention,
+  repairDictDataAndIndex,
+} from './migrations.js'
 
 export function runSchema(db: PnwDbAdapter): void {
   // ---- 建表 ----
@@ -28,7 +36,7 @@ export function runSchema(db: PnwDbAdapter): void {
       id TEXT PRIMARY KEY,
       name TEXT NOT NULL,
       description TEXT DEFAULT '',
-      listType TEXT NOT NULL CHECK(listType IN ('yearly','monthly','project','custom')),
+      listType TEXT NOT NULL,
       ownerId TEXT NOT NULL,
       orgUnitId TEXT,
       archived INTEGER NOT NULL DEFAULT 0,
@@ -107,9 +115,9 @@ export function runSchema(db: PnwDbAdapter): void {
       id TEXT PRIMARY KEY,
       issueId TEXT NOT NULL,
       listId TEXT NOT NULL,
-      voided INTEGER NOT NULL DEFAULT 0,
-      voidedAt TEXT,
-      voidedBy TEXT,
+      attentionLevel INTEGER NOT NULL DEFAULT 3 CHECK(attentionLevel BETWEEN 0 AND 5),
+      attentionUpdatedAt TEXT,
+      attentionUpdatedBy TEXT,
       linkedAt TEXT DEFAULT (datetime('now')),
       linkedBy TEXT NOT NULL
     );
@@ -147,20 +155,22 @@ export function runSchema(db: PnwDbAdapter): void {
   `)
 
   // ---- 迁移：旧库列增量添加（须在 CREATE TABLE 之后） ----
-  const migrations = [
-    `ALTER TABLE users ADD COLUMN approved INTEGER NOT NULL DEFAULT 1`,
-    `ALTER TABLE users ADD COLUMN disabled INTEGER NOT NULL DEFAULT 0`,
-    `ALTER TABLE issueLists ADD COLUMN archived INTEGER NOT NULL DEFAULT 0`,
-    `ALTER TABLE issueLists ADD COLUMN isDeleted INTEGER NOT NULL DEFAULT 0`,
-    `ALTER TABLE issueLists ADD COLUMN deletedAt TEXT`,
-    `ALTER TABLE dict ADD COLUMN tags TEXT NOT NULL DEFAULT ''`,
-    `ALTER TABLE issues ADD COLUMN functionId TEXT`,
-    // 清理重复的 issueListLinks（保留最早的一条）
-    `DELETE FROM issueListLinks WHERE id NOT IN (SELECT MIN(id) FROM issueListLinks GROUP BY issueId, listId)`,
-  ]
-  for (const sql of migrations) {
-    try { db.exec(sql) } catch { /* column already exists */ }
-  }
+  applyColumnMigrations(db)
+  dedupeIssueListLinks(db)
 
+  migrateUserSystemRole(db)
+  migrateIssueListsListType(db)
+  migrateIssueListLinkAttention(db)
+  const dictRepair = repairDictDataAndIndex(db)
+  if (!dictRepair.indexOk) {
+    console.warn(
+      `⚠️ 数据字典：${dictRepair.duplicateGroupsRemaining} 组 (groupName,value) 仍重复，唯一索引未建立。`,
+      '系统可正常使用，请登录后前往 设置 → 数据库修正 → 数据字典补全',
+    )
+  }
   ensurePendingOrgUnit(db)
 }
+
+// re-export for external use
+export { migrateUserSystemRole, migrateIssueListsListType, migrateIssueListLinkAttention, dedupeDictEntries, ensureDictUniqueIndex, migrateDictTagsFormat, repairDictDataAndIndex, hasDictUniqueIndex, countDictDuplicateGroups } from './migrations.js'
+export type { DictRepairResult, DictDedupeResult, DictDedupeDetail } from './migrations.js'

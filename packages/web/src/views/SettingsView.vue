@@ -1,16 +1,19 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import { getAllDict, createDictItem, updateDictItem, deleteDictItem, applyDictPreset, deleteDictByTag } from '@/api/dict'
+import { getAllDict, createDictItem, updateDictItem, deleteDictItem, applyDictPreset, deleteDictByTag, dedupeDict } from '@/api/dict'
 import { ElMessage } from 'element-plus';
 import { pnwPromptChoice, pnwAlert } from 'phoenix-wing'
 import { changePassword } from '@/api/auth'
-import { exportDb, importDb, repairIssueListLinks } from '@/api/backup'
+import { exportDb, importDb, runDbRepair, type RepairTaskId, type RepairTaskResult } from '@/api/backup'
 import { importFunctions } from '@/api/functions'
-import { mapXlsxRow } from '@open-issue/core'
+import { mapXlsxRow, parseDictTags } from '@open-issue/core'
 import * as XLSX from 'xlsx'
 import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
 import PageHelpButton from "@/components/PageHelpButton.vue"
 import type { DictItem } from '@open-issue/core'
+import { useDictStore, DICT_GROUPS } from '@/stores/dict'
+
+const dictStore = useDictStore()
 
 const activeTab = ref('dict')
 
@@ -21,18 +24,23 @@ const showAdd = ref(false)
 const newGroup = ref('issueCategory')
 const newValue = ref('')
 const newLabel = ref('')
+const newTags = ref('')
+const showEdit = ref(false)
+const editItem = ref<DictItem | null>(null)
+const editValue = ref('')
+const editLabel = ref('')
+const editTags = ref('')
 
-const groups = [
-  { value: 'issueCategory', label: '问题分类' },
-  { value: 'detectionPhase', label: '发现阶段' },
-  { value: 'orgUnitType', label: '组织类型' },
-  { value: 'severity', label: '严重度' },
-  { value: 'closeReason', label: '关闭理由' },
-]
+const groups = Object.entries(DICT_GROUPS).map(([value, label]) => ({ value, label }))
 
 const presetLabels: Record<string, string> = {
   automotive: '汽车默认值',
   software: '软件默认值',
+}
+
+async function syncDictCache() {
+  await dictStore.refresh()
+  await load()
 }
 
 async function load() {
@@ -64,26 +72,92 @@ async function onApplyPreset(preset: string) {
     } else {
       ElMessage.info(`所有项已存在，跳过 ${data.skipped} 项`)
     }
-    load()
+    syncDictCache()
   } catch (e: any) {
     ElMessage.error(e?.response?.data?.error || '应用预设失败')
   }
 }
 
+const deduping = ref(false)
+
+async function onDedupeDict() {
+  const r = await pnwPromptChoice({
+    title: '去重确认',
+    message: '按「分组 + 值」合并重复字典行：保留一条并合并 tags，删除多余行。Issue 等引用的是 value，去重不影响已有数据。',
+    choices: [
+      { id: 'dedupe', label: '去重', variant: 'primary' },
+      { id: 'cancel', label: '取消' },
+    ],
+  })
+  if (r.choiceId !== 'dedupe') return
+  deduping.value = true
+  try {
+    const res = await dedupeDict()
+    const { removed, tagsMerged } = res.data
+    if (removed > 0) {
+      ElMessage.success(`已删除重复 ${removed} 条${tagsMerged ? `，合并 tags ${tagsMerged} 组` : ''}`)
+    } else {
+      ElMessage.info('未发现重复项')
+    }
+    syncDictCache()
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.error || '去重失败')
+  } finally {
+    deduping.value = false
+  }
+}
+
 async function onAdd() {
   if (!newValue.value.trim() || !newLabel.value.trim()) return
-  await createDictItem({ groupName: newGroup.value, value: newValue.value.trim(), label: newLabel.value.trim() })
-  ElMessage.success('已添加')
-  newValue.value = ''
-  newLabel.value = ''
-  showAdd.value = false
-  load()
+  try {
+    await createDictItem({
+      groupName: newGroup.value,
+      value: newValue.value.trim(),
+      label: newLabel.value.trim(),
+      tags: newTags.value.trim() || undefined,
+    })
+    ElMessage.success('已添加')
+    newValue.value = ''
+    newLabel.value = ''
+    newTags.value = ''
+    showAdd.value = false
+    syncDictCache()
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.error || e?.response?.data?.message || '添加失败')
+  }
+}
+
+function onOpenEdit(item: DictItem) {
+  editItem.value = item
+  editValue.value = item.value
+  editLabel.value = item.label
+  editTags.value = parseDictTags(item.tags).join(', ')
+  showEdit.value = true
+}
+
+async function onSaveEdit() {
+  if (!editItem.value) return
+  try {
+    const payload: { label: string; value?: string; tags: string } = {
+      label: editLabel.value.trim(),
+      tags: editTags.value.trim(),
+    }
+    if (!isCoreItem(editItem.value)) {
+      payload.value = editValue.value.trim()
+    }
+    await updateDictItem(editItem.value.id, payload)
+    ElMessage.success('已保存')
+    showEdit.value = false
+    syncDictCache()
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.error || e?.response?.data?.message || '保存失败')
+  }
 }
 
 async function onToggle(item: DictItem) {
   await updateDictItem(item.id, { enabled: item.enabled ? 0 : 1 })
   ElMessage.success(item.enabled ? '已禁用' : '已启用')
-  load()
+  syncDictCache()
 }
 
 async function onDelete(id: string) {
@@ -92,11 +166,13 @@ async function onDelete(id: string) {
   try {
     await deleteDictItem(id)
     ElMessage.success('已删除')
-    load()
+    syncDictCache()
   } catch (e: any) {
     if (e?.response?.status === 409) {
       const msg = e.response.data?.message || e.response.data?.error || '该字典项正在使用中，无法删除'
       await pnwAlert('无法删除', msg)
+    } else if (e?.response?.status === 403) {
+      await pnwAlert('无法删除', e.response.data?.message || e.response.data?.error || '内置字典项不可删除')
     } else {
       ElMessage.error('删除失败')
     }
@@ -112,10 +188,10 @@ const availableTags = (): { value: string; label: string; count: number }[] => {
   const tagMap: Record<string, { label: string; count: number }> = {}
   for (const item of items.value) {
     if (!item.tags) continue
-    const tagList = item.tags.split(',').map(t => t.trim()).filter(Boolean)
+    const tagList = parseDictTags(item.tags)
     for (const t of tagList) {
       if (!tagMap[t]) {
-        tagMap[t] = { label: t === 'automotive' ? '汽车' : t === 'software' ? '软件' : t, count: 0 }
+        tagMap[t] = { label: t === 'automotive' ? '汽车' : t === 'software' ? '软件' : t === 'general' ? '通用' : t === 'core' ? '内置' : t, count: 0 }
       }
       tagMap[t].count++
     }
@@ -156,7 +232,7 @@ async function onDeleteByTag() {
     }
     showDeleteByTag.value = false
     selectedTag.value = ''
-    load()
+    syncDictCache()
   } catch (e: any) {
     ElMessage.error(e?.response?.data?.error || '删除失败')
   } finally {
@@ -168,8 +244,24 @@ function tagColor(tag: string): string {
   const map: Record<string, string> = {
     automotive: '#409EFF',
     software: '#67C23A',
+    general: '#909399',
+    core: '#E6A23C',
   }
   return map[tag] || '#909399'
+}
+
+function tagLabel(tag: string): string {
+  const map: Record<string, string> = {
+    automotive: '汽车',
+    software: '软件',
+    general: '通用',
+    core: '内置',
+  }
+  return map[tag] || tag
+}
+
+function isCoreItem(row: DictItem): boolean {
+  return dictStore.isCoreItem(row)
 }
 
 function groupedItems(): Record<string, DictItem[]> {
@@ -250,8 +342,89 @@ async function onConfirmImport() {
 }
 
 // ═══════════════════ 数据库修正 ═══════════════════
-const repairing = ref(false)
-const repairResult = ref<{ created: number; skipped: number } | null>(null)
+interface RepairTaskDef {
+  id: RepairTaskId
+  title: string
+  description: string
+  buttonType: '' | 'success' | 'warning' | 'primary'
+}
+
+const REPAIR_TASKS: RepairTaskDef[] = [
+  {
+    id: 'schema',
+    title: '表结构补全',
+    description: '创建缺失的数据表，追加 users / issueLists / checkpoints / issueListLinks 等表的缺失列，并执行 listType、systemRole 等数据迁移。',
+    buttonType: 'primary',
+  },
+  {
+    id: 'checkpoints',
+    title: '点检数据修正',
+    description: '补全 checkpoints 表缺失列（status、sortOrder、createdAt、updatedAt 等），并为空值记录回填默认值。',
+    buttonType: 'success',
+  },
+  {
+    id: 'links',
+    title: 'Issue 链接修正',
+    description: '为没有 issueListLinks 记录的 Issue 补建链接；清理重复的链接记录。',
+    buttonType: 'success',
+  },
+  {
+    id: 'dict',
+    title: '数据字典补全',
+    description: '补全 dict 缺失列、规范 tags、去重并建立 (groupName,value) 唯一索引。旧库有重复时不阻塞启动，请登录后在此修正；不新增字典行。',
+    buttonType: 'success',
+  },
+  {
+    id: 'users',
+    title: '用户权限补全',
+    description: '旧库缺 systemRole 列时：admin 账号设为管理员，其余用户默认编辑权限。',
+    buttonType: 'success',
+  },
+  {
+    id: 'linkAttention',
+    title: '链接关注系数迁移',
+    description: '将 issueListLinks.voided 迁移为 attentionLevel（0=不关注，1~5=关注递增）；voided=1→0，voided=0→3。',
+    buttonType: 'success',
+  },
+  {
+    id: 'issueNo',
+    title: 'Issue 编号去重',
+    description: '检测重复的 issueNo（如多个 ISS-2026-0001），按创建时间顺序重编为 ISS-2026-0001、0002、0003…，同一年份内全局连续编号。',
+    buttonType: 'success',
+  },
+  {
+    id: 'all',
+    title: '全部执行',
+    description: '按顺序执行以上所有修正任务。升级后建议先执行一次。',
+    buttonType: 'warning',
+  },
+]
+
+const repairingTask = ref<RepairTaskId | null>(null)
+const repairResults = ref<RepairTaskResult[]>([])
+
+async function onRepairTask(taskId: RepairTaskId) {
+  repairingTask.value = taskId
+  if (taskId !== 'all') repairResults.value = []
+  try {
+    const res = await runDbRepair(taskId)
+    const data = res.data as { results: RepairTaskResult[]; totalFixed: number; message: string }
+    if (taskId === 'all') {
+      repairResults.value = data.results
+    } else {
+      repairResults.value = data.results
+    }
+    ElMessage.success(data.message + (data.totalFixed ? `（共修正 ${data.totalFixed} 项）` : ''))
+  } catch {
+    // error handled by interceptor
+  } finally {
+    repairingTask.value = null
+  }
+}
+
+function repairResultFor(taskId: RepairTaskId): RepairTaskResult | undefined {
+  return repairResults.value.find(r => r.task === taskId)
+}
 
 // ═══════════════════ 功能导入 ═══════════════════
 const showFuncImport = ref(false)
@@ -286,20 +459,6 @@ async function onFuncImportConfirm() {
     funcImportPreview.value = []
   } finally { funcImporting.value = false }
 }
-
-async function onRepairLinks() {
-  repairing.value = true
-  repairResult.value = null
-  try {
-    const res = await repairIssueListLinks()
-    repairResult.value = res.data
-    ElMessage.success(`修正完成：补建 ${res.data.created} 条，现有 ${res.data.skipped} 条有效链接`)
-  } catch {
-    // error handled by interceptor
-  } finally {
-    repairing.value = false
-  }
-}
 </script>
 
 <template>
@@ -311,10 +470,14 @@ async function onRepairLinks() {
     <el-tabs v-model="activeTab">
       <!-- ═══ 数据字典 ═══ -->
       <el-tab-pane label="📚 数据字典" name="dict">
+        <p style="color:#909399;font-size:0.82rem;margin-bottom:12px">
+          各分组内「值」不可重复（含严重度、问题分类等）。标签可填多个，英文逗号分隔（如 <code>automotive,general</code>）。
+        </p>
         <div style="margin-bottom:12px;display:flex;gap:8px" data-tour="settings-dict-toolbar">
           <el-button type="default" size="small" @click="onApplyPreset('automotive')">🚗 汽车默认值</el-button>
           <el-button type="default" size="small" @click="onApplyPreset('software')">💻 软件默认值</el-button>
           <el-button type="primary" size="small" @click="showAdd = true">+ 添加</el-button>
+          <el-button type="warning" size="small" plain :loading="deduping" @click="onDedupeDict">去重</el-button>
           <el-button type="danger" size="small" plain @click="showDeleteByTag = true">🗑 删除一类值</el-button>
         </div>
 
@@ -328,13 +491,13 @@ async function onRepairLinks() {
                 <template #default="{ row }">
                   <template v-if="row.tags">
                     <el-tag
-                      v-for="t in row.tags.split(',').map((s:string) => s.trim()).filter(Boolean)"
+                      v-for="t in parseDictTags(row.tags)"
                       :key="t"
                       size="small"
                       :color="tagColor(t)"
                       effect="dark"
                       style="margin-right:4px;margin-bottom:2px"
-                    >{{ t === 'automotive' ? '汽车' : t === 'software' ? '软件' : t }}</el-tag>
+                    >{{ tagLabel(t) }}</el-tag>
                   </template>
                   <span v-else style="color:#909399;font-size:12px">—</span>
                 </template>
@@ -344,10 +507,12 @@ async function onRepairLinks() {
                   <el-tag :type="row.enabled ? 'success' : 'info'" size="small">{{ row.enabled ? '启用' : '禁用' }}</el-tag>
                 </template>
               </el-table-column>
-              <el-table-column label="操作">
+              <el-table-column label="操作" width="140">
                 <template #default="{ row }">
+                  <el-button link size="small" @click="onOpenEdit(row)">编辑</el-button>
                   <el-button link size="small" @click="onToggle(row)">{{ row.enabled ? '禁用' : '启用' }}</el-button>
-                  <el-button link size="small" type="danger" @click="onDelete(row.id)">删除</el-button>
+                  <el-button v-if="!isCoreItem(row)" link size="small" type="danger" @click="onDelete(row.id)">删除</el-button>
+                  <span v-else style="color:#909399;font-size:12px">内置</span>
                 </template>
               </el-table-column>
             </el-table>
@@ -387,15 +552,39 @@ async function onRepairLinks() {
               </el-select>
             </el-form-item>
             <el-form-item label="值">
-              <el-input v-model="newValue" placeholder="如：safety" />
+              <el-input v-model="newValue" placeholder="如：safety（同分组内唯一）" />
             </el-form-item>
             <el-form-item label="显示名">
               <el-input v-model="newLabel" placeholder="如：安全" />
+            </el-form-item>
+            <el-form-item label="标签">
+              <el-input v-model="newTags" placeholder="可选，多个用英文逗号分隔，如 general,custom" />
             </el-form-item>
           </el-form>
           <template #footer>
             <el-button @click="showAdd = false">取消</el-button>
             <el-button type="primary" @click="onAdd">添加</el-button>
+          </template>
+        </el-dialog>
+
+        <el-dialog v-model="showEdit" title="编辑字典项" width="420px">
+          <el-form v-if="editItem" label-position="top">
+            <el-form-item label="分组">
+              <el-input :model-value="groups.find(g => g.value === editItem!.groupName)?.label || editItem!.groupName" disabled />
+            </el-form-item>
+            <el-form-item label="值">
+              <el-input v-model="editValue" :disabled="isCoreItem(editItem)" placeholder="同分组内唯一" />
+            </el-form-item>
+            <el-form-item label="显示名">
+              <el-input v-model="editLabel" />
+            </el-form-item>
+            <el-form-item label="标签">
+              <el-input v-model="editTags" placeholder="多个用英文逗号分隔" />
+            </el-form-item>
+          </el-form>
+          <template #footer>
+            <el-button @click="showEdit = false">取消</el-button>
+            <el-button type="primary" @click="onSaveEdit">保存</el-button>
           </template>
         </el-dialog>
       </el-tab-pane>
@@ -456,15 +645,34 @@ async function onRepairLinks() {
 
       <!-- ═══ 数据库修正 ═══ -->
       <el-tab-pane label="🔧 数据库修正" name="repair">
-        <p style="color:#909399;font-size:0.82rem;margin-bottom:12px">
-          为没有 <code>issueListLinks</code> 记录的 Issue 补建链接。如果列表中的 Issue 数量不对，请执行此修正。
+        <p style="color:#909399;font-size:0.82rem;margin-bottom:16px">
+          升级版本后若出现功能异常、数据缺失或列表 Issue 数量不对，可在此逐项修正。所有操作幂等，可重复执行。
+          若控制台提示数据字典重复，请先执行<strong>数据字典补全</strong>（系统仍可正常登录使用）。
         </p>
-        <el-button type="success" :loading="repairing" @click="onRepairLinks">
-          🔧 修正 Issue 链接
-        </el-button>
-        <span v-if="repairResult" style="margin-left:12px;font-size:0.85rem;color:#67C23A">
-          已补建 {{ repairResult.created }} 条，现有 {{ repairResult.skipped }} 条有效链接
-        </span>
+
+        <div class="repair-list">
+          <div v-for="task in REPAIR_TASKS" :key="task.id" class="repair-item">
+            <div class="repair-item-head">
+              <strong>{{ task.title }}</strong>
+              <el-button
+                :type="task.buttonType || 'default'"
+                size="small"
+                :loading="repairingTask === task.id"
+                :disabled="!!repairingTask && repairingTask !== task.id"
+                @click="onRepairTask(task.id)"
+              >
+                {{ task.id === 'all' ? '▶ 全部执行' : '执行修正' }}
+              </el-button>
+            </div>
+            <p class="repair-desc">{{ task.description }}</p>
+            <div v-if="repairResultFor(task.id)" class="repair-result">
+              <el-tag type="success" size="small">{{ repairResultFor(task.id)!.message }}</el-tag>
+              <ul v-if="repairResultFor(task.id)!.details.length">
+                <li v-for="(line, i) in repairResultFor(task.id)!.details" :key="i">{{ line }}</li>
+              </ul>
+            </div>
+          </div>
+        </div>
       </el-tab-pane>
 
       <!-- ═══ 功能导入 ═══ -->
@@ -502,4 +710,11 @@ async function onRepairLinks() {
 <style scoped>
 .page-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .page-head h2 { font-size: 1.3rem; font-weight: 650; }
+.repair-list { display: flex; flex-direction: column; gap: 16px; max-width: 720px; }
+.repair-item { padding: 14px 16px; border: 1px solid #ebeef5; border-radius: 8px; background: #fafafa; }
+.repair-item-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 6px; }
+.repair-desc { margin: 0 0 8px; font-size: 0.82rem; color: #909399; line-height: 1.5; }
+.repair-result { margin-top: 8px; font-size: 0.82rem; }
+.repair-result ul { margin: 6px 0 0; padding-left: 18px; color: #606266; }
+.repair-result li { margin-bottom: 2px; }
 </style>

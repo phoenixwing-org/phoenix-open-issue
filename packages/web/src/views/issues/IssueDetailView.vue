@@ -45,16 +45,11 @@ const statusLabel: Record<string, string> = { open: '待处理', in_progress: '�
 const statusTag: Record<string, string | undefined> = { open: 'info', in_progress: 'warning', resolved: 'success', closed: undefined, cancelled: 'danger' }
 const priorityTag: Record<string, string | undefined> = { low: 'info', medium: 'warning', high: 'danger', critical: undefined }
 const priorityLabel: Record<string, string> = { low: '低', medium: '中', high: '高', critical: '紧急' }
-const severityLabel: Record<string, string> = { fatal: '致命', major: '严重', minor: '一般', trivial: '轻微' }
 const severityTag: Record<string, string | undefined> = { fatal: 'danger', major: 'warning', minor: 'info', trivial: undefined }
-const categoryLabel: Record<string, string> = { appearance: '外观', dimension: '尺寸', function: '功能', process: '过程', safety: '安全', other: '其他' }
-const detectionPhaseLabel: Record<string, string> = { incoming: '来料检验', in_process: '过程检验', final: '终检', customer: '客户反馈', audit: '审核发现', supplier: '供应商端' }
-const closeReasonLabel: Record<string, string> = { completed: '已完成', cancelled: '已取消', duplicate: '重复', transferred: '已转交', unreproducible: '不可复现' }
 const cpStatusLabel: Record<string, string> = { pending: '待处理', done: '已完成', skipped: '已跳过' }
 const cpStatusColor: Record<string, string> = { pending: '#909399', done: '#67c23a', skipped: '#e6a23c' }
 
 onMounted(async () => {
-  dict.load()
   await issueStore.fetchIssue(issueId)
   // 更新标签标题
   if (!isModal.value && issueStore.currentIssue) {
@@ -208,7 +203,7 @@ function goBack() {
       <el-descriptions v-if="issueStore.currentIssue.status === 'closed' || issueStore.currentIssue.status === 'cancelled'" title="关闭信息" :column="2" border size="small" class="detail-desc-block">
         <el-descriptions-item label="关闭理由">
           <el-tag v-if="issueStore.currentIssue.closeReason" size="small" type="info">
-            {{ closeReasonLabel[issueStore.currentIssue.closeReason] || issueStore.currentIssue.closeReason }}
+            {{ dict.getLabel('closeReason', issueStore.currentIssue.closeReason) }}
           </el-tag>
           <span v-else>—</span>
         </el-descriptions-item>

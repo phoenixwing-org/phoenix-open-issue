@@ -26,23 +26,23 @@ export class AuthController {
     res.json(users)
   }
 
-  getPendingUsers(_req: Request, res: Response): void {
-    const users = authService.getPendingUsers()
+  getPendingUsers(req: Request, res: Response): void {
+    const users = authService.getPendingUsers(req.user!.userId)
     res.json(users)
   }
 
   approveUser(req: Request, res: Response): void {
-    const user = authService.approveUser(req.params.userId, req.body.approved)
+    const user = authService.approveUser(req.params.userId, req.body.approved, req.user!.userId)
     res.json(user)
   }
 
   updateUserOrg(req: Request, res: Response): void {
-    const user = authService.updateUserOrg(req.params.userId, req.body.orgUnitId)
+    const user = authService.updateUserOrg(req.params.userId, req.body.orgUnitId, req.user!.userId)
     res.json(user)
   }
 
   updateUser(req: Request, res: Response): void {
-    const user = authService.updateUser(req.params.userId, req.body)
+    const user = authService.updateUser(req.params.userId, req.body, req.user!.userId)
     res.json(user)
   }
 
@@ -53,7 +53,7 @@ export class AuthController {
   }
 
   enableUser(req: Request, res: Response): void {
-    const user = authService.enableUser(req.params.userId)
+    const user = authService.enableUser(req.params.userId, req.user!.userId)
     res.json(user)
   }
 

@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { login as apiLogin, register as apiRegister, getMe } from '@/api/auth'
+import { useDictStore } from '@/stores/dict'
 import type { LoginResult, UserPublic, RegisterResult } from '@open-issue/core'
 
 export const useAuthStore = defineStore('auth', () => {
@@ -53,6 +54,7 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = null
     localStorage.removeItem('token')
     localStorage.removeItem('user')
+    useDictStore().clear()
   }
 
   // 初始化

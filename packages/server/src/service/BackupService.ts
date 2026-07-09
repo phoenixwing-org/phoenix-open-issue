@@ -112,7 +112,8 @@ export class BackupService {
       WHERE i.listId IS NOT NULL AND i.listId != ''
         AND NOT EXISTS (
           SELECT 1 FROM issueListLinks l
-          WHERE l.issueId = i.id AND l.listId = i.listId AND l.voided = 0
+          WHERE l.issueId = i.id AND l.listId = i.listId
+            AND COALESCE(l.attentionLevel, CASE WHEN l.voided = 1 THEN 0 ELSE 3 END) > 0
         )
     `) as { id: string; listId: string; createdBy: string; createdAt: string }[]
 
@@ -127,7 +128,10 @@ export class BackupService {
     }
 
     // 统计已有链接的数量
-    const existing = db.get('SELECT COUNT(*) as c FROM issueListLinks WHERE voided = 0') as { c: number }
+    const existing = db.get(`
+      SELECT COUNT(*) as c FROM issueListLinks
+      WHERE COALESCE(attentionLevel, CASE WHEN voided = 1 THEN 0 ELSE 3 END) > 0
+    `) as { c: number }
 
     console.log(`🔧 [REPAIR] issueListLinks: ${created} created, ${existing.c} total active links`)
     return { created, skipped: existing.c - created }

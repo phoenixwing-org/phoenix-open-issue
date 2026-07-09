@@ -8,11 +8,11 @@ export function getAllDict() {
   return request.get('/dict')
 }
 
-export function createDictItem(data: { groupName: string; value: string; label: string }) {
+export function createDictItem(data: { groupName: string; value: string; label: string; tags?: string }) {
   return request.post('/dict', data)
 }
 
-export function updateDictItem(id: string, data: { label?: string; value?: string; enabled?: number; sortOrder?: number }) {
+export function updateDictItem(id: string, data: { label?: string; value?: string; enabled?: number; sortOrder?: number; tags?: string }) {
   return request.put(`/dict/${id}`, data)
 }
 
@@ -26,4 +26,8 @@ export function applyDictPreset(preset: string) {
 
 export function deleteDictByTag(tag: string) {
   return request.delete(`/dict/tag/${tag}`)
+}
+
+export function dedupeDict() {
+  return request.post<{ removed: number; tagsMerged: number; details: { groupName: string; value: string; keptId: string; removedIds: string[] }[] }>('/dict/dedupe')
 }

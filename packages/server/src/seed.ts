@@ -1,5 +1,5 @@
 import { getDb } from './db/connection.js'
-import { generateId } from '@open-issue/core'
+import { generateId, normalizeDictTags } from '@open-issue/core'
 import bcrypt from 'bcryptjs'
 import { ensurePendingOrgUnit } from './utils/pendingOrgUnit.js'
 
@@ -16,24 +16,75 @@ export function setSystemFlag(key: string, value: string): void {
 }
 
 // ═══════════════════ 数据字典（独立函数，可复用） ═══════════════════
+const LIST_TYPE_DICT: { v: string; l: string; tags: string }[] = [
+  { v: 'yearly', l: '年度', tags: 'core' },
+  { v: 'monthly', l: '月度', tags: 'core' },
+  { v: 'project', l: '项目', tags: 'core' },
+  { v: 'custom', l: '自定义', tags: 'core' },
+  { v: 'personal', l: '个人', tags: 'general' },
+  { v: 'group', l: '小组', tags: 'general' },
+  { v: 'department', l: '科室', tags: 'general' },
+  { v: 'division', l: '部门', tags: 'general' },
+  { v: 'company', l: '公司', tags: 'general' },
+]
+
+export function seedListTypeDict(): number {
+  const db = getDb()
+  let count = 0
+  for (const item of LIST_TYPE_DICT) {
+    if (insertDictIfAbsent(db, 'listType', item.v, item.l, item.tags)) count++
+  }
+  return count
+}
+
+function insertDictIfAbsent(
+  db: ReturnType<typeof getDb>,
+  groupName: string,
+  value: string,
+  label: string,
+  tags: string,
+): boolean {
+  const existing = db.get(
+    'SELECT id FROM dict WHERE groupName = ? AND value = ?',
+    [groupName, value],
+  ) as { id: string } | undefined
+  if (existing) return false
+
+  const maxSort = db.get(
+    'SELECT MAX(sortOrder) as m FROM dict WHERE groupName = ?',
+    groupName,
+  ) as { m: number | null }
+  const sortOrder = (maxSort?.m ?? -1) + 1
+  try {
+    db.run(
+      'INSERT INTO dict (id, groupName, value, label, sortOrder, tags) VALUES (?, ?, ?, ?, ?, ?)',
+      [generateId(), groupName, value, label, sortOrder, normalizeDictTags(tags)],
+    )
+    return true
+  } catch {
+    // 并发或历史重复：唯一索引 (groupName, value) 冲突时视为已存在
+    return false
+  }
+}
+
 export function seedDict(): number {
   const db = getDb()
-  const dictDefaults: { g: string; items: { v: string; l: string }[] }[] = [
-    { g: 'issueCategory', items: [
+  const dictDefaults: { g: string; tag?: string; items: { v: string; l: string; tags?: string }[] }[] = [
+    { g: 'issueCategory', tag: 'automotive', items: [
       { v: 'appearance', l: '外观' }, { v: 'dimension', l: '尺寸' }, { v: 'function', l: '功能' },
       { v: 'process', l: '过程' }, { v: 'safety', l: '安全' }, { v: 'other', l: '其他' },
     ]},
-    { g: 'detectionPhase', items: [
+    { g: 'detectionPhase', tag: 'automotive', items: [
       { v: 'incoming', l: '来料检验' }, { v: 'in_process', l: '过程检验' }, { v: 'final', l: '终检' },
       { v: 'customer', l: '客户反馈' }, { v: 'audit', l: '审核发现' }, { v: 'supplier', l: '供应商端' },
     ]},
-    { g: 'orgUnitType', items: [
+    { g: 'orgUnitType', tag: 'automotive', items: [
       { v: 'group', l: '小组' }, { v: 'department', l: '科室' }, { v: 'division', l: '部' },
     ]},
-    { g: 'severity', items: [
+    { g: 'severity', tag: 'automotive', items: [
       { v: 'fatal', l: '致命' }, { v: 'major', l: '严重' }, { v: 'minor', l: '轻微' }, { v: 'trivial', l: '一般' },
     ]},
-    { g: 'closeReason', items: [
+    { g: 'closeReason', tag: 'automotive', items: [
       { v: 'completed', l: '已完成' }, { v: 'cancelled', l: '已取消' }, { v: 'duplicate', l: '重复' },
       { v: 'transferred', l: '已转交' }, { v: 'unreproducible', l: '不可复现' },
     ]},
@@ -41,10 +92,11 @@ export function seedDict(): number {
   let dictCount = 0
   for (const dg of dictDefaults) {
     for (const di of dg.items) {
-      db.run('INSERT OR IGNORE INTO dict (id, groupName, value, label, sortOrder, tags) VALUES (?, ?, ?, ?, ?, ?)',
-        [generateId(), dg.g, di.v, di.l, dictCount++, 'automotive'])
+      const tags = di.tags ?? dg.tag ?? ''
+      if (insertDictIfAbsent(db, dg.g, di.v, di.l, tags)) dictCount++
     }
   }
+  dictCount += seedListTypeDict()
   console.log(`  📚 ${dictCount} dict entries seeded`)
   return dictCount
 }
@@ -58,7 +110,11 @@ export function seedEssential(): string[] {
   if (existing.c > 0) {
     // 已有用户，只补字典（兼容旧 DB 升级）
     const dictCount = db.get('SELECT COUNT(*) as c FROM dict') as { c: number }
-    if (dictCount.c === 0) seedDict()
+    if (dictCount.c === 0) {
+      seedDict()
+    } else {
+      seedListTypeDict()
+    }
     db.exec("UPDATE users SET approved = 1 WHERE approved = 0")
     return logs
   }
@@ -68,8 +124,8 @@ export function seedEssential(): string[] {
   const pw = bcrypt.hashSync('123456', 10)
 
   // admin 账号
-  db.run(`INSERT INTO users (id, username, email, passwordHash, displayName, orgUnitId, approved, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [generateId(), 'admin', 'admin@example.com', pw, '管理员', null, 1, now, now])
+  db.run(`INSERT INTO users (id, username, email, passwordHash, displayName, orgUnitId, approved, systemRole, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [generateId(), 'admin', 'admin@example.com', pw, '管理员', null, 1, 'admin', now, now])
   console.log('  👤 admin / 123456')
 
   // 字典
