@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useDictStore } from '@/stores/dict'
 import { useAuthStore } from '@/stores/auth'
 import { useFunctionStore } from '@/stores/functions'
+import { DEFAULT_ATTENTION_LEVEL } from '@open-issue/core'
 import PnwDictSelect from 'phoenix-wing/components/PnwDictSelect.vue'
+import AttentionStars from '@/components/AttentionStars.vue'
 
 const dict = useDictStore()
 const auth = useAuthStore()
@@ -19,11 +21,15 @@ const emit = defineEmits<{
     severity?: string; category?: string; detectionPhase?: string
     reporterId?: string; assigneeId?: string; dueDate?: string
     functionId?: string
+    attentionLevel?: number
+    containment?: string; rootCause?: string; correctiveAction?: string
   }]
   close: []
 }>()
 
 onMounted(() => { funcStore.load() })
+
+const isEdit = computed(() => !!props.initial)
 
 const title = ref(props.initial?.title || '')
 const issueNo = ref(props.initial?.issueNo || '')
@@ -36,6 +42,12 @@ const reporterId = ref(props.initial?.reporterId || auth.user?.id || '')
 const assigneeId = ref(props.initial?.assigneeId || auth.user?.id || '')
 const dueDate = ref(props.initial?.dueDate || '')
 const functionId = ref(props.initial?.functionId || '')
+const containment = ref(props.initial?.containment || '')
+const rootCause = ref(props.initial?.rootCause || '')
+const correctiveAction = ref(props.initial?.correctiveAction || '')
+const attentionLevel = ref<number>(
+  props.initial?._attentionLevel ?? DEFAULT_ATTENTION_LEVEL,
+)
 
 function submit() {
   if (!title.value.trim()) return
@@ -51,12 +63,22 @@ function submit() {
     assigneeId: assigneeId.value || undefined,
     dueDate: dueDate.value || undefined,
     functionId: functionId.value || undefined,
+    ...(isEdit.value ? { attentionLevel: attentionLevel.value } : {}),
+    containment: containment.value,
+    rootCause: rootCause.value,
+    correctiveAction: correctiveAction.value,
   })
 }
 </script>
 
 <template>
-  <el-dialog :model-value="true" :title="props.initial ? '编辑 Issue' : '新建 Issue'" width="560px" @close="emit('close')">
+  <el-dialog
+    :model-value="true"
+    :title="props.initial ? '编辑 Issue' : '新建 Issue'"
+    width="640px"
+    class="issue-form-dialog"
+    @close="emit('close')"
+  >
     <el-form label-position="top" @submit.prevent="submit">
       <!-- 编号 + 标题 -->
       <el-row :gutter="16">
@@ -127,6 +149,10 @@ function submit() {
         <el-date-picker v-model="dueDate" type="date" placeholder="选择日期" style="width:100%" value-format="YYYY-MM-DD" />
       </el-form-item>
 
+      <el-form-item v-if="isEdit" label="关注度（本列表）">
+        <AttentionStars v-model="attentionLevel" show-label />
+      </el-form-item>
+
       <el-form-item label="关联功能">
         <el-select v-model="functionId" :teleported="false" filterable placeholder="选择功能（可选）" clearable style="width:100%">
           <el-option v-for="f in funcStore.items" :key="f.id" :label="`[${f.platform}] ${f.externalId} ${f.functionName}`" :value="f.id">
@@ -140,10 +166,22 @@ function submit() {
       <el-form-item label="描述">
         <el-input v-model="description" type="textarea" :rows="3" placeholder="可选描述" />
       </el-form-item>
+
+      <el-divider content-position="left">8D 报告</el-divider>
+
+      <el-form-item label="D3 临时遏制措施">
+        <el-input v-model="containment" type="textarea" :rows="2" placeholder="临时围堵 / 遏制措施" />
+      </el-form-item>
+      <el-form-item label="D4 根本原因">
+        <el-input v-model="rootCause" type="textarea" :rows="2" placeholder="根因分析结论" />
+      </el-form-item>
+      <el-form-item label="D5-D6 永久纠正措施">
+        <el-input v-model="correctiveAction" type="textarea" :rows="2" placeholder="永久纠正与验证措施" />
+      </el-form-item>
     </el-form>
     <template #footer>
       <el-button @click="emit('close')">取消</el-button>
-      <el-button type="primary" @click="submit">创建</el-button>
+      <el-button type="primary" @click="submit">{{ props.initial ? '保存' : '创建' }}</el-button>
     </template>
   </el-dialog>
 </template>

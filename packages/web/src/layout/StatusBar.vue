@@ -1,4 +1,6 @@
 <script setup lang="ts">
+import pkg from '../../package.json'
+
 defineProps<{ label: string }>()
 const emit = defineEmits<{ 'toggle-log': [] }>()
 </script>
@@ -7,7 +9,7 @@ const emit = defineEmits<{ 'toggle-log': [] }>()
   <footer class="status">
     <span class="status-label">【{{ label }}】</span>
     <span class="status-divider">·</span>
-    <span>Open Issue List v0.1</span>
+    <span>Open Issue List v{{ pkg.version }}</span>
     <span style="flex:1" />
     <button class="log-toggle" title="日志" @click="emit('toggle-log')">📋</button>
   </footer>

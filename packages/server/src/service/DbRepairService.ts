@@ -115,7 +115,7 @@ export class DbRepairService {
         AND NOT EXISTS (
           SELECT 1 FROM issueListLinks l
           WHERE l.issueId = i.id AND l.listId = i.listId
-            AND COALESCE(l.attentionLevel, CASE WHEN l.voided = 1 THEN 0 ELSE 3 END) > 0
+            AND l.attentionLevel > 0
         )
     `) as { id: string; listId: string; createdBy: string; createdAt: string }[]
 
@@ -129,7 +129,7 @@ export class DbRepairService {
     const deduped = dedupeIssueListLinks(db)
     const total = db.get(`
       SELECT COUNT(*) as c FROM issueListLinks
-      WHERE COALESCE(attentionLevel, CASE WHEN voided = 1 THEN 0 ELSE 3 END) > 0
+      WHERE attentionLevel > 0
     `) as { c: number }
 
     const details: string[] = [
@@ -291,19 +291,24 @@ export class DbRepairService {
     }
   }
 
-  /** 链接 voided → attentionLevel 迁移 */
+  /** 链接关注系数迁移：voided* → attentionLevel，并删除废弃列 */
   repairLinkAttention(): RepairTaskResult {
     if (!tableExists(getDb(), 'issueListLinks')) runSchema(getDb())
     const result = migrateIssueListLinkAttention(getDb(), true)
-    const fixed = result.voidedMapped + result.timestampsCopied
+    const fixed = result.voidedMapped + result.timestampsCopied + (result.voidedColumnsDropped ? 1 : 0)
+    const details = [
+      `数据映射：${result.voidedMapped} 条`,
+      `时间戳复制：${result.timestampsCopied} 条`,
+    ]
+    if (result.voidedColumnsDropped) {
+      details.push('已删除 voided / voidedAt / voidedBy 三列')
+    } else {
+      details.push('废弃列已不存在，无需删除')
+    }
     return {
       task: 'linkAttention',
-      message: fixed ? `已迁移 ${fixed} 条链接关注系数` : '链接关注系数已是最新',
-      details: [
-        `voided → attentionLevel：${result.voidedMapped} 条`,
-        `时间戳复制：${result.timestampsCopied} 条`,
-        'voided=1 → 0（不关注），voided=0 → 3（三星）',
-      ],
+      message: fixed ? '链接关注系数迁移完成' : '链接关注系数已是最新',
+      details,
       fixed,
     }
   }

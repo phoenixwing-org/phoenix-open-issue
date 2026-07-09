@@ -78,11 +78,14 @@ Base URL: `http://localhost:3400/api`
 
 ### GET /list/:listId/issues — 分页
 ```
-Query: ?status=open&priority=high&search=xxx&sort=priority:desc&page=1&size=50&includeVoided=true
+Query: ?status=open&priority=high&search=xxx&sort=attention:desc,priority:asc&page=1&size=50
 ```
 ```json
 // Response 200  { "items": [...], "total": 3 }
+// 每条 item 含 _attentionLevel（0~5）；接口返回全量链接，不关注项显隐由前端「只显示【不关注】」控制
 ```
+
+**sort 参数**：`field:dir` 或复合 `field:dir,field2:dir2`。支持 `attention`、`priority`、`severity`、`status`、`issueNo`、`title`、`dueDate`、`createdAt`。未传时默认 `attention DESC, priority ASC, createdAt DESC`。
 
 ### POST /list/:listId/issue — `{ "title": "...", "priority": "high" }`
 ### GET /issue/:id
@@ -90,8 +93,7 @@ Query: ?status=open&priority=high&search=xxx&sort=priority:desc&page=1&size=50&i
 ### PATCH /issue/:id/status — `{ "status": "resolved" }`
 ### DELETE /issue/:id
 ### PUT /list/:listId/issue/reorder — `{ "issueIds": [...] }`
-### PATCH /list/:listId/issue/:issueId/void
-### PATCH /list/:listId/issue/:issueId/unvoid
+### PATCH /list/:listId/issue/:issueId/attention — `{ "attentionLevel": 0..5 }`
 
 ---
 

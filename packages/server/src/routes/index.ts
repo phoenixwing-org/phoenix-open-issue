@@ -98,8 +98,6 @@ router.put('/issue/:id',        authMiddleware, wrap((req, res) => issueCtrl.upd
 router.patch('/issue/:id/status', authMiddleware, wrap((req, res) => issueCtrl.updateStatus(req, res)))
 router.delete('/issue/:id',     authMiddleware, wrap((req, res) => issueCtrl.delete(req, res)))
 router.patch('/list/:listId/issue/:issueId/attention', authMiddleware, wrap((req, res) => issueCtrl.setAttention(req, res)))
-router.patch('/list/:listId/issue/:issueId/void',   authMiddleware, wrap((req, res) => issueCtrl.voidLink(req, res)))
-router.patch('/list/:listId/issue/:issueId/unvoid', authMiddleware, wrap((req, res) => issueCtrl.unvoidLink(req, res)))
 
 // ═══ Checkpoint ═══
 router.get('/list/:listId/checkpoints',    authMiddleware, wrap((req, res) => cpCtrl.getByListId(req, res)))

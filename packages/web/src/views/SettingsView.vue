@@ -383,7 +383,7 @@ const REPAIR_TASKS: RepairTaskDef[] = [
   {
     id: 'linkAttention',
     title: '链接关注系数迁移',
-    description: '将 issueListLinks.voided 迁移为 attentionLevel（0=不关注，1~5=关注递增）；voided=1→0，voided=0→3。',
+    description: '将旧库 issueListLinks.voided* 迁移为 attentionLevel，并删除 voided / voidedAt / voidedBy 三列。新库无需执行。',
     buttonType: 'success',
   },
   {

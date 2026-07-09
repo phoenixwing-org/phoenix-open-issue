@@ -11,7 +11,7 @@ const LIST_ENRICH_SELECT = `
   (SELECT COUNT(*) FROM (
     SELECT id FROM issues WHERE listId = l.id
     UNION
-    SELECT issueId FROM issueListLinks WHERE listId = l.id AND COALESCE(attentionLevel, CASE WHEN voided = 1 THEN 0 ELSE 3 END) > 0
+    SELECT issueId FROM issueListLinks WHERE listId = l.id AND attentionLevel > 0
   )) as issueCount,
   COALESCE(u.displayName, u.username) as ownerName
 `

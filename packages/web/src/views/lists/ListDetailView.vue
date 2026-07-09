@@ -1,15 +1,25 @@
 <script setup lang="ts">
-import { onMounted, ref, watch, computed } from 'vue'
+import { onMounted, ref, watch, computed, provide, reactive } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useIssueListStore } from '@/stores/issueLists'
 import { useIssueStore } from '@/stores/issues'
 import { useSettingsStore } from '@/stores/settings'
 import { useDictStore } from '@/stores/dict'
+import {
+  visibleColumnsForMode,
+  columnLabel,
+  ISSUE_COLUMN_WIDTH_DEFAULTS,
+  SORTABLE_ISSUE_COLUMNS,
+  DEFAULT_ISSUE_SORT,
+  primaryIssueSort,
+  type IssueColumnKey,
+  type IssueListColumnSettings,
+} from '@/config/issueListColumns'
 
 const dict = useDictStore()
 import { getMembers, addMember, removeMember, transferOwner, updateMemberRole } from '@/api/issueLists'
 import { getAllUsers } from '@/api/auth'
-import { getCheckpointsByList } from '@/api/checkpoints'
+import { getCheckpointsByList, updateCheckpoint } from '@/api/checkpoints'
 import { getIncomingPushes, handlePush } from '@/api/push'
 import { ElMessage } from 'element-plus';
 import { pnwPromptChoice, pnwPromptInput, pnwPropGroup, pnwPropEnum, pnwPropBool, pnwPropSheet } from 'phoenix-wing'
@@ -21,9 +31,14 @@ const showIssueModal = ref(false)
 const modalIssueId = ref('')
 import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
 import PageHelpButton from "@/components/PageHelpButton.vue"
-import { isOverdue, canAddMemberAsUser, canManageList, canTransferPrimaryOwnerAsUser, isSystemAdmin, ATTENTION_LEVEL_LABELS, DEFAULT_ATTENTION_LEVEL } from '@open-issue/core'
+import { isOverdue, canAddMemberAsUser, canManageList, canTransferPrimaryOwnerAsUser, isSystemAdmin, DEFAULT_ATTENTION_LEVEL } from '@open-issue/core'
 import type { Checkpoint } from '@open-issue/core'
 import IssueFormDialog from '@/components/IssueFormDialog.vue'
+import IssueQuickEditDialog from '@/components/IssueQuickEditDialog.vue'
+import type { IssueQuickEditField } from '@/components/IssueQuickEditDialog.vue'
+import IssueColumnSettingsDialog from '@/components/IssueColumnSettingsDialog.vue'
+import IssueListCell from '@/components/IssueListCell.vue'
+import CheckpointFormDialog from '@/components/CheckpointFormDialog.vue'
 import ListFormDialog from '@/components/ListFormDialog.vue'
 import MemberManageDialog from '@/components/MemberManageDialog.vue'
 import PushDialog from '@/views/push/PushDialog.vue'
@@ -40,14 +55,24 @@ const settings = useSettingsStore()
 const members = ref<any[]>([])
 const allUsers = ref<any[]>([])
 const showCreateIssue = ref(false)
+const showEditIssue = ref(false)
+const editIssueRow = ref<any | null>(null)
+const quickEdit = ref<{
+  issueId: string
+  issueTitle: string
+  field: IssueQuickEditField
+  value: string | number | null
+} | null>(null)
 const showEditList = ref(false)
 const showMembers = ref(false)
 const showPush = ref(false)
 const pushIssueId = ref<string | null>(null)
+const showColumnSettings = ref(false)
+const editCheckpoint = ref<{ cp: Checkpoint; issueTitle: string } | null>(null)
 const statusFilter = ref('')
 const severityFilter = ref('')
 const categoryFilter = ref('')
-const includeVoided = ref(false) // 兼容参数名：显示不关注(level=0)
+const showUnwatchedOnly = ref(false) // 前端筛选：勾选后仅显示关注度为 0（不关注）的行
 const searchText = ref('')
 const viewMode = ref<'simple' | 'complex' | 'timeline'>((settings.defaultViewMode as 'simple' | 'complex' | 'timeline') || 'complex')
 watch(viewMode, (v) => { settings.defaultViewMode = v })
@@ -122,7 +147,6 @@ async function loadData() {
       status: statusFilter.value || undefined,
       search: searchText.value || undefined,
       sort: settings.issueSort,
-      includeVoided: includeVoided.value || undefined,
     }),
     loadMembers(),
     loadAllUsers(),
@@ -212,9 +236,14 @@ watch(viewMode, (mode) => {
   if (mode === 'timeline') loadCheckpoints()
 })
 
-// 前端筛选（severity / category — 后端暂不支持，前端过滤）
+// 前端筛选（severity / category / 不关注）
 const filteredIssues = computed(() => {
   let list = issueStore.issues
+  if (showUnwatchedOnly.value) {
+    list = list.filter(row => linkAttention(row) === 0)
+  } else {
+    list = list.filter(row => linkAttention(row) !== 0)
+  }
   if (severityFilter.value) {
     list = list.filter(i => i.severity === severityFilter.value)
   }
@@ -224,7 +253,87 @@ const filteredIssues = computed(() => {
   return list
 })
 
-function goIssue(id: string) { modalIssueId.value = id; showIssueModal.value = true }
+function goIssueDetail(id: string) { modalIssueId.value = id; showIssueModal.value = true }
+
+function openViewIssue(row: { id: string }, e?: Event) {
+  e?.stopPropagation()
+  goIssueDetail(row.id)
+}
+
+function openEditIssue(row: any, e?: Event) {
+  e?.stopPropagation()
+  editIssueRow.value = row
+  showEditIssue.value = true
+}
+
+function openQuickEdit(row: any, field: IssueQuickEditField, e?: Event) {
+  e?.stopPropagation()
+  let value: string | number | null
+  switch (field) {
+    case 'attention':
+      value = linkAttention(row)
+      break
+    case 'assignee':
+      value = row.assigneeId ?? null
+      break
+    case 'function':
+      value = row.functionId ?? null
+      break
+    default:
+      value = row[field] ?? null
+  }
+  quickEdit.value = { issueId: row.id, issueTitle: row.title, field, value }
+}
+
+async function onEditIssue(data: any) {
+  if (!editIssueRow.value) return
+  const { attentionLevel, ...issueData } = data
+  await issueStore.updateIssue(editIssueRow.value.id, issueData)
+  if (attentionLevel !== undefined && attentionLevel !== linkAttention(editIssueRow.value)) {
+    await issueStore.setAttentionLevel(listId.value, editIssueRow.value.id, attentionLevel)
+  }
+  showEditIssue.value = false
+  editIssueRow.value = null
+  loadData()
+}
+
+async function onQuickEditConfirm(value: string | number | null) {
+  if (!quickEdit.value) return
+  const { issueId, field } = quickEdit.value
+  if (field === 'status') {
+    await issueStore.updateStatus(issueId, value as string)
+  } else if (field === 'attention') {
+    await issueStore.setAttentionLevel(listId.value, issueId, value as number)
+  } else {
+    const patch: Record<string, any> = {}
+    if (field === 'assignee') patch.assigneeId = value
+    else if (field === 'function') patch.functionId = value
+    else if (field === 'category') patch.category = value
+    else if (field === 'detectionPhase') patch.detectionPhase = value
+    else patch[field] = value
+    await issueStore.updateIssue(issueId, patch)
+  }
+  quickEdit.value = null
+  loadData()
+}
+
+function openEditCheckpoint(cp: Checkpoint, issueTitle: string, e?: Event) {
+  e?.stopPropagation()
+  editCheckpoint.value = { cp, issueTitle }
+}
+
+async function onEditCheckpoint(data: {
+  checkpointDate: string
+  description: string
+  responsibleUserId?: string
+  status?: Checkpoint['status']
+}) {
+  if (!editCheckpoint.value) return
+  await updateCheckpoint(editCheckpoint.value.cp.id, data)
+  editCheckpoint.value = null
+  ElMessage.success('点检已更新')
+  await loadCheckpoints()
+}
 
 async function onCreateIssue(data: any) {
   await issueStore.createIssue(listId.value, data)
@@ -237,12 +346,6 @@ async function onEditList(data: { name: string; listType: string; description?: 
   await listStore.updateList(listId.value, data)
   showEditList.value = false
   ElMessage.success('列表已更新')
-}
-
-async function onStatusChange(issue: any, newStatus: string) {
-  await issueStore.updateStatus(issue.id, newStatus)
-  ElMessage.success('状态已更新')
-  loadData()
 }
 
 function onPushIssue(issueId: string) {
@@ -265,26 +368,20 @@ async function onVoidIssue(id: string, title: string) {
     choices: [{ id: 'void', label: '不关注', variant: 'danger' }, { id: 'cancel', label: '取消' }],
   })
   if (r.choiceId !== 'void') return
-  await issueStore.voidIssue(listId.value, id)
+  await issueStore.setAttentionLevel(listId.value, id, 0)
   loadData()
 }
 
-async function onUnvoidIssue(id: string) {
-  await issueStore.unvoidIssue(listId.value, id)
+async function onRestoreAttention(id: string) {
+  await issueStore.setAttentionLevel(listId.value, id, DEFAULT_ATTENTION_LEVEL)
   loadData()
 }
 
-async function onSetAttention(id: string, level: number) {
-  await issueStore.setAttentionLevel(listId.value, id, level)
-  loadData()
+function linkAttention(row: { _attentionLevel?: number }): number {
+  return row._attentionLevel ?? DEFAULT_ATTENTION_LEVEL
 }
 
-function linkAttention(row: { _attentionLevel?: number; _voided?: number }): number {
-  if (row._attentionLevel != null) return row._attentionLevel
-  return row._voided ? 0 : DEFAULT_ATTENTION_LEVEL
-}
-
-function isUnwatched(row: { _attentionLevel?: number; _voided?: number }) {
+function isUnwatched(row: { _attentionLevel?: number }) {
   return linkAttention(row) === 0
 }
 
@@ -358,17 +455,6 @@ function formatCpDate(dateStr: string): string {
   return dateStr.slice(0, 10)
 }
 
-function formatCpDateShort(dateStr: string): string {
-  if (!dateStr) return ''
-  const d = new Date(dateStr)
-  const mm = String(d.getMonth() + 1).padStart(2, '0')
-  const dd = String(d.getDate()).padStart(2, '0')
-  return `${mm}-${dd}`
-}
-
-function colWidth(key: string, fallback: number): number {
-  return settings.colWidths[key] || fallback
-}
 function onColResize(newWidth: number, _old: number, col: any) {
   if (col.props?.label) {
     const key = col.props.label
@@ -381,16 +467,52 @@ function onSortChange({ prop, order }: { prop: string; order: 'ascending' | 'des
   if (order) {
     settings.issueSort = `${prop}:${order === 'ascending' ? 'asc' : 'desc'}`
   } else {
-    settings.issueSort = 'createdAt:desc'  // 取消排序 → 默认
+    settings.issueSort = DEFAULT_ISSUE_SORT
   }
   loadData()
 }
 
-// 从 settings 解析 Element Plus 的 default-sort prop
 const defaultSort = computed(() => {
-  const [field, dir] = settings.issueSort.split(':')
+  const { field, dir } = primaryIssueSort(settings.issueSort)
   return { prop: field, order: dir === 'asc' ? 'ascending' as const : 'descending' as const }
 })
+
+const visibleColumns = computed(() =>
+  visibleColumnsForMode(viewMode.value, settings.issueListColumns),
+)
+
+function columnWidth(key: IssueColumnKey): number {
+  return settings.colWidths[columnLabel(key)] || ISSUE_COLUMN_WIDTH_DEFAULTS[key]
+}
+
+function isColumnSortable(key: IssueColumnKey): boolean {
+  return SORTABLE_ISSUE_COLUMNS.has(key)
+}
+
+function onColumnSettingsConfirm(cols: IssueListColumnSettings) {
+  settings.setIssueListColumns(cols)
+  showColumnSettings.value = false
+}
+
+provide('issueListCellCtx', reactive({
+  dict,
+  userMap,
+  severityTag,
+  priorityLabel,
+  priorityTag,
+  statusLabel,
+  statusTag,
+  linkAttention,
+  formatDate,
+  formatCpDate,
+  getRecentCheckpoints,
+  checkpointMap,
+  get maxTimelineRows() { return settings.maxTimelineRows },
+  cpIcon,
+  openViewIssue,
+  openQuickEdit,
+  openEditCheckpoint,
+}))
 </script>
 
 <template>
@@ -407,7 +529,7 @@ const defaultSort = computed(() => {
     <!-- 筛选栏 -->
     <div class="filters" data-tour="list-filters">
       <el-input v-model="searchText" placeholder="搜索标题/描述..." clearable style="width:200px" size="small" />
-      <el-checkbox v-model="includeVoided" size="small" @change="loadData" style="margin-left:4px">显示不关注</el-checkbox>
+      <el-checkbox v-model="showUnwatchedOnly" size="small" style="margin-left:4px">只显示【不关注】</el-checkbox>
       <el-select v-model="statusFilter" placeholder="状态" clearable size="small" style="width:110px">
         <el-option v-for="(l, v) in statusLabel" :key="v" :label="l" :value="v" />
       </el-select>
@@ -437,6 +559,9 @@ const defaultSort = computed(() => {
         <el-radio-button value="complex">📋📋 复杂</el-radio-button>
         <el-radio-button value="timeline">📋📋📋 跟踪</el-radio-button>
       </el-radio-group>
+      <el-button size="small" @click="showColumnSettings = true" title="配置各视图的显示列与顺序">
+        <el-icon><Setting /></el-icon> 列设置
+      </el-button>
     </div>
 
     <!-- 推送收件箱 -->
@@ -473,9 +598,7 @@ const defaultSort = computed(() => {
       size="small"
       :default-sort="defaultSort"
       @sort-change="onSortChange"
-      @row-click="(row: any) => goIssue(row.id)"
       @header-dragend="onColResize"
-      style="cursor:pointer"
       highlight-current-row
       :row-class-name="(row: any) => {
         const lv = linkAttention(row)
@@ -485,148 +608,102 @@ const defaultSort = computed(() => {
       }"
     >
       <el-table-column type="index" label="#" width="45" align="center" fixed="left" />
-      <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip fixed="left" sortable="custom" />
-      <el-table-column prop="issueNo" label="编号" :width="colWidth('编号', 145)" resizable sortable="custom" />
-      <el-table-column prop="severity" label="严重度" :width="colWidth('严重度', 75)" resizable align="center" sortable="custom">
+      <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip fixed="left" sortable="custom">
         <template #default="{ row }">
-          <el-tag :type="severityTag[row.severity]" size="small" effect="dark">
-            {{ dict.getLabel('severity', row.severity) || row.severity }}
-          </el-tag>
+          <span class="cell-link" title="点击查看" @click="openViewIssue(row, $event)">{{ row.title }}</span>
         </template>
       </el-table-column>
-      <el-table-column prop="priority" label="优先级" :width="colWidth('优先级', 75)" resizable align="center" sortable="custom">
+      <el-table-column
+        v-for="colKey in visibleColumns"
+        :key="colKey"
+        :prop="colKey === 'checkpoints' ? undefined : colKey"
+        :label="columnLabel(colKey)"
+        :width="colKey === 'checkpoints' ? undefined : columnWidth(colKey)"
+        :min-width="colKey === 'checkpoints' ? columnWidth(colKey) : undefined"
+        :fixed="colKey === 'checkpoints' ? 'right' : undefined"
+        resizable
+        :sortable="isColumnSortable(colKey) ? 'custom' : false"
+        :align="['severity', 'priority', 'attention', 'status', 'createdAt'].includes(colKey) ? 'center' : undefined"
+        :show-overflow-tooltip="colKey === 'function'"
+      >
         <template #default="{ row }">
-          <el-tag :type="priorityTag[row.priority]" size="small">{{ priorityLabel[row.priority] || row.priority }}</el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column v-if="viewMode === 'complex'" label="分类" :width="colWidth('分类', 85)" resizable>
-        <template #default="{ row }">
-          <span v-if="row.category" class="cell-text">{{ dict.getLabel('issueCategory', row.category) || row.category }}</span>
-          <span v-else class="cell-na">—</span>
-        </template>
-      </el-table-column>
-      <el-table-column v-if="viewMode === 'complex'" label="发现阶段" :width="colWidth('发现阶段', 100)" resizable>
-        <template #default="{ row }">
-          <span v-if="row.detectionPhase" class="cell-text">{{ dict.getLabel('detectionPhase', row.detectionPhase) }}</span>
-          <span v-else class="cell-na">—</span>
-        </template>
-      </el-table-column>
-      <el-table-column label="功能" width="120" show-overflow-tooltip>
-        <template #default="{ row }">
-          <span v-if="row._functionName" class="cell-text">{{ row._functionName }}</span>
-          <span v-else class="cell-na">—</span>
-        </template>
-      </el-table-column>
-      <el-table-column v-if="viewMode === 'complex'" label="提出人" :width="colWidth('提出人', 80)" resizable>
-        <template #default="{ row }">
-          <template v-if="row.reporterId && userMap[row.reporterId]">
-            👤{{ userMap[row.reporterId] }}
-          </template>
-          <span v-else class="cell-na">—</span>
-        </template>
-      </el-table-column>
-      <el-table-column label="责任人" :width="colWidth('责任人', 80)" resizable>
-        <template #default="{ row }">
-          <template v-if="row.assigneeId && userMap[row.assigneeId]">
-            👤{{ userMap[row.assigneeId] }}
-          </template>
-          <span v-else class="cell-na">—</span>
-        </template>
-      </el-table-column>
-      <el-table-column prop="dueDate" label="计划完成日" width="110" sortable="custom">
-        <template #default="{ row }">
-          {{ formatDate(row.dueDate) }}
-        </template>
-      </el-table-column>
-      <el-table-column label="关注" width="88" align="center">
-        <template #default="{ row }">
-          <el-tag
-            v-if="linkAttention(row) === 0"
-            type="info" size="small"
-          >不关注</el-tag>
-          <el-tag
-            v-else
-            :type="linkAttention(row) >= 4 ? 'danger' : linkAttention(row) >= 3 ? 'warning' : 'success'"
-            size="small"
-          >{{ ATTENTION_LEVEL_LABELS[linkAttention(row) as 0|1|2|3|4|5] }}</el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column prop="status" label="状态" width="90" align="center" sortable="custom">
-        <template #default="{ row }">
-          <el-tag :type="statusTag[row.status]" size="small">
-            {{ statusLabel[row.status] || row.status }}
-          </el-tag>
-        </template>
-      </el-table-column>
-      <el-table-column prop="createdAt" label="创建日期" width="110" align="center" sortable="custom">
-        <template #default="{ row }">
-          <span class="cell-date">{{ formatCpDate(row.createdAt) }}</span>
-        </template>
-      </el-table-column>
-      <!-- 跟踪模式：最近点检列 -->
-      <el-table-column v-if="viewMode === 'timeline'" label="最近点检" min-width="260" fixed="right">
-        <template #default="{ row }">
-          <div class="cp-mini-list">
-            <div
-              v-for="cp in getRecentCheckpoints(row.id)"
-              :key="cp.id"
-              class="cp-mini-item"
-              :class="{ 'cp-overdue': isOverdue(cp.checkpointDate, cp.status).overdue }"
-            >
-              <span class="cp-mini-icon">{{ cpIcon(cp) }}</span>
-              <span class="cp-mini-date" :title="'点检日: ' + cp.checkpointDate">{{ formatCpDate(cp.checkpointDate) }}</span>
-              <span class="cp-mini-desc">{{ cp.description }}</span>
-              <span v-if="cp.responsibleUserId" class="cp-mini-who">{{ userMap[cp.responsibleUserId] || '' }}</span>
-            </div>
-            <div v-if="getRecentCheckpoints(row.id).length === 0" class="cp-mini-empty">暂无点检记录</div>
-            <div v-if="(checkpointMap[row.id]?.length || 0) > settings.maxTimelineRows" class="cp-mini-more">
-              … 共 {{ checkpointMap[row.id].length }} 条
-            </div>
-          </div>
+          <IssueListCell :column-key="colKey" :row="row" />
         </template>
       </el-table-column>
 
-      <el-table-column label="操作" fixed="right" align="right">
+      <el-table-column label="操作" width="118" fixed="right" align="center">
         <template #default="{ row }">
-          <el-dropdown @command="(cmd: string) => {
-            if (cmd === 'delete') { ElMessage.warning('删除功能临时禁用'); return }
-            if (cmd === 'void') onVoidIssue(row.id, row.title)
-            else if (cmd === 'unvoid') onUnvoidIssue(row.id)
-            else if (cmd.startsWith('att-')) onSetAttention(row.id, parseInt(cmd.slice(4), 10))
-            else onStatusChange(row, cmd)
-          }" size="small" trigger="click">
-            <el-button link type="primary" size="small" @click.stop>状态 ▾</el-button>
-            <template #dropdown>
-              <el-dropdown-menu>
-                <template v-if="isUnwatched(row)">
-                  <el-dropdown-item command="unvoid" style="color:#67c23a">🔄 恢复默认(三星)</el-dropdown-item>
-                </template>
-                <template v-else>
-                  <el-dropdown-item command="open">待处理</el-dropdown-item>
-                  <el-dropdown-item command="in_progress">进行中</el-dropdown-item>
-                  <el-dropdown-item command="resolved">已解决</el-dropdown-item>
-                  <el-dropdown-item command="closed">已关闭</el-dropdown-item>
-                  <el-dropdown-item command="cancelled">已取消</el-dropdown-item>
-                  <el-dropdown-item command="delete" style="color:#f56c6c" divided>🗑 删除</el-dropdown-item>
-                  <el-dropdown-item command="void" style="color:#e6a23c" divided>⊘ 设为不关注</el-dropdown-item>
-                  <el-dropdown-item command="att-1" divided>★ 一星关注</el-dropdown-item>
-                  <el-dropdown-item command="att-2">★★ 二星关注</el-dropdown-item>
-                  <el-dropdown-item command="att-3">★★★ 三星关注</el-dropdown-item>
-                  <el-dropdown-item command="att-4">★★★★ 四星关注</el-dropdown-item>
-                  <el-dropdown-item command="att-5">★★★★★ 五星关注</el-dropdown-item>
-                </template>
-              </el-dropdown-menu>
-            </template>
-          </el-dropdown>
-          <el-button link type="warning" size="small" @click.stop="onPushIssue(row.id)" title="推送到其他列表">
-            <el-icon><Promotion /></el-icon>
-          </el-button>
+          <div class="row-actions">
+            <el-button link type="primary" size="small" @click.stop="goIssueDetail(row.id)" title="查看详情">
+              <el-icon><Search /></el-icon>
+            </el-button>
+            <el-button link type="primary" size="small" @click.stop="openEditIssue(row)" title="编辑">
+              <el-icon><Edit /></el-icon>
+            </el-button>
+            <el-button link type="warning" size="small" @click.stop="onPushIssue(row.id)" title="推送到其他列表">
+              <el-icon><Promotion /></el-icon>
+            </el-button>
+            <el-dropdown
+              @command="(cmd: string) => {
+                if (cmd === 'delete') { ElMessage.warning('删除功能临时禁用'); return }
+                if (cmd === 'void') onVoidIssue(row.id, row.title)
+                else if (cmd === 'unvoid') onRestoreAttention(row.id)
+              }"
+              size="small"
+              trigger="click"
+            >
+              <el-button link type="primary" size="small" @click.stop title="更多">
+                <el-icon><MoreFilled /></el-icon>
+              </el-button>
+              <template #dropdown>
+                <el-dropdown-menu>
+                  <template v-if="isUnwatched(row)">
+                    <el-dropdown-item command="unvoid" style="color:#67c23a">🔄 恢复默认(三星)</el-dropdown-item>
+                  </template>
+                  <template v-else>
+                    <el-dropdown-item command="void" style="color:#e6a23c">⊘ 设为不关注</el-dropdown-item>
+                    <el-dropdown-item command="delete" style="color:#f56c6c" divided>🗑 删除</el-dropdown-item>
+                  </template>
+                </el-dropdown-menu>
+              </template>
+            </el-dropdown>
+          </div>
         </template>
       </el-table-column>
       <template #empty><el-empty description="暂无 Issue" /></template>
     </el-table>
 
     <IssueFormDialog v-if="showCreateIssue" :all-users="activeUsers" @confirm="onCreateIssue" @close="showCreateIssue = false" />
+    <IssueFormDialog
+      v-if="showEditIssue && editIssueRow"
+      :all-users="activeUsers"
+      :initial="editIssueRow"
+      @confirm="onEditIssue"
+      @close="showEditIssue = false; editIssueRow = null"
+    />
+    <IssueQuickEditDialog
+      v-if="quickEdit"
+      :field="quickEdit.field"
+      :issue-title="quickEdit.issueTitle"
+      :value="quickEdit.value"
+      :users="activeUsers"
+      @confirm="onQuickEditConfirm"
+      @close="quickEdit = null"
+    />
+    <IssueColumnSettingsDialog
+      v-if="showColumnSettings"
+      :mode="viewMode"
+      :settings="settings.issueListColumns"
+      @confirm="onColumnSettingsConfirm"
+      @close="showColumnSettings = false"
+    />
+    <CheckpointFormDialog
+      v-if="editCheckpoint"
+      :users="activeUsers"
+      :initial="editCheckpoint.cp"
+      @confirm="onEditCheckpoint"
+      @close="editCheckpoint = null"
+    />
     <ListFormDialog
       v-if="showEditList && currentList"
       :initial="{
@@ -690,16 +767,19 @@ const defaultSort = computed(() => {
   align-items: center;
   margin-bottom: 12px;
 }
-.cell-text {
-  font-size: 0.85rem;
+.cell-link {
+  cursor: pointer;
+  border-radius: 2px;
 }
-.cell-na {
-  color: #c0c4cc;
+.cell-link:hover {
+  color: #409eff;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
-.cell-date {
-  font-family: monospace;
-  font-size: 0.8rem;
-  color: #909399;
+.row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
 }
 .view-toggle {
   margin-left: 12px;
@@ -733,75 +813,6 @@ const defaultSort = computed(() => {
   flex-shrink: 0;
 }
 
-/* ── 跟踪模式：点检迷你列表 ── */
-.cp-mini-list {
-  font-size: 0.8rem;
-  line-height: 1.6;
-  position: relative;
-  padding-bottom: 18px;
-}
-.cp-mini-item {
-  display: flex;
-  gap: 6px;
-  align-items: baseline;
-  padding: 1px 0;
-}
-.cp-mini-item.cp-overdue {
-  background: #fef0f0;
-  border-radius: 2px;
-  padding: 1px 4px;
-}
-.cp-mini-icon {
-  flex-shrink: 0;
-  font-size: 0.75rem;
-}
-.cp-mini-date {
-  flex-shrink: 0;
-  color: #909399;
-  font-family: monospace;
-  font-size: 0.75rem;
-}
-.cp-mini-desc {
-  flex: 1;
-  color: #303133;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.cp-mini-who {
-  flex-shrink: 0;
-  color: #c0c4cc;
-  font-size: 0.7rem;
-}
-.cp-mini-created {
-  flex-shrink: 0;
-  color: #c0c4cc;
-  font-size: 0.65rem;
-  margin-left: 2px;
-}
-.cp-mini-empty {
-  color: #c0c4cc;
-  font-style: italic;
-}
-.cp-mini-more {
-  position: absolute;
-  bottom: -3px;
-  right: 4px;
-  color: #909399;
-  background: #f0f2f5;
-  font-size: 0.62rem;
-  padding: 1px 6px;
-  border-radius: 10px;
-}
-
-/* 跟踪模式：行高自适应 */
-:deep(.el-table__body tr) {
-  &.timeline-row td {
-    vertical-align: top;
-    padding-top: 8px;
-    padding-bottom: 8px;
-  }
-}
 @media (max-width: 768px) {
   .page-head { flex-direction: column; align-items: flex-start; gap: 8px; }
   .head-actions { flex-wrap: wrap; }

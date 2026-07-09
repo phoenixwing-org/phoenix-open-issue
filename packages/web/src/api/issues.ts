@@ -30,14 +30,6 @@ export function reorderIssues(listId: string, issueIds: string[]) {
   return request.put(`/list/${listId}/issue/reorder`, { issueIds })
 }
 
-export function voidIssue(listId: string, issueId: string) {
-  return request.patch(`/list/${listId}/issue/${issueId}/void`)
-}
-
-export function unvoidIssue(listId: string, issueId: string) {
-  return request.patch(`/list/${listId}/issue/${issueId}/unvoid`)
-}
-
 export function setIssueAttention(listId: string, issueId: string, attentionLevel: number) {
   return request.patch(`/list/${listId}/issue/${issueId}/attention`, { attentionLevel })
 }

@@ -1,6 +1,6 @@
 {
   "name": "@open-issue/core",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Open Issue List — 核心类型定义与算法",
   "type": "module",
   "main": "dist/index.js",

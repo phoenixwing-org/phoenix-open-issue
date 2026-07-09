@@ -20,9 +20,6 @@ export const COLUMN_MIGRATIONS: { table: string; column: string; sql: string }[]
   { table: 'checkpoints', column: 'sortOrder', sql: 'ALTER TABLE checkpoints ADD COLUMN sortOrder INTEGER DEFAULT 0' },
   { table: 'checkpoints', column: 'createdAt', sql: "ALTER TABLE checkpoints ADD COLUMN createdAt TEXT DEFAULT (datetime('now'))" },
   { table: 'checkpoints', column: 'updatedAt', sql: "ALTER TABLE checkpoints ADD COLUMN updatedAt TEXT DEFAULT (datetime('now'))" },
-  { table: 'issueListLinks', column: 'voided', sql: 'ALTER TABLE issueListLinks ADD COLUMN voided INTEGER NOT NULL DEFAULT 0' },
-  { table: 'issueListLinks', column: 'voidedAt', sql: 'ALTER TABLE issueListLinks ADD COLUMN voidedAt TEXT' },
-  { table: 'issueListLinks', column: 'voidedBy', sql: 'ALTER TABLE issueListLinks ADD COLUMN voidedBy TEXT' },
   { table: 'issueListLinks', column: 'linkedAt', sql: "ALTER TABLE issueListLinks ADD COLUMN linkedAt TEXT DEFAULT (datetime('now'))" },
   { table: 'issueListLinks', column: 'linkedBy', sql: 'ALTER TABLE issueListLinks ADD COLUMN linkedBy TEXT' },
   { table: 'issueListLinks', column: 'attentionLevel', sql: 'ALTER TABLE issueListLinks ADD COLUMN attentionLevel INTEGER NOT NULL DEFAULT 3' },
@@ -232,21 +229,50 @@ export function ensureDictUniqueIndex(db: PnwDbAdapter): void {
 }
 
 /**
- * voided → attentionLevel 迁移
- * voided=1 → 0（不关注）；voided=0 → 3（默认三星）
+ * voided → attentionLevel 迁移，完成后重建表并删除 voided / voidedAt / voidedBy 三列
  */
+export function dropIssueListLinkVoidedColumns(db: PnwDbAdapter): boolean {
+  if (!tableExists(db, 'issueListLinks')) return false
+  const cols = getTableColumns(db, 'issueListLinks')
+  if (!cols.has('voided') && !cols.has('voidedAt') && !cols.has('voidedBy')) return false
+
+  db.exec(`
+    CREATE TABLE issueListLinks_new (
+      id TEXT PRIMARY KEY,
+      issueId TEXT NOT NULL,
+      listId TEXT NOT NULL,
+      attentionLevel INTEGER NOT NULL DEFAULT 3 CHECK(attentionLevel BETWEEN 0 AND 5),
+      attentionUpdatedAt TEXT,
+      attentionUpdatedBy TEXT,
+      linkedAt TEXT DEFAULT (datetime('now')),
+      linkedBy TEXT NOT NULL
+    );
+    INSERT INTO issueListLinks_new (id, issueId, listId, attentionLevel, attentionUpdatedAt, attentionUpdatedBy, linkedAt, linkedBy)
+    SELECT id, issueId, listId, attentionLevel, attentionUpdatedAt, attentionUpdatedBy, linkedAt, linkedBy
+    FROM issueListLinks;
+    DROP TABLE issueListLinks;
+    ALTER TABLE issueListLinks_new RENAME TO issueListLinks;
+    CREATE UNIQUE INDEX IF NOT EXISTS idx_issueListLinks_unique ON issueListLinks(issueId, listId);
+  `)
+  return true
+}
+
 export function migrateIssueListLinkAttention(db: PnwDbAdapter, force = false): {
   voidedMapped: number
   timestampsCopied: number
+  voidedColumnsDropped: boolean
 } {
-  if (!tableExists(db, 'issueListLinks')) return { voidedMapped: 0, timestampsCopied: 0 }
+  if (!tableExists(db, 'issueListLinks')) return { voidedMapped: 0, timestampsCopied: 0, voidedColumnsDropped: false }
 
   applyColumnMigrations(db)
   const cols = getTableColumns(db, 'issueListLinks')
 
   if (!force) {
     const done = db.get("SELECT value FROM systemFlags WHERE key = 'migrate_link_attentionLevel'") as { value: string } | undefined
-    if (done?.value === '1') return { voidedMapped: 0, timestampsCopied: 0 }
+    if (done?.value === '1') {
+      const voidedColumnsDropped = dropIssueListLinkVoidedColumns(db)
+      return { voidedMapped: 0, timestampsCopied: 0, voidedColumnsDropped }
+    }
   }
 
   let timestampsCopied = 0
@@ -275,18 +301,19 @@ export function migrateIssueListLinkAttention(db: PnwDbAdapter, force = false): 
     voidedMapped = r.changes ?? 0
   }
 
-  // 非法值归一
   db.run('UPDATE issueListLinks SET attentionLevel = 3 WHERE attentionLevel IS NULL OR attentionLevel < 0 OR attentionLevel > 5')
 
+  const voidedColumnsDropped = dropIssueListLinkVoidedColumns(db)
+
   db.run("INSERT OR REPLACE INTO systemFlags (key, value) VALUES ('migrate_link_attentionLevel', '1')")
-  return { voidedMapped, timestampsCopied }
+  return { voidedMapped, timestampsCopied, voidedColumnsDropped }
 }
 
 export function runDataMigrations(db: PnwDbAdapter): {
   userRole: { adminSet: number; editorSet: number }
   listTypeRebuilt: boolean
   pendingOrgCreated: boolean
-  linkAttention: { voidedMapped: number; timestampsCopied: number }
+  linkAttention: { voidedMapped: number; timestampsCopied: number; voidedColumnsDropped: boolean }
 } {
   const userRole = migrateUserSystemRole(db, true)
   const listTypeRebuilt = migrateIssueListsListType(db)

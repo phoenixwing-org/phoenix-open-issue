@@ -14,7 +14,6 @@ export class IssueService {
     sort?: string
     page?: number
     size?: number
-    includeVoided?: boolean
   } = {}): { items: Issue[]; total: number } {
     const db = getDb()
 
@@ -23,17 +22,9 @@ export class IssueService {
     const role = checkListAccess(userId, members)
     if (!role) throw new ForbiddenError('无权访问此列表')
 
-    const { status, priority, search, sort, page = 1, size = 50, includeVoided } = opts
-    // JOIN issueListLinks 获取 _attentionLevel + 统一过滤
+    const { status, priority, search, sort, page = 1, size = 50 } = opts
     const params: unknown[] = [listId]
     const conditions: string[] = []
-
-    // 默认排除不关注（attentionLevel=0，兼容旧 voided=1）
-    if (!includeVoided) {
-      conditions.push(`(
-        COALESCE(il.attentionLevel, CASE WHEN il.voided = 1 THEN 0 ELSE ${DEFAULT_ATTENTION_LEVEL} END) > 0
-      )`)
-    }
 
     if (status) {
       conditions.push('i.status = ?')
@@ -52,26 +43,41 @@ export class IssueService {
     const fromJoin = `FROM issues i JOIN issueListLinks il ON i.id = il.issueId AND il.listId = ? LEFT JOIN poiFunctions f ON i.functionId = f.id`
     const total = db.get(`SELECT COUNT(*) as count FROM issues i JOIN issueListLinks il ON i.id = il.issueId AND il.listId = ?${where}`, [listId, ...params.slice(1)]) as { count: number }
 
-    // 排序：默认 createdAt DESC，可通过 sort 参数切换字段和方向
+    // 排序：默认关注度 → 优先级；sort 支持 "field:dir" 或 "field:dir,field2:dir2"
     const SEVERITY_ORDER = "CASE i.severity WHEN 'fatal' THEN 1 WHEN 'major' THEN 2 WHEN 'minor' THEN 3 WHEN 'trivial' THEN 4 ELSE 5 END"
     const PRIORITY_ORDER = "CASE i.priority WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 WHEN 'low' THEN 4 ELSE 5 END"
     const STATUS_ORDER = "CASE i.status WHEN 'open' THEN 1 WHEN 'in_progress' THEN 2 WHEN 'resolved' THEN 3 WHEN 'closed' THEN 4 WHEN 'cancelled' THEN 5 ELSE 6 END"
 
-    let orderBy = 'i.createdAt DESC, i.sortOrder ASC'
-    if (sort) {
-      const parts = sort.split(':')
-      const field = parts[0]
-      const dir = parts[1] || 'desc'
-      const d = dir === 'asc' ? 'ASC' : 'DESC'
+    const defaultOrder = `il.attentionLevel DESC, ${PRIORITY_ORDER} ASC, i.createdAt DESC`
+
+    function orderClause(field: string, dir: 'ASC' | 'DESC'): string | null {
       switch (field) {
-        case 'createdAt':  orderBy = `i.createdAt ${d}, i.sortOrder ASC`; break
-        case 'severity':   orderBy = `${SEVERITY_ORDER} ${d}, i.createdAt DESC`; break
-        case 'priority':   orderBy = `${PRIORITY_ORDER} ${d}, i.createdAt DESC`; break
-        case 'status':     orderBy = `${STATUS_ORDER} ${d}, i.createdAt DESC`; break
-        case 'title':      orderBy = `i.title ${d}, i.createdAt DESC`; break
-        case 'issueNo':    orderBy = `i.issueNo ${d}, i.createdAt DESC`; break
-        case 'dueDate':    orderBy = `COALESCE(i.dueDate,'9999') ${d}, i.createdAt DESC`; break
-        case 'sortOrder':  orderBy = `i.sortOrder ASC, i.createdAt DESC`; break
+        case 'attention': return `il.attentionLevel ${dir}`
+        case 'createdAt': return `i.createdAt ${dir}`
+        case 'severity': return `${SEVERITY_ORDER} ${dir}`
+        case 'priority': return `${PRIORITY_ORDER} ${dir}`
+        case 'status': return `${STATUS_ORDER} ${dir}`
+        case 'title': return `i.title ${dir}`
+        case 'issueNo': return `i.issueNo ${dir}`
+        case 'dueDate': return `COALESCE(i.dueDate,'9999') ${dir}`
+        case 'sortOrder': return `i.sortOrder ASC`
+        default: return null
+      }
+    }
+
+    let orderBy = defaultOrder
+    if (sort) {
+      const segments = sort.split(',').map(s => s.trim()).filter(Boolean)
+      const parts: string[] = []
+      for (const seg of segments) {
+        const [field, dirRaw] = seg.split(':')
+        const dir = (dirRaw || 'desc').toLowerCase() === 'asc' ? 'ASC' : 'DESC'
+        const clause = orderClause(field, dir)
+        if (clause) parts.push(clause)
+      }
+      if (parts.length) {
+        parts.push('i.createdAt DESC')
+        orderBy = parts.join(', ')
       }
     }
 
@@ -79,7 +85,7 @@ export class IssueService {
     const allParams = [...params, size, offset]
     const items = db.all(
       `SELECT i.*,
-        COALESCE(il.attentionLevel, CASE WHEN il.voided = 1 THEN 0 ELSE ${DEFAULT_ATTENTION_LEVEL} END) as _attentionLevel,
+        il.attentionLevel as _attentionLevel,
         f.functionName as _functionName, f.platform as _functionPlatform, f.externalId as _functionExternalId ${fromJoin}${where} ORDER BY ${orderBy} LIMIT ? OFFSET ?`,
       allParams,
     ) as (Issue & { _attentionLevel: number })[]
@@ -256,16 +262,6 @@ export class IssueService {
        WHERE issueId = ? AND listId = ?`,
       [attentionLevel, now, userId, issueId, listId],
     )
-  }
-
-  /** @deprecated 兼容：设为不关注(0) */
-  voidLink(issueId: string, listId: string, userId: string): void {
-    this.setAttentionLevel(issueId, listId, 0, userId)
-  }
-
-  /** @deprecated 兼容：恢复默认三星关注 */
-  unvoidLink(issueId: string, listId: string, userId: string): void {
-    this.setAttentionLevel(issueId, listId, DEFAULT_ATTENTION_LEVEL, userId)
   }
 
   reorder(listId: string, input: ReorderInput, userId: string): void {

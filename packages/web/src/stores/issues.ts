@@ -33,6 +33,7 @@ export const useIssueStore = defineStore('issues', () => {
     title: string; description?: string; priority?: string
     severity?: string; category?: string; detectionPhase?: string
     reporterId?: string; assigneeId?: string; dueDate?: string; functionId?: string
+    issueNo?: string; containment?: string; rootCause?: string; correctiveAction?: string
   }) {
     const res = await api.createIssue(listId, data)
     issues.value.push(res.data)
@@ -77,17 +78,5 @@ export const useIssueStore = defineStore('issues', () => {
     return true
   }
 
-  async function voidIssue(listId: string, issueId: string) {
-    await api.voidIssue(listId, issueId)
-    ElMessage.success('已设为不关注')
-    return true
-  }
-
-  async function unvoidIssue(listId: string, issueId: string) {
-    await api.unvoidIssue(listId, issueId)
-    ElMessage.success('已恢复默认关注')
-    return true
-  }
-
-  return { issues, currentIssue, total, loading, fetchIssues, fetchIssue, createIssue, updateIssue, updateStatus, deleteIssue, reorder, voidIssue, unvoidIssue, setAttentionLevel }
+  return { issues, currentIssue, total, loading, fetchIssues, fetchIssue, createIssue, updateIssue, updateStatus, deleteIssue, reorder, setAttentionLevel }
 })
