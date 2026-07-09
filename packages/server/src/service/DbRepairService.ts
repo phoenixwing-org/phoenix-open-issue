@@ -108,21 +108,39 @@ export class DbRepairService {
     }
     applyColumnMigrations(db)
 
-    const orphans = db.all(`
+    const missing = db.all(`
       SELECT i.id, i.listId, i.createdBy, i.createdAt
       FROM issues i
       WHERE i.listId IS NOT NULL AND i.listId != ''
         AND NOT EXISTS (
           SELECT 1 FROM issueListLinks l
           WHERE l.issueId = i.id AND l.listId = i.listId
-            AND l.attentionLevel > 0
         )
     `) as { id: string; listId: string; createdBy: string; createdAt: string }[]
 
-    for (const row of orphans) {
+    for (const row of missing) {
       db.run(
         'INSERT INTO issueListLinks (id, issueId, listId, linkedBy, linkedAt, attentionLevel) VALUES (?, ?, ?, ?, ?, 3)',
         [generateId(), row.id, row.listId, row.createdBy || 'system', row.createdAt || now],
+      )
+    }
+
+    const reactivated = db.all(`
+      SELECT i.id, i.listId, i.createdBy
+      FROM issues i
+      JOIN issueListLinks l ON l.issueId = i.id AND l.listId = i.listId
+      WHERE i.listId IS NOT NULL AND i.listId != ''
+        AND l.attentionLevel = 0
+    `) as { id: string; listId: string; createdBy: string }[]
+
+    for (const row of reactivated) {
+      db.run(
+        `UPDATE issueListLinks SET
+          attentionLevel = 3,
+          attentionUpdatedAt = ?,
+          attentionUpdatedBy = ?
+        WHERE issueId = ? AND listId = ?`,
+        [now, row.createdBy || 'system', row.id, row.listId],
       )
     }
 
@@ -132,17 +150,20 @@ export class DbRepairService {
       WHERE attentionLevel > 0
     `) as { c: number }
 
-    const details: string[] = [
-      `补建链接 ${orphans.length} 条`,
-      `当前有效链接 ${total.c} 条`,
-    ]
+    const details: string[] = []
+    if (missing.length) details.push(`补建链接 ${missing.length} 条`)
+    if (reactivated.length) details.push(`恢复失效链接 ${reactivated.length} 条`)
+    details.push(`当前有效链接 ${total.c} 条`)
     if (deduped) details.push(`清理重复 ${deduped} 条`)
+    if (!details.length) details.push('链接数据无需修正')
+
+    const fixed = missing.length + reactivated.length + deduped
 
     return {
       task: 'links',
-      message: orphans.length ? `已补建 ${orphans.length} 条链接` : '链接数据完整',
+      message: fixed ? `已修正 ${fixed} 条链接` : '链接数据完整',
       details,
-      fixed: orphans.length + deduped,
+      fixed,
     }
   }
 
