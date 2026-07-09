@@ -105,7 +105,7 @@ export class BackupService {
     const db = getDb()
     const now = new Date().toISOString()
 
-    // 查找所有没有对应 issueListLinks 记录的 Issue（按主 listId）
+    // 仅补建「完全没有链接行」的 Issue；attentionLevel = 0（不关注）是合法记录，不得再 INSERT
     const orphans = db.all(`
       SELECT i.id, i.listId, i.createdBy, i.createdAt
       FROM issues i
@@ -113,7 +113,6 @@ export class BackupService {
         AND NOT EXISTS (
           SELECT 1 FROM issueListLinks l
           WHERE l.issueId = i.id AND l.listId = i.listId
-            AND l.attentionLevel > 0
         )
     `) as { id: string; listId: string; createdBy: string; createdAt: string }[]
 
@@ -121,7 +120,7 @@ export class BackupService {
     for (const row of orphans) {
       const linkId = generateId()
       db.run(
-        'INSERT INTO issueListLinks (id, issueId, listId, linkedBy, linkedAt) VALUES (?, ?, ?, ?, ?)',
+        'INSERT INTO issueListLinks (id, issueId, listId, linkedBy, linkedAt, attentionLevel) VALUES (?, ?, ?, ?, ?, 3)',
         [linkId, row.id, row.listId, row.createdBy || 'system', row.createdAt || now],
       )
       created++

@@ -125,39 +125,28 @@ export class DbRepairService {
       )
     }
 
-    const reactivated = db.all(`
-      SELECT i.id, i.listId, i.createdBy
-      FROM issues i
-      JOIN issueListLinks l ON l.issueId = i.id AND l.listId = i.listId
-      WHERE i.listId IS NOT NULL AND i.listId != ''
-        AND l.attentionLevel = 0
-    `) as { id: string; listId: string; createdBy: string }[]
-
-    for (const row of reactivated) {
-      db.run(
-        `UPDATE issueListLinks SET
-          attentionLevel = 3,
-          attentionUpdatedAt = ?,
-          attentionUpdatedBy = ?
-        WHERE issueId = ? AND listId = ?`,
-        [now, row.createdBy || 'system', row.id, row.listId],
-      )
-    }
+    // attentionLevel = 0 表示「不关注」，是合法链接，补建时不得 INSERT 也不得强行改回 3
 
     const deduped = dedupeIssueListLinks(db)
     const total = db.get(`
       SELECT COUNT(*) as c FROM issueListLinks
+    `) as { c: number }
+    const active = db.get(`
+      SELECT COUNT(*) as c FROM issueListLinks
       WHERE attentionLevel > 0
+    `) as { c: number }
+    const unwatched = db.get(`
+      SELECT COUNT(*) as c FROM issueListLinks
+      WHERE attentionLevel = 0
     `) as { c: number }
 
     const details: string[] = []
     if (missing.length) details.push(`补建链接 ${missing.length} 条`)
-    if (reactivated.length) details.push(`恢复失效链接 ${reactivated.length} 条`)
-    details.push(`当前有效链接 ${total.c} 条`)
+    details.push(`当前链接 ${total.c} 条（关注 ${active.c} / 不关注 ${unwatched.c}）`)
     if (deduped) details.push(`清理重复 ${deduped} 条`)
     if (!details.length) details.push('链接数据无需修正')
 
-    const fixed = missing.length + reactivated.length + deduped
+    const fixed = missing.length + deduped
 
     return {
       task: 'links',
