@@ -142,6 +142,26 @@ Query: ?status=open&priority=high&search=xxx&sort=priority:desc&page=1&size=50&i
 ### GET /db/export
 ### POST /db/import — `{ "data": {...}, "mode": "replace|merge" }`
 ### POST /db/repair-links
+### POST /db/repair — `{ "task": "all|schema|..." }`
+### POST /db/repair/:task
+
+---
+
+## Unit Tests（系统管理员）
+
+### GET /test/files
+返回 `{ files: [{ filePath, packageName, caseCount }], available }`
+
+### GET /test/status
+返回 `{ running, available, lastResult }`
+
+### POST /test/run
+触发全量 Vitest 运行，生成 JSON + 独立 HTML 报告。
+
+返回 `{ message, exitCode, summary, reportUrl, ranAt, runId }`  
+`reportUrl` 示例：`/test-reports/latest/report.html`（新标签页打开）
+
+静态报告目录：`GET /test-reports/...`（无需 Bearer，内网工具）
 
 ---
 

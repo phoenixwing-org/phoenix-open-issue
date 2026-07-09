@@ -35,6 +35,7 @@ const PAGE_LABELS: Record<string, string> = {
   pushHistory: '推送历史',
   functions: '功能表',
   settings: '设置',
+  testRunner: '单元测试',
   issueDetail: 'Issue',
   welcome: '欢迎',
 }
@@ -48,7 +49,7 @@ function pageTitle(pageId: string): string {
 const wb = pnwCreateWorkbench({
   pagePolicy: (pageId) => {
     const base = normalizePageId(pageId).split(':')[0]
-    const SINGLETON = new Set(['dashboard', 'lists', 'org', 'pushHistory', 'functions', 'settings'])
+    const SINGLETON = new Set(['dashboard', 'lists', 'org', 'pushHistory', 'functions', 'settings', 'testRunner'])
     const maxTabs = SINGLETON.has(base) ? 1 : 30
     return { maxTabs, tabEnabled: true }
   },

@@ -9,6 +9,7 @@ import { SeedController } from '../controller/SeedController.js'
 import { DictController } from '../controller/DictController.js'
 import { BackupController } from '../controller/BackupController.js'
 import { FunctionController } from '../controller/FunctionController.js'
+import { TestController } from '../controller/TestController.js'
 import { authMiddleware } from '../middleware/auth.js'
 
 const router = Router()
@@ -22,6 +23,7 @@ const seedCtrl = new SeedController()
 const dictCtrl = new DictController()
 const backupCtrl = new BackupController()
 const funcCtrl = new FunctionController()
+const testCtrl = new TestController()
 
 function wrap(fn: (req: any, res: any) => void) {
   return (req: any, res: any, next: any) => {
@@ -129,5 +131,10 @@ router.post('/functions/import',  authMiddleware, wrap((req, res) => funcCtrl.im
 router.get('/function/:id',       authMiddleware, wrap((req, res) => funcCtrl.getById(req, res)))
 router.put('/function/:id',       authMiddleware, wrap((req, res) => funcCtrl.update(req, res)))
 router.delete('/function/:id',    authMiddleware, wrap((req, res) => funcCtrl.delete(req, res)))
+
+// ═══ Unit Tests (admin only) ═══
+router.get('/test/files',  authMiddleware, wrap((req, res) => testCtrl.listFiles(req, res)))
+router.get('/test/status', authMiddleware, wrap((req, res) => testCtrl.getStatus(req, res)))
+router.post('/test/run',   authMiddleware, wrap((req, res) => testCtrl.runAll(req, res)))
 
 export default router

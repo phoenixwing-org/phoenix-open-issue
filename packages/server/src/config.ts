@@ -28,6 +28,7 @@ export const config = {
   port: parseInt(process.env.PORT || '3400', 10),
   jwtSecret: process.env.JWT_SECRET || 'dev-secret-change-me',
   dbPath: resolvePath(process.env.DB_PATH || '../../data/open-issue.sqlite'),
+  testReportsDir: resolvePath(process.env.TEST_REPORTS_DIR || '../../data/test-reports'),
   serveStatic: resolveServeStatic(),
   staticDir,
 }

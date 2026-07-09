@@ -34,6 +34,10 @@ export default defineConfig(({ mode }) => {
           target: proxyTarget,
           changeOrigin: true,
         },
+        '/test-reports': {
+          target: proxyTarget,
+          changeOrigin: true,
+        },
       },
     },
   }

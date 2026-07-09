@@ -1,304 +1,187 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
-import {
-  checkListAccess, canManageList, canDeleteList, canDeleteListAsUser, canAddMember,
-  canModifyIssue, canCreateIssue, canEditOwnIssue,
-  validatePush, resolveOverlap, canPushToList, canHandlePush,
-  isOverdue, calculateNextCheckpoint,
-} from '@open-issue/core'
+import { ref, computed, onMounted } from 'vue'
+import { ElMessage } from 'element-plus'
+import { isSystemAdmin } from '@open-issue/core'
+import { useAuthStore } from '@/stores/auth'
+import { getTestFiles, getTestStatus, runAllTests, type TestFileInfo, type TestRunResult } from '@/api/test'
+import PageHelpButton from '@/components/PageHelpButton.vue'
 
-// ── 测试用例定义 ──
-interface TestCase {
-  id: string; group: string; name: string
-  run: () => { pass: boolean; expected: any; actual: any }
-}
-interface TestResult extends TestCase {
-  status: 'idle' | 'pass' | 'fail'
-  expected: any; actual: any; duration: number
-}
+const auth = useAuthStore()
+const isAdmin = computed(() => isSystemAdmin(auth.user ?? undefined))
 
-function defineTests(): TestCase[] {
-  const membersA = [
-    { userId: 'u1', role: 'owner' as const },
-    { userId: 'u2', role: 'editor' as const },
-  ]
-  const membersB = [
-    { userId: 'u2', role: 'editor' as const },
-    { userId: 'u3', role: 'viewer' as const },
-  ]
-  const membersC = [
-    { userId: 'u4', role: 'editor' as const },
-    { userId: 'u5', role: 'viewer' as const },
-  ]
-
-  return [
-    // ── 权限算法 ──
-    { id: 'perm-01', group: '权限', name: 'checkListAccess 找到成员返回角色',
-      run: () => ({ pass: checkListAccess('u1', membersA) === 'owner', expected: 'owner', actual: checkListAccess('u1', membersA) }) },
-    { id: 'perm-02', group: '权限', name: 'checkListAccess 非成员返回 null',
-      run: () => ({ pass: checkListAccess('u9', membersA) === null, expected: null, actual: checkListAccess('u9', membersA) }) },
-    { id: 'perm-03', group: '权限', name: 'canManageList owner 可管理',
-      run: () => ({ pass: canManageList('owner') === true, expected: true, actual: canManageList('owner') }) },
-    { id: 'perm-04', group: '权限', name: 'canManageList viewer 不可管理',
-      run: () => ({ pass: canManageList('viewer') === false, expected: false, actual: canManageList('viewer') }) },
-    { id: 'perm-05', group: '权限', name: 'canDeleteList 仅 owner 角色可删',
-      run: () => {
-        const a = canDeleteList('owner'); const b = canDeleteList('admin')
-        const c = canDeleteList('editor'); const d = canDeleteList(null)
-        return { pass: a && !b && !c && !d, expected: 'owner only', actual: { owner: a, admin: b, editor: c, null: d } }
-      } },
-    { id: 'perm-05b', group: '权限', name: 'canDeleteListAsUser 系统管理员/所有者',
-      run: () => {
-        const sysAdmin = canDeleteListAsUser(null, 'admin', 'other', 'u1')
-        const owner = canDeleteListAsUser(null, 'zhangsan', 'u1', 'u1')
-        const listAdmin = canDeleteListAsUser('admin', 'zhangsan', 'u2', 'u1')
-        return { pass: sysAdmin && owner && !listAdmin, expected: 'sysAdmin+owner', actual: { sysAdmin, owner, listAdmin } }
-      } },
-    { id: 'perm-06', group: '权限', name: 'canModifyIssue editor 可修改',
-      run: () => ({ pass: canModifyIssue('editor') === true, expected: true, actual: canModifyIssue('editor') }) },
-    { id: 'perm-07', group: '权限', name: 'canCreateIssue reporter 可创建',
-      run: () => ({ pass: canCreateIssue('reporter') === true, expected: true, actual: canCreateIssue('reporter') }) },
-    { id: 'perm-08', group: '权限', name: 'canEditOwnIssue viewer 不可编辑',
-      run: () => ({ pass: canEditOwnIssue('viewer') === false, expected: false, actual: canEditOwnIssue('viewer') }) },
-
-    // ── 推送算法 ──
-    { id: 'push-01', group: '推送', name: 'resolveOverlap 找出共同成员',
-      run: () => {
-        const r = resolveOverlap(membersA, membersB)
-        return { pass: r.length === 1 && r[0] === 'u2', expected: ['u2'], actual: r }
-      } },
-    { id: 'push-02', group: '推送', name: 'resolveOverlap 无共同成员返回空',
-      run: () => {
-        const r = resolveOverlap(membersA, membersC)
-        return { pass: r.length === 0, expected: [], actual: r }
-      } },
-    { id: 'push-03', group: '推送', name: 'validatePush 有共同成员返回可推送',
-      run: () => {
-        const r = validatePush({ fromMembers: membersA, toMembers: membersB })
-        return { pass: r.canPush === true && r.valid === true, expected: 'canPush=true', actual: r }
-      } },
-    { id: 'push-04', group: '推送', name: 'validatePush 无共同成员返回不可推送',
-      run: () => {
-        const r = validatePush({ fromMembers: membersA, toMembers: membersC })
-        return { pass: r.canPush === false, expected: 'canPush=false', actual: r }
-      } },
-    { id: 'push-05', group: '推送', name: 'canPushToList 有角色且有交集',
-      run: () => ({ pass: canPushToList('editor', true) === true, expected: true, actual: canPushToList('editor', true) }) },
-    { id: 'push-06', group: '推送', name: 'canPushToList 无交集不可推送',
-      run: () => ({ pass: canPushToList('owner', false) === false, expected: false, actual: canPushToList('owner', false) }) },
-    { id: 'push-07', group: '推送', name: 'canHandlePush pending 状态 admin 可处理',
-      run: () => {
-        const r = canHandlePush('u1', { toListId: 'L2', status: 'pending' }, [{ userId: 'u1', role: 'admin' as const }])
-        return { pass: r === true, expected: true, actual: r }
-      } },
-    { id: 'push-08', group: '推送', name: 'canHandlePush 非 pending 状态不可处理',
-      run: () => {
-        const r = canHandlePush('u1', { toListId: 'L2', status: 'accepted' }, [{ userId: 'u1', role: 'admin' as const }])
-        return { pass: r === false, expected: false, actual: r }
-      } },
-
-    // ── 调度算法 ──
-    { id: 'sched-01', group: '调度', name: 'isOverdue 已过日期 pending → 逾期',
-      run: () => {
-        const r = isOverdue('2026-01-01', 'pending', new Date('2026-06-30'))
-        return { pass: r.overdue === true && r.daysOverdue > 100, expected: 'overdue=true', actual: r }
-      } },
-    { id: 'sched-02', group: '调度', name: 'isOverdue done 状态永不过期',
-      run: () => {
-        const r = isOverdue('2020-01-01', 'done', new Date('2026-06-30'))
-        return { pass: r.overdue === false && r.daysOverdue === 0, expected: 'overdue=false', actual: r }
-      } },
-    { id: 'sched-03', group: '调度', name: 'isOverdue skipped 状态不过期',
-      run: () => {
-        const r = isOverdue('2020-01-01', 'skipped', new Date('2026-06-30'))
-        return { pass: r.overdue === false, expected: 'overdue=false', actual: r }
-      } },
-    { id: 'sched-04', group: '调度', name: 'isOverdue 未来日期不过期',
-      run: () => {
-        const r = isOverdue('2030-01-01', 'pending', new Date('2026-06-30'))
-        return { pass: r.overdue === false, expected: 'overdue=false', actual: r }
-      } },
-    { id: 'sched-05', group: '调度', name: 'calculateNextCheckpoint daily +3',
-      run: () => {
-        const d = calculateNextCheckpoint(new Date('2026-01-01'), { frequency: 'daily', interval: 3 })
-        return { pass: d.toISOString().slice(0, 10) === '2026-01-04', expected: '2026-01-04', actual: d.toISOString().slice(0, 10) }
-      } },
-    { id: 'sched-06', group: '调度', name: 'calculateNextCheckpoint weekly +2',
-      run: () => {
-        const d = calculateNextCheckpoint(new Date('2026-01-01'), { frequency: 'weekly', interval: 2 })
-        return { pass: d.toISOString().slice(0, 10) === '2026-01-15', expected: '2026-01-15', actual: d.toISOString().slice(0, 10) }
-      } },
-    { id: 'sched-07', group: '调度', name: 'calculateNextCheckpoint monthly +1',
-      run: () => {
-        const d = calculateNextCheckpoint(new Date('2026-01-15'), { frequency: 'monthly', interval: 1 })
-        return { pass: d.toISOString().slice(0, 10) === '2026-02-15', expected: '2026-02-15', actual: d.toISOString().slice(0, 10) }
-      } },
-  ]
-}
-
-const allTests = defineTests()
-const results = ref<Map<string, TestResult>>(new Map())
+const loading = ref(false)
 const running = ref(false)
-const runAll = ref(true)
+const files = ref<TestFileInfo[]>([])
+const available = ref(true)
+const lastResult = ref<TestRunResult | null>(null)
 
-const summary = computed(() => {
-  const items = Array.from(results.value.values())
-  const pass = items.filter(r => r.status === 'pass').length
-  const fail = items.filter(r => r.status === 'fail').length
-  const idle = items.filter(r => r.status === 'idle').length
-  return { total: items.length, pass, fail, idle }
-})
+const totalCases = computed(() => files.value.reduce((s, f) => s + f.caseCount, 0))
 
-const testList = computed(() => {
-  const testCases = runAll.value ? allTests : allTests.filter(t => results.value.get(t.id)?.status === 'fail')
-  return testCases.map(tc => results.value.get(tc.id) || { ...tc, status: 'idle' as const, expected: undefined, actual: undefined, duration: 0 })
-})
-
-function runTests() {
-  running.value = true
-  runAll.value = true
-
-  // 逐一执行（给 UI 时间刷新）
-  const newResults = new Map(results.value)
-  let i = 0
-  function runNext() {
-    if (i >= allTests.length) {
-      running.value = false
-      return
-    }
-    const tc = allTests[i]
-    const start = performance.now()
-    try {
-      const r = tc.run()
-      newResults.set(tc.id, { ...tc, status: r.pass ? 'pass' : 'fail', expected: r.expected, actual: r.actual, duration: Math.round(performance.now() - start) })
-    } catch (e: any) {
-      newResults.set(tc.id, { ...tc, status: 'fail', expected: '(no error)', actual: e.message, duration: Math.round(performance.now() - start) })
-    }
-    results.value = new Map(newResults)
-    i++
-    setTimeout(runNext, 10)
-  }
-  runNext()
-}
-
-function retryOne(tc: TestCase) {
-  const start = performance.now()
-  const newResults = new Map(results.value)
+/** Cursor/Electron 内嵌预览：window.open / target=_blank 会一次连开多个标签，只能复制链接 */
+const embeddedPreview = computed(() => {
   try {
-    const r = tc.run()
-    newResults.set(tc.id, { ...tc, status: r.pass ? 'pass' : 'fail', expected: r.expected, actual: r.actual, duration: Math.round(performance.now() - start) })
-  } catch (e: any) {
-    newResults.set(tc.id, { ...tc, status: 'fail', expected: '(no error)', actual: e.message, duration: Math.round(performance.now() - start) })
+    if (window.self !== window.top) return true
+  } catch {
+    return true
   }
-  results.value = newResults
-}
-
-function retryFailed() {
-  runAll.value = false
-  const failed = allTests.filter(t => results.value.get(t.id)?.status === 'fail')
-  if (!failed.length) return
-
-  const newResults = new Map(results.value)
-  for (const tc of failed) {
-    const start = performance.now()
-    try {
-      const r = tc.run()
-      newResults.set(tc.id, { ...tc, status: r.pass ? 'pass' : 'fail', expected: r.expected, actual: r.actual, duration: Math.round(performance.now() - start) })
-    } catch (e: any) {
-      newResults.set(tc.id, { ...tc, status: 'fail', expected: '(no error)', actual: e.message, duration: Math.round(performance.now() - start) })
-    }
-  }
-  results.value = newResults
-}
-
-const groups = computed(() => {
-  const set = new Set<string>()
-  allTests.forEach(t => set.add(t.group))
-  return Array.from(set)
+  return /Electron/i.test(navigator.userAgent)
 })
 
-function testsByGroup(group: string) {
-  return testList.value.filter(t => t.group === group)
+const reportFullUrl = computed(() => {
+  const rel = lastResult.value?.reportUrl
+  if (!rel) return null
+  return new URL(rel, window.location.origin).href
+})
+
+let reportOpenLock = false
+
+function openReportInBrowser() {
+  const url = reportFullUrl.value
+  if (!url || reportOpenLock) return
+  reportOpenLock = true
+  window.setTimeout(() => { reportOpenLock = false }, 2000)
+  window.open(url, '_blank', 'noopener,noreferrer')
 }
+
+async function copyReportForNewTab() {
+  const url = reportFullUrl.value
+  if (!url) return
+  try {
+    await navigator.clipboard.writeText(url)
+    ElMessage.success('已复制。请 Ctrl+T 新建标签页，地址栏粘贴后打开')
+  } catch {
+    ElMessage.warning('请手动复制下方链接')
+  }
+}
+
+async function copyReportLink() {
+  const url = reportFullUrl.value
+  if (!url) return
+  try {
+    await navigator.clipboard.writeText(url)
+    ElMessage.success('报告链接已复制')
+  } catch {
+    ElMessage.info(url)
+  }
+}
+
+async function loadFiles() {
+  if (!isAdmin.value) return
+  loading.value = true
+  try {
+    const { data } = await getTestFiles()
+    files.value = data.files
+    available.value = data.available
+  } catch (e: any) {
+    ElMessage.error(e?.response?.data?.message || '加载测试文件失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+async function loadStatus() {
+  if (!isAdmin.value) return
+  try {
+    const { data } = await getTestStatus()
+    available.value = data.available
+    if (data.lastResult) lastResult.value = data.lastResult
+    running.value = data.running
+  } catch { /* ignore */ }
+}
+
+async function onRunAll() {
+  running.value = true
+  try {
+    const { data } = await runAllTests()
+    lastResult.value = data
+    ElMessage.success(data.message || '运行完成')
+  } catch (e: any) {
+    if (e?.response?.status === 409) {
+      ElMessage.warning('测试正在运行中')
+    } else {
+      ElMessage.error(e?.response?.data?.message || '运行失败')
+    }
+  } finally {
+    running.value = false
+    loadStatus()
+  }
+}
+
+onMounted(async () => {
+  await loadStatus()
+  await loadFiles()
+})
 </script>
 
 <template>
   <div class="page">
     <div class="page-head">
-      <h2>核心算法单元测试</h2>
-      <div class="head-actions">
-        <el-button v-if="summary.fail > 0 && !running" type="warning" size="small" @click="retryFailed">
-          🔄 复测失败 ({{ summary.fail }})
+      <h2>单元测试</h2>
+      <PageHelpButton page-id="testRunner" />
+    </div>
+
+    <el-alert v-if="!isAdmin" type="warning" show-icon :closable="false" title="需要系统管理员权限才能运行单元测试" />
+
+    <template v-else>
+      <el-alert v-if="!available" type="info" show-icon :closable="false"
+        title="当前环境未安装 Vitest，仅开发/内网环境可用" />
+
+      <div class="toolbar">
+        <el-button type="primary" :loading="running" :disabled="!available || running" @click="onRunAll">
+          全部运行
         </el-button>
-        <el-button type="primary" size="small" @click="runTests" :loading="running">
-          ▶️ {{ results.size ? '重新运行' : '运行测试' }}
-        </el-button>
+        <span v-if="files.length" class="hint">{{ files.length }} 个文件 · {{ totalCases }} 条用例</span>
       </div>
-    </div>
 
-    <!-- 汇总栏 -->
-    <div class="test-summary" v-if="results.size">
-      <span class="sum-total">共 {{ summary.total }} 条</span>
-      <span class="sum-pass" v-if="summary.pass">✅ {{ summary.pass }} 通过</span>
-      <span class="sum-fail" v-if="summary.fail">❌ {{ summary.fail }} 失败</span>
-      <span class="sum-idle" v-if="summary.idle">⏳ {{ summary.idle }} 待测</span>
-    </div>
-
-    <el-empty v-if="!results.size" description="点击「运行测试」验证核心算法" />
-
-    <div v-else v-for="group in groups" :key="group" class="test-group">
-      <h3>{{ group }}</h3>
-      <el-table :data="testsByGroup(group)" size="small" stripe>
-        <el-table-column label="状态" width="70" align="center">
-          <template #default="{ row }">
-            <span v-if="row.status === 'pass'">✅</span>
-            <span v-else-if="row.status === 'fail'">❌</span>
-            <span v-else>⏳</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="name" label="测试用例" min-width="200" />
-        <el-table-column label="预期" width="150">
-          <template #default="{ row }">
-            <code v-if="row.status !== 'idle'" class="cell-code">{{ typeof row.expected === 'object' ? JSON.stringify(row.expected) : row.expected }}</code>
-            <span v-else>—</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="实际" width="150">
-          <template #default="{ row }">
-            <code v-if="row.status !== 'idle'" class="cell-code" :class="{ 'cell-fail': row.status === 'fail' }">
-              {{ typeof row.actual === 'object' ? JSON.stringify(row.actual) : row.actual }}
-            </code>
-            <span v-else>—</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="耗时" width="70" align="right">
-          <template #default="{ row }">
-            <span v-if="row.duration" class="cell-dur">{{ row.duration }}ms</span>
-            <span v-else>—</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="80" align="center">
-          <template #default="{ row }">
-            <el-button link type="primary" size="small" @click="retryOne(row)">🔄 复测</el-button>
-          </template>
-        </el-table-column>
+      <el-table v-loading="loading" :data="files" stripe style="width: 100%; margin-top: 16px">
+        <el-table-column prop="filePath" label="测试文件" min-width="320" />
+        <el-table-column prop="packageName" label="包" width="100" />
+        <el-table-column prop="caseCount" label="用例数" width="90" align="center" />
       </el-table>
-    </div>
+
+      <div v-if="lastResult" class="result-box">
+        <h3>最近运行 · {{ lastResult.ranAt }}</h3>
+        <p>
+          共 {{ lastResult.summary.total }} 条 ·
+          <span class="pass">{{ lastResult.summary.passed }} 通过</span><template v-if="lastResult.summary.failed"> ·
+          <span class="fail">{{ lastResult.summary.failed }} 失败</span></template>
+          · 耗时约 {{ lastResult.summary.durationMs }}ms
+        </p>
+        <div v-if="lastResult.reportUrl" class="report-actions">
+          <template v-if="embeddedPreview">
+            <el-button type="success" plain @click.stop.prevent="copyReportForNewTab">
+              复制报告链接
+            </el-button>
+            <span class="report-hint">内嵌预览无法可靠新开标签，请 Ctrl+T 粘贴打开，或用外部 Chrome 访问</span>
+            <code class="report-url">{{ reportFullUrl }}</code>
+          </template>
+          <template v-else>
+            <el-button type="success" plain @click.stop.prevent="openReportInBrowser">
+              查看 HTML 报告（新标签页）
+            </el-button>
+            <el-button link type="primary" @click.stop="copyReportLink">复制链接</el-button>
+          </template>
+        </div>
+      </div>
+    </template>
   </div>
 </template>
 
 <style scoped>
-.page-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-.page-head h2 { font-size: 1.3rem; font-weight: 650; }
-.head-actions { display: flex; gap: 8px; }
-.test-summary { display: flex; gap: 16px; margin-bottom: 16px; font-size: 0.9rem; }
-.sum-total { color: #909399; }
-.sum-pass { color: #67c23a; font-weight: 600; }
-.sum-fail { color: #f56c6c; font-weight: 600; }
-.sum-idle { color: #c0c4cc; }
-.test-group { margin-bottom: 24px; }
-.test-group h3 { font-size: 1rem; font-weight: 600; margin-bottom: 8px; color: #303133; }
-.cell-code { font-size: 0.75rem; font-family: monospace; background: #f5f7fa; padding: 1px 4px; border-radius: 3px; }
-.cell-fail { color: #f56c6c; background: #fef0f0; }
-.cell-dur { font-size: 0.75rem; color: #909399; font-family: monospace; }
+.page { max-width: 960px; }
+.page-head { display: flex; align-items: center; gap: 12px; margin-bottom: 16px; }
+.page-head h2 { margin: 0; font-size: 1.25rem; }
+.toolbar { display: flex; align-items: center; gap: 16px; margin-top: 16px; }
+.hint { color: #909399; font-size: 0.85rem; }
+.result-box { margin-top: 24px; padding: 16px 20px; background: #fff; border: 1px solid #ebeef5; border-radius: 8px; }
+.result-box h3 { margin: 0 0 8px; font-size: 1rem; }
+.result-box p { margin: 0 0 12px; color: #606266; font-size: 0.9rem; }
+.pass { color: #67c23a; }
+.fail { color: #f56c6c; }
+.report-actions { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; }
+.report-hint { font-size: 0.78rem; color: #909399; line-height: 1.4; }
+.report-url {
+  display: block; max-width: 100%; padding: 6px 10px; font-size: 0.75rem;
+  background: #f5f7fa; border-radius: 4px; word-break: break-all; color: #606266;
+}
 </style>

@@ -133,4 +133,13 @@ export const PAGE_HELP: Record<string, PageHelpContent> = {
       step("[data-tour='settings-dict-toolbar']", "字典操作栏", "🚗 汽车预设 / 💻 软件预设：一键追加行业标准值。「+ 添加」新增选项。「🗑 删除一类值」按标签批量删除。"),
     ],
   },
+  testRunner: {
+    title: "单元测试",
+    bullets: [
+      "系统管理员可在本页触发后台 Vitest 全量运行（`pnpm test` 等价）。",
+      "列表展示当前纳入的测试文件与用例数；点击「全部运行」执行。",
+      "运行完成后点击「查看 HTML 报告」在新浏览器标签页打开独立报告，不在应用内嵌显示。",
+      "仅开发/内网环境可用（需安装 node_modules/vitest）。",
+    ],
+  },
 };
