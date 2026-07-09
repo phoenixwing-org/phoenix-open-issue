@@ -22,8 +22,8 @@ export function getPendingUsers() {
 }
 
 // 单个操作 → 单数
-export function approveUser(userId: string) {
-  return request.patch(`/user/${userId}/approve`)
+export function approveUser(userId: string, approved: boolean) {
+  return request.patch(`/user/${userId}/approve`, { approved })
 }
 
 export function updateUserOrg(userId: string, orgUnitId: string | null) {

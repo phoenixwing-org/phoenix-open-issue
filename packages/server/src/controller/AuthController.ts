@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express'
 import { AuthService } from '../service/AuthService.js'
+import { BadRequestError } from '../utils/errors.js'
 
 const authService = new AuthService()
 
@@ -32,7 +33,11 @@ export class AuthController {
   }
 
   approveUser(req: Request, res: Response): void {
-    const user = authService.approveUser(req.params.userId, req.body.approved, req.user!.userId)
+    const { approved } = req.body ?? {}
+    if (typeof approved !== 'boolean') {
+      throw new BadRequestError('缺少 approved 参数（true 批准 / false 拒绝）')
+    }
+    const user = authService.approveUser(req.params.userId, approved, req.user!.userId)
     res.json(user)
   }
 
