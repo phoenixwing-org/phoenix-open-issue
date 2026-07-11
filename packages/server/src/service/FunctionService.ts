@@ -6,7 +6,7 @@ import type { PoiFunction, CreatePoiFunctionInput, UpdatePoiFunctionInput } from
 export class FunctionService {
   list(opts?: { search?: string; platform?: string; sort?: string; numericSort?: boolean }): PoiFunction[] {
     const db = getDb()
-    const conditions: string[] = []
+    const conditions: string[] = ['enabled = 1']
     const params: unknown[] = []
 
     if (opts?.search) {
@@ -39,7 +39,7 @@ export class FunctionService {
 
     return db.all(
       `SELECT * FROM poiFunctions ${where} ORDER BY ${orderBy}`,
-      ...params,
+      params,
     ) as PoiFunction[]
   }
 
@@ -60,6 +60,19 @@ export class FunctionService {
       )
     } catch (e: any) {
       if (e?.message?.includes('UNIQUE')) {
+        const existing = db.get(
+          'SELECT id, enabled FROM poiFunctions WHERE platform = ? AND externalId = ?',
+          [input.platform, input.externalId],
+        ) as { id: string; enabled: number } | undefined
+        if (existing?.enabled === 0) {
+          db.run(
+            `UPDATE poiFunctions SET functionName = ?, targetYear = ?, clientGroup = ?,
+             developGroup = ?, enabled = 1, updatedAt = datetime('now') WHERE id = ?`,
+            [input.functionName, input.targetYear ?? null, input.clientGroup ?? null,
+             input.developGroup ?? null, existing.id],
+          )
+          return this.getById(existing.id)!
+        }
         throw Object.assign(
           new Error(`功能已存在：平台 "${input.platform}" 下的 ID "${input.externalId}"`),
           { statusCode: 409 },
@@ -90,9 +103,7 @@ export class FunctionService {
 
   delete(id: string): void {
     const db = getDb()
-    // 解除关联 Issue
-    db.run("UPDATE issues SET functionId = NULL, updatedAt = datetime('now') WHERE functionId = ?", id)
-    db.run('DELETE FROM poiFunctions WHERE id = ?', id)
+    db.run("UPDATE poiFunctions SET enabled = 0, updatedAt = datetime('now') WHERE id = ?", id)
   }
 
   /**
@@ -126,7 +137,7 @@ export class FunctionService {
       for (const { id, data } of toUpdate) {
         db.run(
           `UPDATE poiFunctions SET
-            functionName = ?, targetYear = ?, clientGroup = ?, developGroup = ?, updatedAt = datetime('now')
+            functionName = ?, targetYear = ?, clientGroup = ?, developGroup = ?, enabled = 1, updatedAt = datetime('now')
            WHERE id = ?`,
           [data.functionName, data.targetYear ?? null, data.clientGroup ?? null, data.developGroup ?? null, id],
         )

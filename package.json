@@ -1,6 +1,6 @@
 {
   "name": "phoenix-open-issue",
-  "version": "0.2.0",
+  "version": "0.4.0",
   "private": true,
   "description": "Open Issue List 管理 Web 应用 — 多列表协作、组织层级推送、点检追踪",
   "scripts": {

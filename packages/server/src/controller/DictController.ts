@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express'
 import { DictService, DICT_PRESETS } from '../service/DictService.js'
+import { routeParam } from '../utils/request.js'
 
 const dictService = new DictService()
 
@@ -27,7 +28,7 @@ const DICT_USAGE: Record<string, { table: string; column: string; label: string 
 
 export class DictController {
   getByGroup(req: Request, res: Response): void {
-    const items = dictService.getByGroup(req.params.groupName)
+    const items = dictService.getByGroup(routeParam(req, 'groupName'))
     res.json(items)
   }
 
@@ -64,19 +65,20 @@ export class DictController {
   }
 
   update(req: Request, res: Response): void {
-    const item = dictService.update(req.params.id, req.body)
+    const item = dictService.update(routeParam(req, 'id'), req.body)
     res.json(item)
   }
 
   delete(req: Request, res: Response): void {
-    if (dictService.isCore(req.params.id)) {
+    const id = routeParam(req, 'id')
+    if (dictService.isCore(id)) {
       res.status(403).json({
         error: '内置字典项不可删除',
         message: '年度、月度、项目、自定义为系统内置类型，不可删除',
       })
       return
     }
-    const usage = dictService.checkUsage(req.params.id)
+    const usage = dictService.checkUsage(id)
     if (usage.length > 0) {
       const details = usage.map(u => `${u.label}: ${u.count} 条`).join('；')
       res.status(409).json({
@@ -86,14 +88,13 @@ export class DictController {
       })
       return
     }
-    dictService.delete(req.params.id)
-    res.status(204).send()
+    dictService.delete(id)
+    res.json({ message: '字典项已停用' })
   }
 
   /** 按标签批量删除字典项 */
   deleteByTag(req: Request, res: Response): void {
-    const { tag } = req.params
-    const result = dictService.deleteByTag(tag)
+    const result = dictService.deleteByTag(routeParam(req, 'tag'))
     res.json(result)
   }
 

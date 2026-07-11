@@ -99,6 +99,9 @@ export class CheckpointService {
     const role = checkListAccess(userId, members)
     if (!canModifyIssue(role)) throw new ForbiddenError()
 
-    db.run('DELETE FROM checkpoints WHERE id = ?', id)
+    db.run(
+      `UPDATE checkpoints SET status = 'skipped', updatedAt = ? WHERE id = ?`,
+      [new Date().toISOString(), id],
+    )
   }
 }

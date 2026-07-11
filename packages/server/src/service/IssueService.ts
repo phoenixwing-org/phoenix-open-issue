@@ -239,10 +239,11 @@ export class IssueService {
     const role = checkListAccess(userId, members)
     if (!canModifyIssue(role)) throw new ForbiddenError()
 
-    db.run('DELETE FROM checkpoints WHERE issueId = ?', id)
-    db.run('DELETE FROM issueListLinks WHERE issueId = ?', id)
-    db.run('DELETE FROM pushRecords WHERE issueId = ?', id)
-    db.run('DELETE FROM issues WHERE id = ?', id)
+    const now = new Date().toISOString()
+    db.run(
+      `UPDATE issues SET status = 'cancelled', closeReason = 'cancelled', updatedAt = ? WHERE id = ?`,
+      [now, id],
+    )
   }
 
   // ── 链接关注系数 ──

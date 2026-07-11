@@ -6,7 +6,7 @@ import { ATTENTION_LEVEL_LABELS, isOverdue } from '@open-issue/core'
 
 const props = defineProps<{
   columnKey: IssueColumnKey
-  row: Record<string, any>
+  row: Record<string, any> & { id: string }
 }>()
 
 const ctx = inject<{

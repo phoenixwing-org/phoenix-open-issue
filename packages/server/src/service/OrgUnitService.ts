@@ -38,9 +38,9 @@ export class OrgUnitService {
     if (isPendingOrgUnit(db, id)) {
       throw new ConflictError(`「${PENDING_ORG_UNIT_NAME}」为系统保留节点，不可删除`)
     }
-    // 解除子节点的 parentId
-    db.run('UPDATE orgUnits SET parentId = NULL WHERE parentId = ?', id)
-    db.run('DELETE FROM orgUnits WHERE id = ?', id)
+    const unit = this.getById(id)
+    if (!unit) return
+    throw new ConflictError('组织节点已进入业务数据，不允许删除；请改名为“停用-原名称”或迁移其成员')
   }
 
   getUsers(orgUnitId: string, includeChildren = true) {

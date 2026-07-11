@@ -24,7 +24,7 @@ export class BackupController {
   repairLinks(req: Request, res: Response): void {
     assertSystemAdmin(req.user!.userId)
     const result = repairService.repairIssueListLinks()
-    res.json({ message: result.message, created: result.fixed, skipped: 0, ...result })
+    res.json({ created: result.fixed, skipped: 0, ...result })
   }
 
   repair(req: Request, res: Response): void {

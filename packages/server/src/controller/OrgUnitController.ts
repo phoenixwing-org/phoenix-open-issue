@@ -2,6 +2,7 @@ import type { Request, Response } from 'express'
 import { OrgUnitService } from '../service/OrgUnitService.js'
 import { NotFoundError } from '../utils/errors.js'
 import { assertSystemAdmin } from '../utils/admin.js'
+import { routeParam } from '../utils/request.js'
 
 const orgUnitService = new OrgUnitService()
 
@@ -12,7 +13,7 @@ export class OrgUnitController {
   }
 
   getById(req: Request, res: Response): void {
-    const unit = orgUnitService.getById(req.params.id)
+    const unit = orgUnitService.getById(routeParam(req, 'id'))
     if (!unit) throw new NotFoundError('组织节点')
     res.json(unit)
   }
@@ -26,19 +27,19 @@ export class OrgUnitController {
 
   update(req: Request, res: Response): void {
     assertSystemAdmin(req.user!.userId)
-    const unit = orgUnitService.update(req.params.id, req.body)
+    const unit = orgUnitService.update(routeParam(req, 'id'), req.body)
     res.json(unit)
   }
 
   delete(req: Request, res: Response): void {
     assertSystemAdmin(req.user!.userId)
-    orgUnitService.delete(req.params.id)
+    orgUnitService.delete(routeParam(req, 'id'))
     res.status(204).send()
   }
 
   getUsers(req: Request, res: Response): void {
     const includeChildren = req.query.includeChildren !== 'false'
-    const users = orgUnitService.getUsers(req.params.id, includeChildren)
+    const users = orgUnitService.getUsers(routeParam(req, 'id'), includeChildren)
     res.json(users)
   }
 }

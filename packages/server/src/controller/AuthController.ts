@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express'
 import { AuthService } from '../service/AuthService.js'
 import { BadRequestError } from '../utils/errors.js'
+import { routeParam } from '../utils/request.js'
 
 const authService = new AuthService()
 
@@ -37,28 +38,28 @@ export class AuthController {
     if (typeof approved !== 'boolean') {
       throw new BadRequestError('缺少 approved 参数（true 批准 / false 拒绝）')
     }
-    const user = authService.approveUser(req.params.userId, approved, req.user!.userId)
+    const user = authService.approveUser(routeParam(req, 'userId'), approved, req.user!.userId)
     res.json(user)
   }
 
   updateUserOrg(req: Request, res: Response): void {
-    const user = authService.updateUserOrg(req.params.userId, req.body.orgUnitId, req.user!.userId)
+    const user = authService.updateUserOrg(routeParam(req, 'userId'), req.body.orgUnitId, req.user!.userId)
     res.json(user)
   }
 
   updateUser(req: Request, res: Response): void {
-    const user = authService.updateUser(req.params.userId, req.body, req.user!.userId)
+    const user = authService.updateUser(routeParam(req, 'userId'), req.body, req.user!.userId)
     res.json(user)
   }
 
   // ── Feature 1: 用户禁用 ──
   disableUser(req: Request, res: Response): void {
-    const user = authService.disableUser(req.params.userId, req.user!.userId)
+    const user = authService.disableUser(routeParam(req, 'userId'), req.user!.userId)
     res.json(user)
   }
 
   enableUser(req: Request, res: Response): void {
-    const user = authService.enableUser(req.params.userId, req.user!.userId)
+    const user = authService.enableUser(routeParam(req, 'userId'), req.user!.userId)
     res.json(user)
   }
 
@@ -71,7 +72,7 @@ export class AuthController {
 
   adminResetPassword(req: Request, res: Response): void {
     const { newPassword } = req.body
-    authService.adminResetPassword(req.params.userId, newPassword, req.user!.userId)
+    authService.adminResetPassword(routeParam(req, 'userId'), newPassword, req.user!.userId)
     res.json({ message: '密码已重置' })
   }
 }

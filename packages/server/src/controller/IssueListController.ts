@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express'
 import { IssueListService } from '../service/IssueListService.js'
 import { NotFoundError } from '../utils/errors.js'
+import { routeParam } from '../utils/request.js'
 
 const listService = new IssueListService()
 
@@ -16,7 +17,7 @@ export class IssueListController {
   }
 
   getById(req: Request, res: Response): void {
-    const list = listService.getEnrichedById(req.params.id, req.user!.userId)
+    const list = listService.getEnrichedById(routeParam(req, 'id'), req.user!.userId)
     if (!list) throw new NotFoundError('列表')
     res.json(list)
   }
@@ -27,33 +28,33 @@ export class IssueListController {
   }
 
   update(req: Request, res: Response): void {
-    const list = listService.update(req.params.id, req.body, req.user!.userId)
+    const list = listService.update(routeParam(req, 'id'), req.body, req.user!.userId)
     res.json(list)
   }
 
   delete(req: Request, res: Response): void {
-    listService.delete(req.params.id, req.user!.userId)
+    listService.delete(routeParam(req, 'id'), req.user!.userId)
     res.status(204).send()
   }
 
   getMembers(req: Request, res: Response): void {
-    const members = listService.getMembersWithUser(req.params.id)
+    const members = listService.getMembersWithUser(routeParam(req, 'id'))
     res.json(members)
   }
 
   addMember(req: Request, res: Response): void {
     const { userId, role } = req.body
-    const member = listService.addMember(req.params.id, userId, role ?? 'editor', req.user!.userId)
+    const member = listService.addMember(routeParam(req, 'id'), userId, role ?? 'editor', req.user!.userId)
     res.status(201).json(member)
   }
 
   removeMember(req: Request, res: Response): void {
-    listService.removeMember(req.params.id, req.params.userId, req.user!.userId)
+    listService.removeMember(routeParam(req, 'id'), routeParam(req, 'userId'), req.user!.userId)
     res.status(204).send()
   }
 
   archiveList(req: Request, res: Response): void {
-    const list = listService.archiveList(req.params.id, req.body.archived, req.user!.userId)
+    const list = listService.archiveList(routeParam(req, 'id'), req.body.archived, req.user!.userId)
     res.json(list)
   }
 
@@ -68,20 +69,20 @@ export class IssueListController {
   }
 
   restoreList(req: Request, res: Response): void {
-    const list = listService.restoreList(req.params.id, req.user!.userId)
+    const list = listService.restoreList(routeParam(req, 'id'), req.user!.userId)
     res.json(list)
   }
 
   // ── Feature 3: Owner 转移 ──
   transferOwner(req: Request, res: Response): void {
-    const list = listService.transferOwner(req.params.id, req.body.userId, req.user!.userId)
+    const list = listService.transferOwner(routeParam(req, 'id'), req.body.userId, req.user!.userId)
     res.json(list)
   }
 
   updateMemberRole(req: Request, res: Response): void {
     const member = listService.updateMemberRole(
-      req.params.id,
-      req.params.userId,
+      routeParam(req, 'id'),
+      routeParam(req, 'userId'),
       req.body.role,
       req.user!.userId,
     )

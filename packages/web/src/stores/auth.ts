@@ -33,10 +33,10 @@ export const useAuthStore = defineStore('auth', () => {
   async function register(data: { username: string; password: string; displayName?: string; orgUnitId?: string }) {
     const res = await apiRegister(data)
     const result = res.data as RegisterResult
-    if (!result.pending) {
+    if (!result.pending && result.token && result.user) {
       token.value = result.token
       user.value = result.user
-      localStorage.setItem('token', result.token!)
+      localStorage.setItem('token', result.token)
       localStorage.setItem('user', JSON.stringify(result.user))
     }
     return result

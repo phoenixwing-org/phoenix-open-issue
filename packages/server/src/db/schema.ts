@@ -1,4 +1,4 @@
-import type { PnwDbAdapter } from 'phoenix-wing/db/pnwDbAdapter'
+import type { PnwDbAdapter } from './pnwDbAdapter.js'
 import { ensurePendingOrgUnit } from '../utils/pendingOrgUnit.js'
 import {
   applyColumnMigrations,
@@ -7,6 +7,7 @@ import {
   migrateUserSystemRole,
   migrateIssueListLinkAttention,
   repairDictDataAndIndex,
+  ensureIssueNoIndexes,
 } from './migrations.js'
 
 export function runSchema(db: PnwDbAdapter): void {
@@ -80,11 +81,9 @@ export function runSchema(db: PnwDbAdapter): void {
       updatedAt TEXT DEFAULT (datetime('now'))
     );
 
-    CREATE INDEX IF NOT EXISTS idx_issues_issueNo ON issues(listId, issueNo);
+    CREATE INDEX IF NOT EXISTS idx_issues_list_issueNo ON issues(listId, issueNo);
     CREATE INDEX IF NOT EXISTS idx_issues_category ON issues(listId, category);
     CREATE INDEX IF NOT EXISTS idx_issues_detectionPhase ON issues(listId, detectionPhase);
-    CREATE UNIQUE INDEX IF NOT EXISTS idx_issues_issueNo ON issues(issueNo);
-
     CREATE TABLE IF NOT EXISTS checkpoints (
       id TEXT PRIMARY KEY,
       issueId TEXT NOT NULL,
@@ -148,6 +147,7 @@ export function runSchema(db: PnwDbAdapter): void {
       targetYear TEXT,
       clientGroup TEXT,
       developGroup TEXT,
+      enabled INTEGER NOT NULL DEFAULT 1,
       createdAt TEXT DEFAULT (datetime('now')),
       updatedAt TEXT DEFAULT (datetime('now')),
       UNIQUE(platform, externalId)
@@ -157,6 +157,10 @@ export function runSchema(db: PnwDbAdapter): void {
   // ---- 迁移：旧库列增量添加（须在 CREATE TABLE 之后） ----
   applyColumnMigrations(db)
   dedupeIssueListLinks(db)
+  const issueNoIndexOk = ensureIssueNoIndexes(db)
+  if (!issueNoIndexOk) {
+    console.warn('⚠️ Issue 编号存在重复，唯一索引未建立；请在设置 → 数据库修正中执行 Issue 编号修复')
+  }
 
   migrateUserSystemRole(db)
   migrateIssueListsListType(db)
@@ -172,5 +176,5 @@ export function runSchema(db: PnwDbAdapter): void {
 }
 
 // re-export for external use
-export { migrateUserSystemRole, migrateIssueListsListType, migrateIssueListLinkAttention, dedupeDictEntries, ensureDictUniqueIndex, migrateDictTagsFormat, repairDictDataAndIndex, hasDictUniqueIndex, countDictDuplicateGroups } from './migrations.js'
+export { migrateUserSystemRole, migrateIssueListsListType, migrateIssueListLinkAttention, dedupeDictEntries, ensureDictUniqueIndex, migrateDictTagsFormat, repairDictDataAndIndex, hasDictUniqueIndex, countDictDuplicateGroups, ensureIssueNoIndexes } from './migrations.js'
 export type { DictRepairResult, DictDedupeResult, DictDedupeDetail } from './migrations.js'

@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express'
 import { PushService } from '../service/PushService.js'
+import { routeParam } from '../utils/request.js'
 
 const pushService = new PushService()
 
@@ -16,7 +17,7 @@ export class PushController {
   }
 
   getListPushHistory(req: Request, res: Response): void {
-    const records = pushService.getListPushHistory(req.params.listId)
+    const records = pushService.getListPushHistory(routeParam(req, 'listId'))
     res.json(records)
   }
 
@@ -26,13 +27,13 @@ export class PushController {
   }
 
   getIncomingPushes(req: Request, res: Response): void {
-    const records = pushService.getIncomingPushes(req.params.listId)
+    const records = pushService.getIncomingPushes(routeParam(req, 'listId'))
     res.json(records)
   }
 
   handlePush(req: Request, res: Response): void {
     const { action, rejectReason } = req.body
-    const record = pushService.handlePush(req.params.id, action, req.user!.userId, rejectReason)
+    const record = pushService.handlePush(routeParam(req, 'id'), action, req.user!.userId, rejectReason)
     res.json(record)
   }
 }

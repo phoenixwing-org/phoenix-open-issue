@@ -10,6 +10,7 @@ export interface PoiFunction {
   targetYear: string | null
   clientGroup: string | null
   developGroup: string | null
+  enabled: number
   createdAt: string
   updatedAt: string
 }

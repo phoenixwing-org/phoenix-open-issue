@@ -251,7 +251,7 @@ export class DictService {
 
   delete(id: string): void {
     const db = getDb()
-    db.run('DELETE FROM dict WHERE id = ?', id)
+    db.run('UPDATE dict SET enabled = 0 WHERE id = ?', id)
   }
 
   /** 按标签批量删除字典项（逐个检查引用，无引用才删） */
@@ -288,13 +288,13 @@ export class DictService {
         })
         continue
       }
-      db.run('DELETE FROM dict WHERE id = ?', item.id)
+      db.run('UPDATE dict SET enabled = 0 WHERE id = ?', item.id)
       deleted++
       details.push({
         id: item.id,
         label: item.label,
         groupName: item.groupName,
-        reason: '已删除',
+        reason: '已停用',
       })
     }
     return { deleted, skipped, details }

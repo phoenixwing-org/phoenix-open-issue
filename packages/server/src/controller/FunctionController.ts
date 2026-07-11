@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express'
 import { FunctionService } from '../service/FunctionService.js'
+import { routeParam } from '../utils/request.js'
 
 const functionService = new FunctionService()
 
@@ -15,7 +16,7 @@ export class FunctionController {
   }
 
   getById(req: Request, res: Response): void {
-    const item = functionService.getById(req.params.id)
+    const item = functionService.getById(routeParam(req, 'id'))
     if (!item) {
       res.status(404).json({ error: '功能不存在' })
       return
@@ -29,12 +30,12 @@ export class FunctionController {
   }
 
   update(req: Request, res: Response): void {
-    const item = functionService.update(req.params.id, req.body)
+    const item = functionService.update(routeParam(req, 'id'), req.body)
     res.json(item)
   }
 
   delete(req: Request, res: Response): void {
-    functionService.delete(req.params.id)
+    functionService.delete(routeParam(req, 'id'))
     res.status(204).send()
   }
 

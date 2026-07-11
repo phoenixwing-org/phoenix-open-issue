@@ -1,4 +1,4 @@
-import type { PnwDbAdapter } from 'phoenix-wing/db/pnwDbAdapter'
+import type { PnwDbAdapter } from '../db/pnwDbAdapter.js'
 import { generateId } from '@open-issue/core'
 
 export const PENDING_ORG_UNIT_NAME = '待定组'
