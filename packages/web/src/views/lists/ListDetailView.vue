@@ -200,12 +200,10 @@ async function onAcceptPush(recordId: string) {
 
 async function onRejectPush(recordId: string) {
   try {
-    await pnwPromptInput('拒绝推送', '拒绝理由（可选）')
-      .then(async ({ value }) => {
-        await handlePush(recordId, 'rejected', value || undefined)
-        ElMessage.success('已拒绝推送')
-        loadIncomingPushes()
-      })
+    const value = await pnwPromptInput('拒绝推送', '拒绝理由（可选）')
+    await handlePush(recordId, 'rejected', value || undefined)
+    ElMessage.success('已拒绝推送')
+    loadIncomingPushes()
   } catch {
     // 用户取消
   }
@@ -368,14 +366,6 @@ function onPushIssue(issueId: string) {
   showPush.value = true
 }
 
-async function onDeleteIssue(id: string, title: string) {
-  const r = await pnwPromptChoice({ title: '确认删除', message: `确定删除 Issue「${title}」及其所有点检项？`, choices: [{ id: 'delete', label: '删除', variant: 'danger' }, { id: 'cancel', label: '取消' }] });
-  if (r.choiceId !== 'delete') return
-  await issueStore.deleteIssue(id)
-  ElMessage.success('已删除')
-  loadData()
-}
-
 async function onVoidIssue(id: string, title: string) {
   const r = await pnwPromptChoice({
     title: '设为不关注',
@@ -392,11 +382,11 @@ async function onRestoreAttention(id: string) {
   loadData()
 }
 
-function linkAttention(row: { _attentionLevel?: number }): number {
-  return row._attentionLevel ?? DEFAULT_ATTENTION_LEVEL
+function linkAttention(row: Record<string, unknown>): number {
+  return typeof row._attentionLevel === 'number' ? row._attentionLevel : DEFAULT_ATTENTION_LEVEL
 }
 
-function isUnwatched(row: { _attentionLevel?: number }) {
+function isUnwatched(row: Record<string, unknown>) {
   return linkAttention(row) === 0
 }
 
@@ -660,7 +650,6 @@ provide('issueListCellCtx', reactive({
             </el-button>
             <el-dropdown
               @command="(cmd: string) => {
-                if (cmd === 'delete') { ElMessage.warning('删除功能临时禁用'); return }
                 if (cmd === 'void') onVoidIssue(row.id, row.title)
                 else if (cmd === 'unvoid') onRestoreAttention(row.id)
               }"
@@ -677,7 +666,6 @@ provide('issueListCellCtx', reactive({
                   </template>
                   <template v-else>
                     <el-dropdown-item command="void" style="color:#e6a23c">⊘ 设为不关注</el-dropdown-item>
-                    <el-dropdown-item command="delete" style="color:#f56c6c" divided>🗑 删除</el-dropdown-item>
                   </template>
                 </el-dropdown-menu>
               </template>

@@ -72,13 +72,13 @@ async function onSubmit() {
 
 async function onDelete(row: any) {
   const r = await pnwPromptChoice({
-    title: '确认删除',
-    message: `确定删除功能「${row.functionName}」？关联的 Issue 将被解除绑定。`,
-    choices: [{ id: 'delete', label: '删除', variant: 'danger' }, { id: 'cancel', label: '取消' }],
+    title: '确认停用',
+    message: `确定停用功能「${row.functionName}」？历史 Issue 关联将保留。`,
+    choices: [{ id: 'delete', label: '停用', variant: 'danger' }, { id: 'cancel', label: '取消' }],
   })
   if (r.choiceId !== 'delete') return
   await api.deleteFunction(row.id)
-  ElMessage.success('已删除')
+  ElMessage.success('已停用')
   store.refresh()
 }
 
@@ -167,7 +167,7 @@ async function onExport() {
       <el-table-column label="操作" width="140" align="center" fixed="right">
         <template #default="{ row }">
           <el-button link size="small" @click="openEdit(row)">编辑</el-button>
-          <el-button link size="small" type="danger" @click="onDelete(row)">删除</el-button>
+          <el-button link size="small" type="warning" @click="onDelete(row)">停用</el-button>
         </template>
       </el-table-column>
     </el-table>

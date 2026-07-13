@@ -2,10 +2,9 @@
 import { onMounted, ref, computed, inject } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useIssueStore } from '@/stores/issues'
-import { getCheckpoints, createCheckpoint, updateCheckpoint, deleteCheckpoint } from '@/api/checkpoints'
+import { getCheckpoints, createCheckpoint, updateCheckpoint } from '@/api/checkpoints'
 import { getAllUsers } from '@/api/auth'
 import { ElMessage } from 'element-plus'
-import { pnwPromptChoice } from 'phoenix-wing'
 import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
 import PageHelpButton from "@/components/PageHelpButton.vue"
 import CheckpointFormDialog from '@/components/CheckpointFormDialog.vue'
@@ -93,14 +92,6 @@ async function onToggleStatus(cp: Checkpoint) {
   const newStatus = cp.status === 'done' ? 'pending' : 'done'
   await updateCheckpoint(cp.id, { status: newStatus })
   ElMessage.success(newStatus === 'done' ? '已标记完成' : '已标记待处理')
-  loadCheckpoints()
-}
-
-async function onDeleteCp(id: string) {
-  const r = await pnwPromptChoice({ title: '确认', message: '确定删除此点检项？', choices: [{ id: 'delete', label: '删除', variant: 'danger' }, { id: 'cancel', label: '取消' }] })
-  if (r.choiceId !== 'delete') return
-  await deleteCheckpoint(id)
-  ElMessage.success('已删除')
   loadCheckpoints()
 }
 

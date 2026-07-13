@@ -8,7 +8,7 @@ const dict = useDictStore()
 const settings = useSettingsStore()
 import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
 import PageHelpButton from "@/components/PageHelpButton.vue"
-import { getOrgUnitUsers, createOrgUnit, deleteOrgUnit, updateOrgUnit } from '@/api/orgUnits'
+import { getOrgUnitUsers, createOrgUnit, updateOrgUnit } from '@/api/orgUnits'
 import { approveUser, updateUserOrg, updateUser, getAllUsers, getPendingUsers, disableUser, enableUser, adminResetPassword } from '@/api/auth'
 import { ElMessage } from 'element-plus'
 import { pnwPromptChoice } from 'phoenix-wing'
@@ -225,18 +225,6 @@ async function onSaveUnit() {
   editingUnit.value = false
   store.fetchTree()
   await reloadUsers()
-}
-
-async function onDelete(id: string, name: string) {
-  const r = await pnwPromptChoice({ title: '确认', message: `确定删除「${name}」？`, choices: [{ id: 'delete', label: '删除', variant: 'danger' }, { id: 'cancel', label: '取消' }] })
-  if (r.choiceId !== 'delete') return
-  await deleteOrgUnit(id)
-  ElMessage.success('已删除')
-  selectedUnit.value = allRootSelection()
-  store.fetchTree()
-  await loadAllUsers()
-  await nextTick()
-  treeRef.value?.setCurrentKey(ALL_ROOT_ID)
 }
 
 const unitTypeLabel: Record<string, string> = { all: '全部' }

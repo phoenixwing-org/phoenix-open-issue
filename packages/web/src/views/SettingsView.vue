@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { getAllDict, createDictItem, updateDictItem, deleteDictItem, applyDictPreset, deleteDictByTag, dedupeDict } from '@/api/dict'
 import { ElMessage } from 'element-plus';
 import { pnwPromptChoice, pnwAlert } from 'phoenix-wing'
@@ -12,8 +12,11 @@ import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
 import PageHelpButton from "@/components/PageHelpButton.vue"
 import type { DictItem } from '@open-issue/core'
 import { useDictStore, DICT_GROUPS } from '@/stores/dict'
+import { useAuthStore } from '@/stores/auth'
 
 const dictStore = useDictStore()
+const authStore = useAuthStore()
+const isSystemAdmin = computed(() => authStore.user?.systemRole === 'admin')
 
 const activeTab = ref('dict')
 
@@ -302,18 +305,19 @@ const showImportConfirm = ref(false)
 const importMode = ref<'replace' | 'merge'>('replace')
 const importFileData = ref<any>(null)
 
-async function onExport() {
+async function onExport(passwordPolicy: 'resetAll' | 'resetAdmin' = 'resetAll') {
   exporting.value = true
   try {
-    const res = await exportDb()
+    const res = await exportDb(passwordPolicy)
     const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `backup-${new Date().toISOString().slice(0, 10)}.json`
+    const prefix = passwordPolicy === 'resetAdmin' ? 'migration' : 'backup'
+    a.download = `${prefix}-${new Date().toISOString().slice(0, 10)}.json`
     a.click()
     URL.revokeObjectURL(url)
-    ElMessage.success('导出成功')
+    ElMessage.success(passwordPolicy === 'resetAdmin' ? '迁移导出成功' : '备份导出成功')
   } finally { exporting.value = false }
 }
 
@@ -335,7 +339,10 @@ async function onConfirmImport() {
   importing.value = true
   try {
     const res = await importDb(importFileData.value, importMode.value)
-    ElMessage.success(`导入完成：${Object.entries(res.data.imported).map(([k, v]) => `${k} ${v}条`).join(', ')}`)
+    const passwordMessage = res.data.passwords
+      ? `；密码保留 ${res.data.passwords.preserved} 个，重置 ${res.data.passwords.reset} 个`
+      : ''
+    ElMessage.success(`导入完成：${Object.entries(res.data.imported).map(([k, v]) => `${k} ${v}条`).join(', ')}${passwordMessage}`)
     showImportConfirm.value = false
     importFileData.value = null
   } finally { importing.value = false }
@@ -611,10 +618,14 @@ async function onFuncImportConfirm() {
       <!-- ═══ 数据备份 ═══ -->
       <el-tab-pane label="💾 数据备份" name="backup">
         <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">
-          <el-button type="primary" :loading="exporting" @click="onExport">
-            📥 导出数据
+          <el-button type="primary" :loading="exporting" @click="onExport('resetAll')">
+            📥 {{ isSystemAdmin ? '备份导出' : '导出我的数据' }}
+          </el-button>
+          <el-button v-if="isSystemAdmin" type="success" :loading="exporting" @click="onExport('resetAdmin')">
+            📦 迁移导出
           </el-button>
           <el-upload
+            v-if="isSystemAdmin"
             :auto-upload="false"
             :show-file-list="false"
             accept=".json"
@@ -624,7 +635,12 @@ async function onFuncImportConfirm() {
           </el-upload>
         </div>
         <p style="color:#909399;font-size:0.82rem">
-          导出全部数据为 JSON 文件（不含密码哈希）。导入可替换或合并现有数据。
+          <template v-if="isSystemAdmin">
+            备份导出包含全部业务数据但不含密码哈希，导入后所有用户密码重置为 <code>123456</code>。迁移导出仅保留非 admin 用户的密码哈希，导入时只重置 admin。导入仅管理员可用。
+          </template>
+          <template v-else>
+            仅导出你可访问列表及其 Issue、点检、链接和相关推送；不包含用户、组织、字典或功能数据，且该文件不能导入数据库。
+          </template>
         </p>
 
         <el-dialog v-model="showImportConfirm" title="确认导入" width="400px">
@@ -634,7 +650,12 @@ async function onFuncImportConfirm() {
             <el-radio value="merge">合并模式（追加不冲突的数据）</el-radio>
           </el-radio-group>
           <p style="color:#909399;font-size:0.82rem;margin-top:8px">
-            导入后用户密码将统一重置为 <code>123456</code>
+            <template v-if="importFileData?.passwordPolicy === 'resetAdmin'">
+              此迁移文件会保留非 admin 用户密码，仅将 admin 重置为 <code>123456</code>。
+            </template>
+            <template v-else>
+              此备份文件不含密码哈希，导入后用户密码将统一重置为 <code>123456</code>。
+            </template>
           </p>
           <template #footer>
             <el-button @click="showImportConfirm = false">取消</el-button>

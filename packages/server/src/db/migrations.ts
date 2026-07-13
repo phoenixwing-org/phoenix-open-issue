@@ -1,4 +1,4 @@
-import type { PnwDbAdapter } from 'phoenix-wing/db/pnwDbAdapter'
+import type { PnwDbAdapter } from './pnwDbAdapter.js'
 import { normalizeDictTags, hasDictTag, parseDictTags, formatDictTags } from '@open-issue/core'
 import { ensurePendingOrgUnit } from '../utils/pendingOrgUnit.js'
 import { dedupeDictEntries } from './dictDedupe.js'
@@ -15,6 +15,7 @@ export const COLUMN_MIGRATIONS: { table: string; column: string; sql: string }[]
   { table: 'issueLists', column: 'deletedAt', sql: 'ALTER TABLE issueLists ADD COLUMN deletedAt TEXT' },
   { table: 'dict', column: 'tags', sql: "ALTER TABLE dict ADD COLUMN tags TEXT NOT NULL DEFAULT ''" },
   { table: 'issues', column: 'functionId', sql: 'ALTER TABLE issues ADD COLUMN functionId TEXT' },
+  { table: 'poiFunctions', column: 'enabled', sql: 'ALTER TABLE poiFunctions ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1' },
   { table: 'checkpoints', column: 'status', sql: "ALTER TABLE checkpoints ADD COLUMN status TEXT DEFAULT 'pending'" },
   { table: 'checkpoints', column: 'responsibleUserId', sql: 'ALTER TABLE checkpoints ADD COLUMN responsibleUserId TEXT' },
   { table: 'checkpoints', column: 'sortOrder', sql: 'ALTER TABLE checkpoints ADD COLUMN sortOrder INTEGER DEFAULT 0' },
@@ -111,6 +112,27 @@ export function dedupeIssueListLinks(db: PnwDbAdapter): number {
   db.exec('DELETE FROM issueListLinks WHERE id NOT IN (SELECT MIN(id) FROM issueListLinks GROUP BY issueId, listId)')
   const after = db.get('SELECT COUNT(*) as c FROM issueListLinks') as { c: number }
   return before.c - after.c
+}
+
+/**
+ * 统一旧版同名索引，并在编号无重复时建立全局唯一索引。
+ * 返回 false 表示存在重复编号，应先运行 Issue 编号修复。
+ */
+export function ensureIssueNoIndexes(db: PnwDbAdapter): boolean {
+  if (!tableExists(db, 'issues')) return true
+
+  db.exec('DROP INDEX IF EXISTS idx_issues_issueNo')
+  db.exec('CREATE INDEX IF NOT EXISTS idx_issues_list_issueNo ON issues(listId, issueNo)')
+
+  const duplicate = db.get(`
+    SELECT issueNo FROM issues
+    WHERE issueNo IS NOT NULL AND issueNo != ''
+    GROUP BY issueNo HAVING COUNT(*) > 1 LIMIT 1
+  `) as { issueNo: string } | undefined
+  if (duplicate) return false
+
+  db.exec('CREATE UNIQUE INDEX IF NOT EXISTS uq_issues_issueNo ON issues(issueNo)')
+  return true
 }
 
 /** 旧格式 core,general → ,core,general, */

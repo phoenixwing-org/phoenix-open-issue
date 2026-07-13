@@ -42,7 +42,7 @@ pnpm install          # 安装所有依赖
 pnpm dev              # 一键启动 core + server + web（首次启动自动创建管理员账号）
 ```
 
-打开 [http://localhost:5173](http://localhost:5173) 即可使用。
+打开 [http://localhost:5183](http://localhost:5183) 即可使用。
 
 **默认管理员**：`admin` / `123456`
 
@@ -119,7 +119,7 @@ pnpm seed            # CLI 重新填充演示数据（force 追加可清空）
 
 | 文档                                           | 说明                   |
 | -------------------------------------------- | -------------------- |
-| [更新日志](doc/CHANGELOG.md)                     | v0.2.0 版本变更摘要        |
+| [更新日志](doc/CHANGELOG.md)                     | v0.4.0 版本变更摘要        |
 | [架构设计](doc/架构设计.md)                          | 架构 + 数据流             |
 | [API参考](doc/API参考.md)                        | REST API 全部端点        |
 | [数据字典配置](doc/数据字典配置.md)                      | 下拉选项枚举值，汽车/软件预设      |
@@ -128,12 +128,17 @@ pnpm seed            # CLI 重新填充演示数据（force 追加可清空）
 | [待办点检](doc/待办点检.md)                          | 用自己系统追踪自己开发          |
 | [开发计划](doc/开发计划.md)                          | ADR 决策 + 路线图         |
 | [phoenix-wing 依赖配置](doc/phoenix-wing依赖配置.md) | npm 模式 vs 本地 link 模式 |
+| [Linux 测试部署](doc/Linux测试部署.md)               | 构建、配置、systemd 与升级检查 |
+| [SQLite/PG 双数据库计划](doc/v0.4-PG双数据库适配计划.md) | PnwDbAdapter、迁移与双库测试方案 |
+| [PostgreSQL 部署与迁移](doc/PostgreSQL部署与迁移.md) | Linux 配置、SQLite JSON 迁移、校验与回滚 |
 
 ## 路线图
 
 - [x] v0.1 原型：SQLite + Express + Vue 3，7 张表，基础 CRUD
 - [x] v0.2.0：Issue 列扩展、8D 字段、列表三视图/列设置、关注系数、推送审批、单元测试页等
-- [ ] v0.3 npm 发布 `@open-issue/*`
+- [x] v0.3.0：多列表关联、功能表、数据字典、系统管理、备份修复与交互升级
+- [x] v0.4.0：Linux 发布基线、后端数据保护、迁移修复与集成测试
+- [ ] v0.5 npm 发布 `@open-issue/*`
 - [ ] v1.0 cool-admin 插件 + PostgreSQL
 
 更多待办见 [TODO](doc/TODO.md)

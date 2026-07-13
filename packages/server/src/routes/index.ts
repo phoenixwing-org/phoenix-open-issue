@@ -12,7 +12,7 @@ import { FunctionController } from '../controller/FunctionController.js'
 import { TestController } from '../controller/TestController.js'
 import { authMiddleware } from '../middleware/auth.js'
 
-const router = Router()
+const router: Router = Router()
 const authCtrl = new AuthController()
 const orgCtrl = new OrgUnitController()
 const listCtrl = new IssueListController()
@@ -25,9 +25,14 @@ const backupCtrl = new BackupController()
 const funcCtrl = new FunctionController()
 const testCtrl = new TestController()
 
-function wrap(fn: (req: any, res: any) => void) {
+function wrap(fn: (req: any, res: any) => unknown | Promise<unknown>) {
   return (req: any, res: any, next: any) => {
-    try { const r = fn(req, res); if (r instanceof Promise) r.catch(next) }
+    try {
+      const result = fn(req, res)
+      if (result && typeof (result as PromiseLike<unknown>).then === 'function') {
+        Promise.resolve(result).catch(next)
+      }
+    }
     catch (e) { next(e) }
   }
 }

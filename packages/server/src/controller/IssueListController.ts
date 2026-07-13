@@ -1,87 +1,88 @@
 import type { Request, Response } from 'express'
 import { IssueListService } from '../service/IssueListService.js'
 import { NotFoundError } from '../utils/errors.js'
+import { routeParam } from '../utils/request.js'
 
 const listService = new IssueListService()
 
 export class IssueListController {
-  getMyLists(req: Request, res: Response): void {
-    const lists = listService.getMyLists(req.user!.userId)
+  async getMyLists(req: Request, res: Response): Promise<void> {
+    const lists = await listService.getMyLists(req.user!.userId)
     res.json(lists)
   }
 
-  getAllLists(req: Request, res: Response): void {
-    const lists = listService.getAllLists(req.user!.userId)
+  async getAllLists(req: Request, res: Response): Promise<void> {
+    const lists = await listService.getAllLists(req.user!.userId)
     res.json(lists)
   }
 
-  getById(req: Request, res: Response): void {
-    const list = listService.getEnrichedById(req.params.id, req.user!.userId)
+  async getById(req: Request, res: Response): Promise<void> {
+    const list = await listService.getEnrichedById(routeParam(req, 'id'), req.user!.userId)
     if (!list) throw new NotFoundError('列表')
     res.json(list)
   }
 
-  create(req: Request, res: Response): void {
-    const list = listService.create(req.body, req.user!.userId)
+  async create(req: Request, res: Response): Promise<void> {
+    const list = await listService.create(req.body, req.user!.userId)
     res.status(201).json(list)
   }
 
-  update(req: Request, res: Response): void {
-    const list = listService.update(req.params.id, req.body, req.user!.userId)
+  async update(req: Request, res: Response): Promise<void> {
+    const list = await listService.update(routeParam(req, 'id'), req.body, req.user!.userId)
     res.json(list)
   }
 
-  delete(req: Request, res: Response): void {
-    listService.delete(req.params.id, req.user!.userId)
+  async delete(req: Request, res: Response): Promise<void> {
+    await listService.delete(routeParam(req, 'id'), req.user!.userId)
     res.status(204).send()
   }
 
-  getMembers(req: Request, res: Response): void {
-    const members = listService.getMembersWithUser(req.params.id)
+  async getMembers(req: Request, res: Response): Promise<void> {
+    const members = await listService.getMembersWithUser(routeParam(req, 'id'))
     res.json(members)
   }
 
-  addMember(req: Request, res: Response): void {
+  async addMember(req: Request, res: Response): Promise<void> {
     const { userId, role } = req.body
-    const member = listService.addMember(req.params.id, userId, role ?? 'editor', req.user!.userId)
+    const member = await listService.addMember(routeParam(req, 'id'), userId, role ?? 'editor', req.user!.userId)
     res.status(201).json(member)
   }
 
-  removeMember(req: Request, res: Response): void {
-    listService.removeMember(req.params.id, req.params.userId, req.user!.userId)
+  async removeMember(req: Request, res: Response): Promise<void> {
+    await listService.removeMember(routeParam(req, 'id'), routeParam(req, 'userId'), req.user!.userId)
     res.status(204).send()
   }
 
-  archiveList(req: Request, res: Response): void {
-    const list = listService.archiveList(req.params.id, req.body.archived, req.user!.userId)
+  async archiveList(req: Request, res: Response): Promise<void> {
+    const list = await listService.archiveList(routeParam(req, 'id'), req.body.archived, req.user!.userId)
     res.json(list)
   }
 
-  getArchivedLists(req: Request, res: Response): void {
-    const lists = listService.getArchivedLists(req.user!.userId)
+  async getArchivedLists(req: Request, res: Response): Promise<void> {
+    const lists = await listService.getArchivedLists(req.user!.userId)
     res.json(lists)
   }
 
-  getDeletedLists(req: Request, res: Response): void {
-    const lists = listService.getDeletedLists(req.user!.userId)
+  async getDeletedLists(req: Request, res: Response): Promise<void> {
+    const lists = await listService.getDeletedLists(req.user!.userId)
     res.json(lists)
   }
 
-  restoreList(req: Request, res: Response): void {
-    const list = listService.restoreList(req.params.id, req.user!.userId)
+  async restoreList(req: Request, res: Response): Promise<void> {
+    const list = await listService.restoreList(routeParam(req, 'id'), req.user!.userId)
     res.json(list)
   }
 
   // ── Feature 3: Owner 转移 ──
-  transferOwner(req: Request, res: Response): void {
-    const list = listService.transferOwner(req.params.id, req.body.userId, req.user!.userId)
+  async transferOwner(req: Request, res: Response): Promise<void> {
+    const list = await listService.transferOwner(routeParam(req, 'id'), req.body.userId, req.user!.userId)
     res.json(list)
   }
 
-  updateMemberRole(req: Request, res: Response): void {
-    const member = listService.updateMemberRole(
-      req.params.id,
-      req.params.userId,
+  async updateMemberRole(req: Request, res: Response): Promise<void> {
+    const member = await listService.updateMemberRole(
+      routeParam(req, 'id'),
+      routeParam(req, 'userId'),
       req.body.role,
       req.user!.userId,
     )

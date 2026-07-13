@@ -2,6 +2,7 @@ import dotenv from 'dotenv'
 import fs from 'fs'
 import { fileURLToPath } from 'url'
 import path from 'path'
+import { pnwResolveDbConfig } from './db/pnw/pnwDbConfig.js'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
@@ -16,6 +17,8 @@ function resolvePath(p: string): string {
 }
 
 const staticDir = resolvePath(process.env.STATIC_DIR || '../web/dist')
+const defaultDbPath = resolvePath(process.env.DB_PATH || '../../data/open-issue.sqlite')
+const database = pnwResolveDbConfig(process.env, defaultDbPath)
 
 function resolveServeStatic(): boolean {
   if (process.env.SERVE_STATIC === 'true' || process.env.SERVE_STATIC === '1') return true
@@ -27,7 +30,8 @@ function resolveServeStatic(): boolean {
 export const config = {
   port: parseInt(process.env.PORT || '3400', 10),
   jwtSecret: process.env.JWT_SECRET || 'dev-secret-change-me',
-  dbPath: resolvePath(process.env.DB_PATH || '../../data/open-issue.sqlite'),
+  dbPath: database.driver === 'sqlite' ? database.path : defaultDbPath,
+  database,
   testReportsDir: resolvePath(process.env.TEST_REPORTS_DIR || '../../data/test-reports'),
   serveStatic: resolveServeStatic(),
   staticDir,

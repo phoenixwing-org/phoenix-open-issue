@@ -31,12 +31,10 @@ async function onAccept(recordId: string) {
 
 async function onReject(recordId: string) {
   try {
-    await pnwPromptInput('拒绝推送', '拒绝理由（可选）')
-      .then(async ({ value }) => {
-        await handlePush(recordId, 'rejected', value || undefined)
-        ElMessage.success('已拒绝推送')
-        load()
-      })
+    const value = await pnwPromptInput('拒绝推送', '拒绝理由（可选）')
+    await handlePush(recordId, 'rejected', value || undefined)
+    ElMessage.success('已拒绝推送')
+    load()
   } catch { /* canceled */ }
 }
 

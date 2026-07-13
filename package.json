@@ -1,6 +1,6 @@
 {
   "name": "phoenix-open-issue",
-  "version": "0.2.0",
+  "version": "0.4.0",
   "private": true,
   "description": "Open Issue List 管理 Web 应用 — 多列表协作、组织层级推送、点检追踪",
   "scripts": {
@@ -17,7 +17,8 @@
     "start:prod": "pnpm -C packages/server exec tsx src/main.ts",
     "deploy": "pnpm build:deploy && pnpm start:prod",
     "seed": "pnpm -C packages/server seed",
-    "test": "vitest run"
+    "test": "vitest run",
+    "test:pg": "vitest run tests/server/postgres-integration.test.ts"
   },
   "packageManager": "pnpm@9.15.9",
   "devDependencies": {

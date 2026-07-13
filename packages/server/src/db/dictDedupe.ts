@@ -1,4 +1,4 @@
-import type { PnwDbAdapter } from 'phoenix-wing/db/pnwDbAdapter'
+import type { PnwDbAdapter } from './pnwDbAdapter.js'
 import { mergeDictTags, normalizeDictTags } from '@open-issue/core'
 
 function dictTableExists(db: PnwDbAdapter): boolean {

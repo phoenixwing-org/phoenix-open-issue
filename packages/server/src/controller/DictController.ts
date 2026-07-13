@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express'
 import { DictService, DICT_PRESETS } from '../service/DictService.js'
+import { routeParam } from '../utils/request.js'
 
 const dictService = new DictService()
 
@@ -26,24 +27,24 @@ const DICT_USAGE: Record<string, { table: string; column: string; label: string 
 }
 
 export class DictController {
-  getByGroup(req: Request, res: Response): void {
-    const items = dictService.getByGroup(req.params.groupName)
+  async getByGroup(req: Request, res: Response): Promise<void> {
+    const items = await dictService.getByGroup(routeParam(req, 'groupName'))
     res.json(items)
   }
 
-  getAll(_req: Request, res: Response): void {
-    const items = dictService.getAll()
+  async getAll(_req: Request, res: Response): Promise<void> {
+    const items = await dictService.getAll()
     res.json(items)
   }
 
-  create(req: Request, res: Response): void {
+  async create(req: Request, res: Response): Promise<void> {
     const { groupName, value, label, tags } = req.body
-    const item = dictService.create(groupName, value, label, tags)
+    const item = await dictService.create(groupName, value, label, tags)
     res.status(201).json(item)
   }
 
   /** 应用预设字典 */
-  applyPreset(req: Request, res: Response): void {
+  async applyPreset(req: Request, res: Response): Promise<void> {
     const { preset } = req.body
     const presetData = DICT_PRESETS[preset]
     if (!presetData) {
@@ -59,24 +60,25 @@ export class DictController {
       }
     }
 
-    const result = dictService.batchCreate(items, preset)
+    const result = await dictService.batchCreate(items, preset)
     res.json(result)
   }
 
-  update(req: Request, res: Response): void {
-    const item = dictService.update(req.params.id, req.body)
+  async update(req: Request, res: Response): Promise<void> {
+    const item = await dictService.update(routeParam(req, 'id'), req.body)
     res.json(item)
   }
 
-  delete(req: Request, res: Response): void {
-    if (dictService.isCore(req.params.id)) {
+  async delete(req: Request, res: Response): Promise<void> {
+    const id = routeParam(req, 'id')
+    if (await dictService.isCore(id)) {
       res.status(403).json({
         error: '内置字典项不可删除',
         message: '年度、月度、项目、自定义为系统内置类型，不可删除',
       })
       return
     }
-    const usage = dictService.checkUsage(req.params.id)
+    const usage = await dictService.checkUsage(id)
     if (usage.length > 0) {
       const details = usage.map(u => `${u.label}: ${u.count} 条`).join('；')
       res.status(409).json({
@@ -86,20 +88,19 @@ export class DictController {
       })
       return
     }
-    dictService.delete(req.params.id)
-    res.status(204).send()
+    await dictService.delete(id)
+    res.json({ message: '字典项已停用' })
   }
 
   /** 按标签批量删除字典项 */
-  deleteByTag(req: Request, res: Response): void {
-    const { tag } = req.params
-    const result = dictService.deleteByTag(tag)
+  async deleteByTag(req: Request, res: Response): Promise<void> {
+    const result = await dictService.deleteByTag(routeParam(req, 'tag'))
     res.json(result)
   }
 
   /** 同分组 value 去重（引用按 value，不影响 Issue 等） */
-  dedupe(_req: Request, res: Response): void {
-    const result = dictService.dedupe()
+  async dedupe(_req: Request, res: Response): Promise<void> {
+    const result = await dictService.dedupe()
     res.json(result)
   }
 }

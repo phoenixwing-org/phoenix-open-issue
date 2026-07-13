@@ -1,10 +1,10 @@
-import { getDb } from '../db/connection.js'
+import { getAsyncDb } from '../db/connection.js'
 import { generateId } from '@open-issue/core'
 import bcrypt from 'bcryptjs'
 import { signToken } from '../utils/jwt.js'
 import { ConflictError, UnauthorizedError, ForbiddenError, BadRequestError } from '../utils/errors.js'
-import { resolveOrgUnitId } from '../utils/pendingOrgUnit.js'
-import { assertSystemAdmin } from '../utils/admin.js'
+import { resolveOrgUnitIdAsync } from '../utils/pendingOrgUnit.js'
+import { assertSystemAdminAsync } from '../utils/admin.js'
 import type { User, UserPublic, CreateUserInput, LoginResult, RegisterResult, SystemRole } from '@open-issue/core'
 
 function toPublic(user: User): UserPublic {
@@ -13,9 +13,9 @@ function toPublic(user: User): UserPublic {
 }
 
 export class AuthService {
-  register(input: CreateUserInput): RegisterResult {
-    const db = getDb()
-    const existing = db.get('SELECT id FROM users WHERE username = ?', input.username)
+  async register(input: CreateUserInput): Promise<RegisterResult> {
+    const db = getAsyncDb()
+    const existing = await db.get('SELECT "id" FROM "users" WHERE "username" = ?', [input.username])
     if (existing) {
       throw new ConflictError('用户名已存在')
     }
@@ -25,23 +25,23 @@ export class AuthService {
     const now = new Date().toISOString()
 
     // 用户选择组织或默认待定组，新注册需管理员批准
-    const orgId = resolveOrgUnitId(db, input.orgUnitId)
+    const orgId = await resolveOrgUnitIdAsync(db, input.orgUnitId)
 
-    db.run(
-      `INSERT INTO users (id, username, email, passwordHash, displayName, orgUnitId, approved, systemRole, createdAt, updatedAt)
+    await db.run(
+      `INSERT INTO "users" ("id", "username", "email", "passwordHash", "displayName", "orgUnitId", "approved", "systemRole", "createdAt", "updatedAt")
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [id, input.username, input.email ?? null, passwordHash, input.displayName ?? null, orgId, 0, 'editor', now, now],
     )
 
-    const user = db.get('SELECT * FROM users WHERE id = ?', id) as User
+    const user = await db.get<User>('SELECT * FROM "users" WHERE "id" = ?', [id]) as User
     console.log(`👤 [REGISTER] new user "${user.username}" → org=${orgId} → pending approval`)
 
     return { token: null, user: toPublic(user), pending: true }
   }
 
-  login(username: string, password: string): LoginResult {
-    const db = getDb()
-    const user = db.get('SELECT * FROM users WHERE username = ?', username) as User | undefined
+  async login(username: string, password: string): Promise<LoginResult> {
+    const db = getAsyncDb()
+    const user = await db.get<User>('SELECT * FROM "users" WHERE "username" = ?', [username])
     if (!user) {
       throw new UnauthorizedError('用户名或密码错误')
     }
@@ -63,67 +63,67 @@ export class AuthService {
     return { token, user: toPublic(user) }
   }
 
-  getMe(userId: string): UserPublic {
-    const db = getDb()
-    const user = db.get('SELECT * FROM users WHERE id = ?', userId) as User | undefined
+  async getMe(userId: string): Promise<UserPublic> {
+    const db = getAsyncDb()
+    const user = await db.get<User>('SELECT * FROM "users" WHERE "id" = ?', [userId])
     if (!user) {
       throw new UnauthorizedError('用户不存在')
     }
     return toPublic(user)
   }
 
-  getUserById(userId: string): UserPublic {
-    const db = getDb()
-    const user = db.get('SELECT * FROM users WHERE id = ?', userId) as User | undefined
+  async getUserById(userId: string): Promise<UserPublic> {
+    const db = getAsyncDb()
+    const user = await db.get<User>('SELECT * FROM "users" WHERE "id" = ?', [userId])
     if (!user) {
       throw new UnauthorizedError('用户不存在')
     }
     return toPublic(user)
   }
 
-  getAllUsers(includeDisabled = false): UserPublic[] {
-    const db = getDb()
+  async getAllUsers(includeDisabled = false): Promise<UserPublic[]> {
+    const db = getAsyncDb()
     const sql = includeDisabled
-      ? 'SELECT * FROM users WHERE approved = 1 ORDER BY username'
-      : 'SELECT * FROM users WHERE approved = 1 AND (disabled IS NULL OR disabled = 0) ORDER BY username'
-    const users = db.all(sql) as User[]
+      ? 'SELECT * FROM "users" WHERE "approved" = 1 ORDER BY "username"'
+      : 'SELECT * FROM "users" WHERE "approved" = 1 AND ("disabled" IS NULL OR "disabled" = 0) ORDER BY "username"'
+    const users = await db.all<User>(sql)
     return users.map(toPublic)
   }
 
-  getPendingUsers(actorId: string): UserPublic[] {
-    assertSystemAdmin(actorId)
-    const db = getDb()
-    const users = db.all('SELECT * FROM users WHERE approved = 0 ORDER BY createdAt DESC') as User[]
+  async getPendingUsers(actorId: string): Promise<UserPublic[]> {
+    const db = getAsyncDb()
+    await assertSystemAdminAsync(db, actorId)
+    const users = await db.all<User>('SELECT * FROM "users" WHERE "approved" = 0 ORDER BY "createdAt" DESC')
     return users.map(toPublic)
   }
 
-  approveUser(userId: string, approved: boolean, actorId: string): UserPublic {
-    assertSystemAdmin(actorId)
-    const db = getDb()
-    const user = db.get('SELECT * FROM users WHERE id = ?', userId) as User | undefined
+  async approveUser(userId: string, approved: boolean, actorId: string): Promise<UserPublic> {
+    const db = getAsyncDb()
+    await assertSystemAdminAsync(db, actorId)
+    const user = await db.get<User>('SELECT * FROM "users" WHERE "id" = ?', [userId])
     if (!user) throw new UnauthorizedError('用户不存在')
-    db.run('UPDATE users SET approved = ?, updatedAt = ? WHERE id = ?',
+    await db.run('UPDATE "users" SET "approved" = ?, "updatedAt" = ? WHERE "id" = ?',
       [approved ? 1 : 0, new Date().toISOString(), userId])
     console.log(`👤 [APPROVE] user "${user.username}" → ${approved ? 'approved' : 'rejected'}`)
-    return toPublic(db.get('SELECT * FROM users WHERE id = ?', userId) as User)
+    return toPublic(await db.get<User>('SELECT * FROM "users" WHERE "id" = ?', [userId]) as User)
   }
 
-  updateUserOrg(userId: string, orgUnitId: string | null, actorId: string): UserPublic {
-    assertSystemAdmin(actorId)
-    const db = getDb()
-    const user = db.get('SELECT * FROM users WHERE id = ?', userId) as User | undefined
+  async updateUserOrg(userId: string, orgUnitId: string | null, actorId: string): Promise<UserPublic> {
+    const db = getAsyncDb()
+    await assertSystemAdminAsync(db, actorId)
+    const user = await db.get<User>('SELECT * FROM "users" WHERE "id" = ?', [userId])
     if (!user) throw new UnauthorizedError('用户不存在')
-    const resolvedOrgId = resolveOrgUnitId(db, orgUnitId)
-    db.run('UPDATE users SET orgUnitId = ?, updatedAt = ? WHERE id = ?',
+    const resolvedOrgId = await resolveOrgUnitIdAsync(db, orgUnitId)
+    await db.run('UPDATE "users" SET "orgUnitId" = ?, "updatedAt" = ? WHERE "id" = ?',
       [resolvedOrgId, new Date().toISOString(), userId])
     console.log(`👤 [MOVE] user "${user.username}" → org=${resolvedOrgId}`)
-    return toPublic(db.get('SELECT * FROM users WHERE id = ?', userId) as User)
+    return toPublic(await db.get<User>('SELECT * FROM "users" WHERE "id" = ?', [userId]) as User)
   }
 
-  updateUser(userId: string, data: { displayName?: string; email?: string; orgUnitId?: string | null; systemRole?: SystemRole }, actorId: string): UserPublic {
-    assertSystemAdmin(actorId)
-    const db = getDb()
-    const user = db.get('SELECT * FROM users WHERE id = ?', userId) as User | undefined
+  async updateUser(userId: string, data: { displayName?: string; email?: string; orgUnitId?: string | null; systemRole?: SystemRole }, actorId: string): Promise<UserPublic> {
+    const db = getAsyncDb()
+    await assertSystemAdminAsync(db, actorId)
+    const user = await db.get<User>('SELECT * FROM "users" WHERE "id" = ?', [userId])
     if (!user) throw new UnauthorizedError('用户不存在')
 
     if (data.systemRole !== undefined) {
@@ -132,49 +132,49 @@ export class AuthService {
       }
     }
 
-    const orgUnitId = 'orgUnitId' in data ? resolveOrgUnitId(db, data.orgUnitId) : user.orgUnitId
-    db.run(
-      `UPDATE users SET
-        displayName = COALESCE(?, displayName),
-        email = COALESCE(?, email),
-        orgUnitId = ?,
-        systemRole = COALESCE(?, systemRole),
-        updatedAt = ?
-       WHERE id = ?`,
+    const orgUnitId = 'orgUnitId' in data ? await resolveOrgUnitIdAsync(db, data.orgUnitId) : user.orgUnitId
+    await db.run(
+      `UPDATE "users" SET
+        "displayName" = COALESCE(?, "displayName"),
+        "email" = COALESCE(?, "email"),
+        "orgUnitId" = ?,
+        "systemRole" = COALESCE(?, "systemRole"),
+        "updatedAt" = ?
+       WHERE "id" = ?`,
       [data.displayName ?? null, data.email ?? null, orgUnitId, data.systemRole ?? null, new Date().toISOString(), userId],
     )
     console.log(`👤 [UPDATE] user "${user.username}"`)
-    return toPublic(db.get('SELECT * FROM users WHERE id = ?', userId) as User)
+    return toPublic(await db.get<User>('SELECT * FROM "users" WHERE "id" = ?', [userId]) as User)
   }
 
   // ── Feature 1: 用户禁用 ──
-  disableUser(userId: string, actorId: string): UserPublic {
-    assertSystemAdmin(actorId)
-    const db = getDb()
-    const user = db.get('SELECT * FROM users WHERE id = ?', userId) as User | undefined
+  async disableUser(userId: string, actorId: string): Promise<UserPublic> {
+    const db = getAsyncDb()
+    await assertSystemAdminAsync(db, actorId)
+    const user = await db.get<User>('SELECT * FROM "users" WHERE "id" = ?', [userId])
     if (!user) throw new UnauthorizedError('用户不存在')
     if (userId === actorId) throw new ForbiddenError('不能禁用自己')
-    db.run('UPDATE users SET disabled = 1, updatedAt = ? WHERE id = ?',
+    await db.run('UPDATE "users" SET "disabled" = 1, "updatedAt" = ? WHERE "id" = ?',
       [new Date().toISOString(), userId])
     console.log(`🚫 [DISABLE] user "${user.username}" disabled by "${actorId}"`)
-    return toPublic(db.get('SELECT * FROM users WHERE id = ?', userId) as User)
+    return toPublic(await db.get<User>('SELECT * FROM "users" WHERE "id" = ?', [userId]) as User)
   }
 
-  enableUser(userId: string, actorId?: string): UserPublic {
-    if (actorId) assertSystemAdmin(actorId)
-    const db = getDb()
-    const user = db.get('SELECT * FROM users WHERE id = ?', userId) as User | undefined
+  async enableUser(userId: string, actorId?: string): Promise<UserPublic> {
+    const db = getAsyncDb()
+    if (actorId) await assertSystemAdminAsync(db, actorId)
+    const user = await db.get<User>('SELECT * FROM "users" WHERE "id" = ?', [userId])
     if (!user) throw new UnauthorizedError('用户不存在')
-    db.run('UPDATE users SET disabled = 0, updatedAt = ? WHERE id = ?',
+    await db.run('UPDATE "users" SET "disabled" = 0, "updatedAt" = ? WHERE "id" = ?',
       [new Date().toISOString(), userId])
     console.log(`✅ [ENABLE] user "${user.username}" re-enabled`)
-    return toPublic(db.get('SELECT * FROM users WHERE id = ?', userId) as User)
+    return toPublic(await db.get<User>('SELECT * FROM "users" WHERE "id" = ?', [userId]) as User)
   }
 
   // ── Feature 4: 密码重置 ──
-  changePassword(userId: string, oldPassword: string, newPassword: string): void {
-    const db = getDb()
-    const user = db.get('SELECT * FROM users WHERE id = ?', userId) as User | undefined
+  async changePassword(userId: string, oldPassword: string, newPassword: string): Promise<void> {
+    const db = getAsyncDb()
+    const user = await db.get<User>('SELECT * FROM "users" WHERE "id" = ?', [userId])
     if (!user) throw new UnauthorizedError('用户不存在')
 
     const valid = bcrypt.compareSync(oldPassword, user.passwordHash)
@@ -185,15 +185,15 @@ export class AuthService {
     }
 
     const passwordHash = bcrypt.hashSync(newPassword, 10)
-    db.run('UPDATE users SET passwordHash = ?, updatedAt = ? WHERE id = ?',
+    await db.run('UPDATE "users" SET "passwordHash" = ?, "updatedAt" = ? WHERE "id" = ?',
       [passwordHash, new Date().toISOString(), userId])
     console.log(`🔑 [CHANGE_PW] user "${user.username}" changed password`)
   }
 
-  adminResetPassword(userId: string, newPassword: string, actorId: string): void {
-    assertSystemAdmin(actorId)
-    const db = getDb()
-    const user = db.get('SELECT * FROM users WHERE id = ?', userId) as User | undefined
+  async adminResetPassword(userId: string, newPassword: string, actorId: string): Promise<void> {
+    const db = getAsyncDb()
+    await assertSystemAdminAsync(db, actorId)
+    const user = await db.get<User>('SELECT * FROM "users" WHERE "id" = ?', [userId])
     if (!user) throw new UnauthorizedError('用户不存在')
 
     if (newPassword.length < 6) {
@@ -201,7 +201,7 @@ export class AuthService {
     }
 
     const passwordHash = bcrypt.hashSync(newPassword, 10)
-    db.run('UPDATE users SET passwordHash = ?, updatedAt = ? WHERE id = ?',
+    await db.run('UPDATE "users" SET "passwordHash" = ?, "updatedAt" = ? WHERE "id" = ?',
       [passwordHash, new Date().toISOString(), userId])
     console.log(`🔑 [ADMIN_RESET_PW] user "${user.username}" password reset by "${actorId}"`)
   }
