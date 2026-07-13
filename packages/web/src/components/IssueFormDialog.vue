@@ -146,7 +146,14 @@ function submit() {
       </el-row>
 
       <el-form-item label="计划完成日">
-        <el-date-picker v-model="dueDate" type="date" placeholder="选择日期" style="width:100%" value-format="YYYY-MM-DD" />
+        <el-date-picker
+          v-model="dueDate"
+          type="date"
+          placeholder="选择日期"
+          style="width:100%"
+          value-format="YYYY-MM-DD"
+          :teleported="false"
+        />
       </el-form-item>
 
       <el-form-item v-if="isEdit" label="关注度（本列表）">

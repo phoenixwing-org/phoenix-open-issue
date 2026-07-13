@@ -12,7 +12,7 @@ export function isOverdue(
   status: CheckpointStatus,
   now: Date = new Date(),
 ): { overdue: boolean; daysOverdue: number } {
-  if (status === 'done' || status === 'skipped') {
+  if (status === 'done' || status === 'skipped' || status === 'voided') {
     return { overdue: false, daysOverdue: 0 }
   }
 

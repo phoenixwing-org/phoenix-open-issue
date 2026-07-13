@@ -34,6 +34,12 @@ describe('isOverdue', () => {
     expect(result.daysOverdue).toBe(0)
   })
 
+  it('always returns false when status is voided', () => {
+    const result = isOverdue('2020-01-01', 'voided', today)
+    expect(result.overdue).toBe(false)
+    expect(result.daysOverdue).toBe(0)
+  })
+
   it('defaults now to current date', () => {
     const result = isOverdue('2000-01-01', 'pending')
     expect(result.overdue).toBe(true)

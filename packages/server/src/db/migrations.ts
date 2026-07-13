@@ -106,6 +106,35 @@ export function migrateIssueListsListType(db: PnwDbAdapter): boolean {
   return true
 }
 
+/** 扩展点检状态：已跳过用于业务跳过，已作废用于误建记录。 */
+export function migrateCheckpointStatusVoided(db: PnwDbAdapter): boolean {
+  if (!tableExists(db, 'checkpoints')) return false
+
+  const sqlInfo = db.all("SELECT sql FROM sqlite_master WHERE type='table' AND name='checkpoints'") as { sql: string }[]
+  const ddl = sqlInfo[0]?.sql || ''
+  if (ddl.includes("'voided'")) return false
+
+  db.exec(`
+    CREATE TABLE checkpoints_new (
+      id TEXT PRIMARY KEY,
+      issueId TEXT NOT NULL,
+      checkpointDate TEXT NOT NULL,
+      description TEXT NOT NULL,
+      status TEXT DEFAULT 'pending' CHECK(status IN ('pending','done','skipped','voided')),
+      responsibleUserId TEXT,
+      sortOrder INTEGER DEFAULT 0,
+      createdAt TEXT DEFAULT (datetime('now')),
+      updatedAt TEXT DEFAULT (datetime('now'))
+    );
+    INSERT INTO checkpoints_new (id, issueId, checkpointDate, description, status, responsibleUserId, sortOrder, createdAt, updatedAt)
+    SELECT id, issueId, checkpointDate, description, status, responsibleUserId, sortOrder, createdAt, updatedAt
+    FROM checkpoints;
+    DROP TABLE checkpoints;
+    ALTER TABLE checkpoints_new RENAME TO checkpoints;
+  `)
+  return true
+}
+
 /** 清理重复 issueListLinks，返回删除条数 */
 export function dedupeIssueListLinks(db: PnwDbAdapter): number {
   const before = db.get('SELECT COUNT(*) as c FROM issueListLinks') as { c: number }

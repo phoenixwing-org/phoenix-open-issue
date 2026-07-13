@@ -84,7 +84,7 @@ export async function pnwRunSchema(db: PnwDbAdapter): Promise<void> {
       "issueId" TEXT NOT NULL,
       "checkpointDate" TEXT NOT NULL,
       "description" TEXT NOT NULL,
-      "status" TEXT DEFAULT 'pending' CHECK("status" IN ('pending','done','skipped')),
+      "status" TEXT DEFAULT 'pending' CHECK("status" IN ('pending','done','skipped','voided')),
       "responsibleUserId" TEXT,
       "sortOrder" INTEGER DEFAULT 0,
       "createdAt" TEXT DEFAULT ${now},

@@ -3,6 +3,7 @@ import { inject, computed } from 'vue'
 import type { IssueColumnKey } from '@/config/issueListColumns'
 import type { Checkpoint } from '@open-issue/core'
 import { ATTENTION_LEVEL_LABELS, isOverdue } from '@open-issue/core'
+import CheckpointStatusTag from '@/components/CheckpointStatusTag.vue'
 
 const props = defineProps<{
   columnKey: IssueColumnKey
@@ -23,11 +24,11 @@ const ctx = inject<{
   getRecentCheckpoints: (id: string) => Checkpoint[]
   checkpointMap: Record<string, Checkpoint[]>
   maxTimelineRows: number
-  cpIcon: (cp: Checkpoint) => string
   openViewIssue: (row: { id: string }, e?: Event) => void
   openQuickEdit: (row: any, field: string, e?: Event) => void
   openEditCheckpoint: (cp: Checkpoint, issueTitle: string, e?: Event) => void
-  openCreateCheckpoint: (row: { id: string; title: string }, e?: Event) => void
+  openCreateCheckpoint: (row: { id: string; title: string; issueNo?: string }, e?: Event) => void
+  onUpdateCheckpointStatus: (cp: Checkpoint, status: Checkpoint['status']) => void
 }>('issueListCellCtx')!
 
 const col = computed(() => props.columnKey)
@@ -178,7 +179,13 @@ const row = computed(() => props.row)
       title="点击编辑点检"
       @click="ctx.openEditCheckpoint(cp, row.title, $event)"
     >
-      <span class="cp-mini-icon">{{ ctx.cpIcon(cp) }}</span>
+      <CheckpointStatusTag
+        class="cp-mini-icon"
+        :status="cp.status"
+        compact
+        :overdue="isOverdue(cp.checkpointDate, cp.status).overdue"
+        @change="ctx.onUpdateCheckpointStatus(cp, $event)"
+      />
       <span class="cp-mini-date" :title="'点检日: ' + cp.checkpointDate">{{ ctx.formatCpDate(cp.checkpointDate) }}</span>
       <span class="cp-mini-desc">{{ cp.description }}</span>
       <span v-if="cp.responsibleUserId" class="cp-mini-who">{{ ctx.userMap[cp.responsibleUserId] || '' }}</span>
@@ -207,7 +214,7 @@ const row = computed(() => props.row)
 .cp-mini-item { display: flex; gap: 6px; align-items: baseline; padding: 1px 0; }
 .cp-mini-item.cp-editable { cursor: pointer; border-radius: 2px; }
 .cp-mini-item.cp-editable:hover { background: #ecf5ff; }
-.cp-mini-item.cp-overdue { background: #fef0f0; border-radius: 2px; padding: 1px 4px; }
+.cp-mini-item.cp-overdue { margin: 0 -4px; background: #fef0f0; border-radius: 2px; padding: 1px 4px; }
 .cp-mini-item.cp-overdue.cp-editable:hover { background: #fde2e2; }
 .cp-mini-icon { flex-shrink: 0; font-size: 0.75rem; }
 .cp-mini-date { flex-shrink: 0; color: #909399; font-family: monospace; font-size: 0.75rem; }
