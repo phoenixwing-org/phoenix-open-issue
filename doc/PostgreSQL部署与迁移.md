@@ -21,7 +21,7 @@ DB_SSL=false
 ## 2. PostgreSQL 初始化
 
 1. 创建独立数据库和最小权限账号。
-2. 配置环境变量后启动服务。
+2. 复制 PG 模板：`cp packages/server/.env.postgres.example packages/server/.env`，再填写 `JWT_SECRET` 和 `DATABASE_URL`。
 3. 服务自动创建 Schema、索引、admin 和基础字典。
 4. 日志出现 `Database: PostgreSQL` 后访问 `/health`。
 

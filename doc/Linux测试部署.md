@@ -16,9 +16,13 @@ pnpm build
 
 ## 2. 配置
 
+SQLite 部署：
+
 ```bash
-cp packages/server/.env.example packages/server/.env
+cp packages/server/.env.sqlite.example packages/server/.env
 ```
+
+PostgreSQL 部署请使用 `packages/server/.env.postgres.example`，具体步骤见 [PostgreSQL 部署与迁移](PostgreSQL部署与迁移.md)。
 
 至少修改：
 
