@@ -1,5 +1,6 @@
 import type { PnwDbAdapter } from '../db/pnwDbAdapter.js'
 import { generateId } from '@open-issue/core'
+import type { PnwDbExecutor } from '../db/pnw/pnwDbTypes.js'
 
 export const PENDING_ORG_UNIT_NAME = '待定组'
 
@@ -47,4 +48,49 @@ export function resolveOrgUnitId(db: PnwDbAdapter, orgUnitId?: string | null): s
 export function isPendingOrgUnit(db: PnwDbAdapter, orgUnitId: string): boolean {
   const pendingId = getPendingOrgUnitId(db)
   return pendingId !== null && pendingId === orgUnitId
+}
+
+export async function ensurePendingOrgUnitAsync(db: PnwDbExecutor): Promise<string> {
+  const row = await db.get<{ id: string }>(
+    'SELECT "id" FROM "orgUnits" WHERE "name" = ? LIMIT 1',
+    [PENDING_ORG_UNIT_NAME],
+  )
+  let id = row?.id
+  if (!id) {
+    id = generateId()
+    await db.run(
+      'INSERT INTO "orgUnits" ("id", "name", "unitType", "parentId") VALUES (?, ?, ?, ?)',
+      [id, PENDING_ORG_UNIT_NAME, 'group', null],
+    )
+  } else {
+    await db.run(
+      'UPDATE "orgUnits" SET "parentId" = NULL, "unitType" = ? WHERE "id" = ? AND ("parentId" IS NOT NULL OR "unitType" != ?)',
+      ['group', id, 'group'],
+    )
+  }
+  await db.run(
+    'UPDATE "users" SET "orgUnitId" = ?, "updatedAt" = ? WHERE "orgUnitId" IS NULL',
+    [id, new Date().toISOString()],
+  )
+  return id
+}
+
+export async function getPendingOrgUnitIdAsync(db: PnwDbExecutor): Promise<string | null> {
+  const row = await db.get<{ id: string }>(
+    'SELECT "id" FROM "orgUnits" WHERE "name" = ? LIMIT 1',
+    [PENDING_ORG_UNIT_NAME],
+  )
+  return row?.id ?? null
+}
+
+export async function isPendingOrgUnitAsync(db: PnwDbExecutor, orgUnitId: string): Promise<boolean> {
+  return await getPendingOrgUnitIdAsync(db) === orgUnitId
+}
+
+export async function resolveOrgUnitIdAsync(
+  db: PnwDbExecutor,
+  orgUnitId?: string | null,
+): Promise<string> {
+  const trimmed = orgUnitId?.trim()
+  return trimmed || ensurePendingOrgUnitAsync(db)
 }

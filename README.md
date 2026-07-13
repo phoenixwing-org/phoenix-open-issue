@@ -129,6 +129,8 @@ pnpm seed            # CLI 重新填充演示数据（force 追加可清空）
 | [开发计划](doc/开发计划.md)                          | ADR 决策 + 路线图         |
 | [phoenix-wing 依赖配置](doc/phoenix-wing依赖配置.md) | npm 模式 vs 本地 link 模式 |
 | [Linux 测试部署](doc/Linux测试部署.md)               | 构建、配置、systemd 与升级检查 |
+| [SQLite/PG 双数据库计划](doc/v0.4-PG双数据库适配计划.md) | PnwDbAdapter、迁移与双库测试方案 |
+| [PostgreSQL 部署与迁移](doc/PostgreSQL部署与迁移.md) | Linux 配置、SQLite JSON 迁移、校验与回滚 |
 
 ## 路线图
 

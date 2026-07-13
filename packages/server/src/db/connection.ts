@@ -5,8 +5,15 @@ import { runSchema } from './schema.js'
 import { seedEssential } from '../seed.js'
 import fs from 'fs'
 import path from 'path'
+import { PnwSqliteAdapter } from './pnw/pnwSqliteAdapter.js'
+import type { PnwDbAdapter as PnwAsyncDbAdapter } from './pnw/pnwDbTypes.js'
+import { pnwCreateAsyncDb } from './pnw/pnwDbFactory.js'
+import { pnwRunSchema } from './pnw/pnwSchema.js'
+import { pnwRunMigrations } from './pnw/pnwMigrationRunner.js'
 
 let db: PnwDbAdapter
+let asyncDb: PnwAsyncDbAdapter
+let initialization: Promise<PnwAsyncDbAdapter> | undefined
 
 function cleanStaleLock(dbPath: string): void {
   const lockPath = dbPath + '.lock'
@@ -19,9 +26,12 @@ function cleanStaleLock(dbPath: string): void {
 }
 
 export function getDb(): PnwDbAdapter {
+  if (config.database.driver !== 'sqlite') {
+    throw new Error('同步数据库接口仅供 SQLite 旧库迁移使用')
+  }
   if (!db) {
-    cleanStaleLock(config.dbPath)
-    db = pnwCreateDb(config.dbPath)
+    cleanStaleLock(config.database.path)
+    db = pnwCreateDb(config.database.path)
 
     // 设置忙等待超时：遇到锁时等待最多 5 秒，而非立即报错
     // SQLite 在 WAL 模式下允许多读一写，busy_timeout 避免并发写入时"database is locked"
@@ -46,10 +56,34 @@ export function getDb(): PnwDbAdapter {
 
     db.exec('PRAGMA foreign_keys = OFF')
     runSchema(db)
-    // 首次初始化：自动创建 admin + 字典
-    seedEssential()
   }
   return db
+}
+
+/** Incremental migration bridge. New async services share the established SQLite connection. */
+export function getAsyncDb(): PnwAsyncDbAdapter {
+  if (!asyncDb) {
+    asyncDb = config.database.driver === 'sqlite'
+      ? new PnwSqliteAdapter(getDb())
+      : pnwCreateAsyncDb(config.database)
+  }
+  return asyncDb
+}
+
+export function initializeDb(): Promise<PnwAsyncDbAdapter> {
+  if (!initialization) {
+    initialization = (async () => {
+      const database = getAsyncDb()
+      if (database.dialect === 'postgres') await pnwRunSchema(database)
+      await pnwRunMigrations(database)
+      await seedEssential()
+      return database
+    })().catch(error => {
+      initialization = undefined
+      throw error
+    })
+  }
+  return initialization
 }
 
 export function closeDb(): void {
@@ -57,5 +91,14 @@ export function closeDb(): void {
     // 关闭前执行 WAL checkpoint，确保数据写入主文件
     try { db.exec('PRAGMA wal_checkpoint(TRUNCATE)') } catch {}
     try { db.close() } catch {}
+    asyncDb = undefined as unknown as PnwAsyncDbAdapter
+    initialization = undefined
   }
+}
+
+export async function closeAsyncDb(): Promise<void> {
+  if (asyncDb) await asyncDb.close()
+  if (db) closeDb()
+  asyncDb = undefined as unknown as PnwAsyncDbAdapter
+  initialization = undefined
 }

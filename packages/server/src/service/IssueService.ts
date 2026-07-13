@@ -1,4 +1,4 @@
-import { getDb } from '../db/connection.js'
+import { getAsyncDb } from '../db/connection.js'
 import { NotFoundError, ForbiddenError } from '../utils/errors.js'
 import { generateId, checkListAccess, canModifyIssue, DEFAULT_ATTENTION_LEVEL, normalizeAttentionLevel } from '@open-issue/core'
 import type { Issue, CreateIssueInput, UpdateIssueInput, ReorderInput, IssueStatus } from '@open-issue/core'
@@ -7,18 +7,18 @@ import { IssueListService } from './IssueListService.js'
 const listService = new IssueListService()
 
 export class IssueService {
-  getIssues(listId: string, userId: string, opts: {
+  async getIssues(listId: string, userId: string, opts: {
     status?: string
     priority?: string
     search?: string
     sort?: string
     page?: number
     size?: number
-  } = {}): { items: Issue[]; total: number } {
-    const db = getDb()
+  } = {}): Promise<{ items: Issue[]; total: number }> {
+    const db = getAsyncDb()
 
     // 权限检查
-    const members = listService.getMembers(listId)
+    const members = await listService.getMembers(listId)
     const role = checkListAccess(userId, members)
     if (!role) throw new ForbiddenError('无权访问此列表')
 
@@ -41,7 +41,7 @@ export class IssueService {
 
     const where = conditions.length > 0 ? ' AND ' + conditions.join(' AND ') : ''
     const fromJoin = `FROM issues i JOIN issueListLinks il ON i.id = il.issueId AND il.listId = ? LEFT JOIN poiFunctions f ON i.functionId = f.id`
-    const total = db.get(`SELECT COUNT(*) as count FROM issues i JOIN issueListLinks il ON i.id = il.issueId AND il.listId = ?${where}`, [listId, ...params.slice(1)]) as { count: number }
+    const total = await db.get(`SELECT COUNT(*) as count FROM issues i JOIN issueListLinks il ON i.id = il.issueId AND il.listId = ?${where}`, [listId, ...params.slice(1)]) as { count: number }
 
     // 排序：默认关注度 → 优先级；sort 支持 "field:dir" 或 "field:dir,field2:dir2"
     const SEVERITY_ORDER = "CASE i.severity WHEN 'fatal' THEN 1 WHEN 'major' THEN 2 WHEN 'minor' THEN 3 WHEN 'trivial' THEN 4 ELSE 5 END"
@@ -83,7 +83,7 @@ export class IssueService {
 
     const offset = (page - 1) * size
     const allParams = [...params, size, offset]
-    const items = db.all(
+    const items = await db.all(
       `SELECT i.*,
         il.attentionLevel as _attentionLevel,
         f.functionName as _functionName, f.platform as _functionPlatform, f.externalId as _functionExternalId ${fromJoin}${where} ORDER BY ${orderBy} LIMIT ? OFFSET ?`,
@@ -93,20 +93,20 @@ export class IssueService {
     return { items, total: total.count }
   }
 
-  getById(id: string): Issue | undefined {
-    const db = getDb()
-    return db.get(
+  async getById(id: string): Promise<Issue | undefined> {
+    const db = getAsyncDb()
+    return await db.get(
       `SELECT i.*, f.functionName as _functionName, f.platform as _functionPlatform, f.externalId as _functionExternalId
        FROM issues i
        LEFT JOIN poiFunctions f ON i.functionId = f.id
        WHERE i.id = ?`,
-      id,
+      [id],
     ) as (Issue & { _functionName: string | null }) | undefined
   }
 
-  create(listId: string, input: CreateIssueInput, userId: string): Issue {
-    const db = getDb()
-    const members = listService.getMembers(listId)
+  async create(listId: string, input: CreateIssueInput, userId: string): Promise<Issue> {
+    const db = getAsyncDb()
+    const members = await listService.getMembers(listId)
     const role = checkListAccess(userId, members)
     if (!canModifyIssue(role)) throw new ForbiddenError()
 
@@ -114,23 +114,24 @@ export class IssueService {
     const now = new Date().toISOString()
 
     // 计算下一个 sortOrder
-    const maxSort = db.get('SELECT MAX(sortOrder) as m FROM issues WHERE listId = ?', listId) as { m: number | null }
+    const maxSort = await db.get('SELECT MAX(sortOrder) as m FROM issues WHERE listId = ?', [listId]) as { m: number | null }
     const sortOrder = (maxSort?.m ?? 0) + 1
 
     // 生成可读编号：ISS-2026-0001（全局自增，不按列表区分）
     const year = input.issueNo
       ? parseInt(input.issueNo.split('-')[1], 10) || new Date().getFullYear()
       : new Date().getFullYear()
-    const issueNo = input.issueNo || (() => {
-      const maxRow = db.get(
+    let issueNo = input.issueNo
+    if (!issueNo) {
+      const maxRow = await db.get<{ issueNo: string }>(
         "SELECT issueNo FROM issues WHERE issueNo LIKE ? ORDER BY issueNo DESC LIMIT 1",
         [`ISS-${year}-%`],
-      ) as { issueNo: string } | undefined
+      )
       const num = maxRow ? (parseInt(maxRow.issueNo.split('-')[2], 10) || 0) + 1 : 1
-      return `ISS-${year}-${String(num).padStart(4, '0')}`
-    })()
+      issueNo = `ISS-${year}-${String(num).padStart(4, '0')}`
+    }
 
-    db.run(
+    await db.run(
       `INSERT INTO issues (id, listId, issueNo, title, description, status, priority, severity, category, detectionPhase,
         reporterId, assigneeId, dueDate, containment, rootCause, correctiveAction,
         functionId, sortOrder, createdBy, createdAt, updatedAt)
@@ -146,23 +147,23 @@ export class IssueService {
     )
 
     // 创建 issueListLinks 链接记录（主列表）
-    db.run(
+    await db.run(
       'INSERT INTO issueListLinks (id, issueId, listId, linkedBy, attentionLevel) VALUES (?, ?, ?, ?, ?)',
       [generateId(), id, listId, userId, DEFAULT_ATTENTION_LEVEL],
     )
 
-    return this.getById(id)!
+    return await this.getById(id) as Issue
   }
 
-  update(id: string, input: UpdateIssueInput, userId: string): Issue {
-    const db = getDb()
-    const issue = this.getById(id)
+  async update(id: string, input: UpdateIssueInput, userId: string): Promise<Issue> {
+    const db = getAsyncDb()
+    const issue = await this.getById(id)
     if (!issue) throw new NotFoundError('Issue')
-    const members = listService.getMembers(issue.listId)
+    const members = await listService.getMembers(issue.listId)
     const role = checkListAccess(userId, members)
     if (!canModifyIssue(role)) throw new ForbiddenError()
 
-    db.run(
+    await db.run(
       `UPDATE issues
        SET title = COALESCE(?, title),
            description = COALESCE(?, description),
@@ -207,55 +208,55 @@ export class IssueService {
       ],
     )
 
-    return this.getById(id)!
+    return await this.getById(id) as Issue
   }
 
-  updateStatus(id: string, status: IssueStatus, userId: string): Issue {
-    const db = getDb()
-    const issue = this.getById(id)
+  async updateStatus(id: string, status: IssueStatus, userId: string): Promise<Issue> {
+    const db = getAsyncDb()
+    const issue = await this.getById(id)
     if (!issue) throw new NotFoundError('Issue')
-    const members = listService.getMembers(issue.listId)
+    const members = await listService.getMembers(issue.listId)
     const role = checkListAccess(userId, members)
     if (!canModifyIssue(role)) throw new ForbiddenError()
 
     // 如果转为 resolved/closed，自动记录完成时间
     const now = new Date().toISOString()
     if (status === 'resolved' || status === 'closed') {
-      db.run('UPDATE issues SET status = ?, completedAt = ?, updatedAt = ? WHERE id = ?',
+      await db.run('UPDATE issues SET status = ?, completedAt = ?, updatedAt = ? WHERE id = ?',
         [status, now, now, id])
     } else {
-      db.run('UPDATE issues SET status = ?, updatedAt = ? WHERE id = ?',
+      await db.run('UPDATE issues SET status = ?, updatedAt = ? WHERE id = ?',
         [status, now, id])
     }
 
-    return this.getById(id)!
+    return await this.getById(id) as Issue
   }
 
-  delete(id: string, userId: string): void {
-    const db = getDb()
-    const issue = this.getById(id)
+  async delete(id: string, userId: string): Promise<void> {
+    const db = getAsyncDb()
+    const issue = await this.getById(id)
     if (!issue) throw new NotFoundError('Issue')
-    const members = listService.getMembers(issue.listId)
+    const members = await listService.getMembers(issue.listId)
     const role = checkListAccess(userId, members)
     if (!canModifyIssue(role)) throw new ForbiddenError()
 
     const now = new Date().toISOString()
-    db.run(
+    await db.run(
       `UPDATE issues SET status = 'cancelled', closeReason = 'cancelled', updatedAt = ? WHERE id = ?`,
       [now, id],
     )
   }
 
   // ── 链接关注系数 ──
-  setAttentionLevel(issueId: string, listId: string, level: number, userId: string): void {
-    const db = getDb()
-    const link = db.get('SELECT * FROM issueListLinks WHERE issueId = ? AND listId = ?',
+  async setAttentionLevel(issueId: string, listId: string, level: number, userId: string): Promise<void> {
+    const db = getAsyncDb()
+    const link = await db.get('SELECT * FROM issueListLinks WHERE issueId = ? AND listId = ?',
       [issueId, listId]) as Record<string, unknown> | undefined
     if (!link) throw new NotFoundError('链接记录')
 
     const attentionLevel = normalizeAttentionLevel(level)
     const now = new Date().toISOString()
-    db.run(
+    await db.run(
       `UPDATE issueListLinks SET
         attentionLevel = ?,
         attentionUpdatedAt = ?,
@@ -265,22 +266,17 @@ export class IssueService {
     )
   }
 
-  reorder(listId: string, input: ReorderInput, userId: string): void {
-    const db = getDb()
-    const members = listService.getMembers(listId)
+  async reorder(listId: string, input: ReorderInput, userId: string): Promise<void> {
+    const db = getAsyncDb()
+    const members = await listService.getMembers(listId)
     const role = checkListAccess(userId, members)
     if (!canModifyIssue(role)) throw new ForbiddenError()
 
     const now = new Date().toISOString()
-    db.exec('BEGIN TRANSACTION')
-    try {
-      input.issueIds.forEach((issueId, index) => {
-        db.run('UPDATE issues SET sortOrder = ?, updatedAt = ? WHERE id = ?', [index, now, issueId])
-      })
-      db.exec('COMMIT')
-    } catch (err) {
-      if (db.inTransaction) db.exec('ROLLBACK')
-      throw err
-    }
+    await db.transaction(async tx => {
+      for (const [index, issueId] of input.issueIds.entries()) {
+        await tx.run('UPDATE issues SET sortOrder = ?, updatedAt = ? WHERE id = ?', [index, now, issueId])
+      }
+    })
   }
 }

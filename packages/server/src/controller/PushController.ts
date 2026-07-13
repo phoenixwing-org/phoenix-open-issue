@@ -5,35 +5,35 @@ import { routeParam } from '../utils/request.js'
 const pushService = new PushService()
 
 export class PushController {
-  preview(req: Request, res: Response): void {
+  async preview(req: Request, res: Response): Promise<void> {
     const { fromListId, toListId } = req.query
-    const result = pushService.preview(fromListId as string, toListId as string)
+    const result = await pushService.preview(fromListId as string, toListId as string)
     res.json(result)
   }
 
-  push(req: Request, res: Response): void {
-    const result = pushService.push(req.body, req.user!.userId)
+  async push(req: Request, res: Response): Promise<void> {
+    const result = await pushService.push(req.body, req.user!.userId)
     res.status(201).json(result)
   }
 
-  getListPushHistory(req: Request, res: Response): void {
-    const records = pushService.getListPushHistory(routeParam(req, 'listId'))
+  async getListPushHistory(req: Request, res: Response): Promise<void> {
+    const records = await pushService.getListPushHistory(routeParam(req, 'listId'))
     res.json(records)
   }
 
-  getMyPushHistory(req: Request, res: Response): void {
-    const records = pushService.getMyPushHistory(req.user!.userId)
+  async getMyPushHistory(req: Request, res: Response): Promise<void> {
+    const records = await pushService.getMyPushHistory(req.user!.userId)
     res.json(records)
   }
 
-  getIncomingPushes(req: Request, res: Response): void {
-    const records = pushService.getIncomingPushes(routeParam(req, 'listId'))
+  async getIncomingPushes(req: Request, res: Response): Promise<void> {
+    const records = await pushService.getIncomingPushes(routeParam(req, 'listId'))
     res.json(records)
   }
 
-  handlePush(req: Request, res: Response): void {
+  async handlePush(req: Request, res: Response): Promise<void> {
     const { action, rejectReason } = req.body
-    const record = pushService.handlePush(routeParam(req, 'id'), action, req.user!.userId, rejectReason)
+    const record = await pushService.handlePush(routeParam(req, 'id'), action, req.user!.userId, rejectReason)
     res.json(record)
   }
 }

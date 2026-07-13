@@ -15,6 +15,7 @@ beforeAll(async () => {
 
   const connection = await import('../../packages/server/src/db/connection.js')
   closeDb = connection.closeDb
+  await connection.initializeDb()
   db = connection.getDb()
   adminId = (db.get("SELECT id FROM users WHERE username = 'admin'") as { id: string }).id
 
@@ -65,7 +66,7 @@ afterAll(() => {
 describe('数据保护规则', () => {
   it('列表删除只设置软删除标记', async () => {
     const { IssueListService } = await import('../../packages/server/src/service/IssueListService.js')
-    new IssueListService().delete('list-1', adminId)
+    await new IssueListService().delete('list-1', adminId)
 
     const row = db.get('SELECT isDeleted, deletedAt FROM issueLists WHERE id = ?', 'list-1') as {
       isDeleted: number
@@ -77,7 +78,7 @@ describe('数据保护规则', () => {
 
   it('Issue 删除兼容接口改为取消且保留关联数据', async () => {
     const { IssueService } = await import('../../packages/server/src/service/IssueService.js')
-    new IssueService().delete('issue-1', adminId)
+    await new IssueService().delete('issue-1', adminId)
 
     const issue = db.get('SELECT status, closeReason FROM issues WHERE id = ?', 'issue-1') as {
       status: string
@@ -91,27 +92,27 @@ describe('数据保护规则', () => {
 
   it('点检删除兼容接口改为跳过', async () => {
     const { CheckpointService } = await import('../../packages/server/src/service/CheckpointService.js')
-    new CheckpointService().delete('checkpoint-1', adminId)
+    await new CheckpointService().delete('checkpoint-1', adminId)
     const row = db.get('SELECT status FROM checkpoints WHERE id = ?', 'checkpoint-1') as { status: string }
     expect(row.status).toBe('skipped')
   })
 
   it('组织节点拒绝物理删除', async () => {
     const { OrgUnitService } = await import('../../packages/server/src/service/OrgUnitService.js')
-    expect(() => new OrgUnitService().delete('org-1')).toThrow(/不允许删除/)
+    await expect(new OrgUnitService().delete('org-1')).rejects.toThrow(/不允许删除/)
     expect(db.get('SELECT id FROM orgUnits WHERE id = ?', 'org-1')).toBeTruthy()
   })
 
   it('功能删除兼容接口改为停用', async () => {
     const { FunctionService } = await import('../../packages/server/src/service/FunctionService.js')
-    new FunctionService().delete('function-1')
+    await new FunctionService().delete('function-1')
     const row = db.get('SELECT enabled FROM poiFunctions WHERE id = ?', 'function-1') as { enabled: number }
     expect(row.enabled).toBe(0)
   })
 
   it('字典删除兼容接口改为停用', async () => {
     const { DictService } = await import('../../packages/server/src/service/DictService.js')
-    new DictService().delete('dict-1')
+    await new DictService().delete('dict-1')
     const row = db.get('SELECT enabled FROM dict WHERE id = ?', 'dict-1') as { enabled: number }
     expect(row.enabled).toBe(0)
   })
