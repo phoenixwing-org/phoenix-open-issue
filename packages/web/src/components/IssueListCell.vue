@@ -6,7 +6,7 @@ import { ATTENTION_LEVEL_LABELS, isOverdue } from '@open-issue/core'
 
 const props = defineProps<{
   columnKey: IssueColumnKey
-  row: Record<string, any> & { id: string }
+  row: Record<string, any> & { id: string; title: string }
 }>()
 
 const ctx = inject<{
@@ -27,6 +27,7 @@ const ctx = inject<{
   openViewIssue: (row: { id: string }, e?: Event) => void
   openQuickEdit: (row: any, field: string, e?: Event) => void
   openEditCheckpoint: (cp: Checkpoint, issueTitle: string, e?: Event) => void
+  openCreateCheckpoint: (row: { id: string; title: string }, e?: Event) => void
 }>('issueListCellCtx')!
 
 const col = computed(() => props.columnKey)
@@ -186,6 +187,7 @@ const row = computed(() => props.row)
     <div v-if="(ctx.checkpointMap[row.id]?.length || 0) > ctx.maxTimelineRows" class="cp-mini-more">
       … 共 {{ ctx.checkpointMap[row.id].length }} 条
     </div>
+    <button class="cp-mini-add" type="button" title="添加点检" @click.stop="ctx.openCreateCheckpoint(row, $event)">+</button>
   </div>
 </template>
 
@@ -213,7 +215,15 @@ const row = computed(() => props.row)
 .cp-mini-who { flex-shrink: 0; color: #c0c4cc; font-size: 0.7rem; }
 .cp-mini-empty { color: #c0c4cc; font-style: italic; }
 .cp-mini-more {
-  position: absolute; bottom: -3px; right: 4px; color: #909399;
+  position: absolute; bottom: -3px; right: 26px; color: #909399;
   background: #f0f2f5; font-size: 0.62rem; padding: 1px 6px; border-radius: 10px;
 }
+.cp-mini-add {
+  position: absolute; bottom: -3px; right: 4px;
+  display: grid; place-items: center;
+  width: 18px; height: 18px; padding: 0;
+  color: #409eff; background: #ecf5ff; border: 1px solid #b3d8ff; border-radius: 9px;
+  cursor: pointer; font-size: 15px; line-height: 1;
+}
+.cp-mini-add:hover { color: #fff; background: #409eff; border-color: #409eff; }
 </style>

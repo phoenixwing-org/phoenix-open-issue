@@ -10,8 +10,13 @@ const describePostgres = connectionString ? describe : describe.skip
 describePostgres('PostgreSQL integration', () => {
   const suffix = randomUUID()
   const userId = `pg-test-user-${suffix}`
+  const checkpointOwnerId = `pg-test-checkpoint-owner-${suffix}`
   const flagKey = `pg-test-flag-${suffix}`
   const migrationId = `pg-test-migration-${suffix}`
+  const sourceListId = `pg-test-source-${suffix}`
+  const linkedListId = `pg-test-linked-${suffix}`
+  const issueId = `pg-test-issue-${suffix}`
+  const checkpointId = `pg-test-checkpoint-${suffix}`
   let db: PnwPostgresAdapter
 
   beforeAll(async () => {
@@ -26,6 +31,11 @@ describePostgres('PostgreSQL integration', () => {
 
   afterAll(async () => {
     if (!db) return
+    await db.run('DELETE FROM checkpoints WHERE id = ?', [checkpointId])
+    await db.run('DELETE FROM issueListLinks WHERE issueId = ?', [issueId])
+    await db.run('DELETE FROM issues WHERE id = ?', [issueId])
+    await db.run('DELETE FROM issueLists WHERE id IN (?, ?)', [sourceListId, linkedListId])
+    await db.run('DELETE FROM users WHERE id = ?', [checkpointOwnerId])
     await db.run('DELETE FROM users WHERE id = ?', [userId])
     await db.run('DELETE FROM systemFlags WHERE key = ?', [flagKey])
     await db.run('DELETE FROM schemaMigrations WHERE id = ?', [migrationId])
@@ -64,5 +74,45 @@ describePostgres('PostgreSQL integration', () => {
     const migrations = [{ id: migrationId, up: async () => {} }]
     expect(await pnwRunMigrations(db, migrations)).toEqual([migrationId])
     expect(await pnwRunMigrations(db, migrations)).toEqual([])
+  })
+
+  it('returns checkpoints for an Issue linked into the queried list', async () => {
+    await db.run('INSERT INTO users (id, username, passwordHash) VALUES (?, ?, ?)', [checkpointOwnerId, `pg-owner-${suffix}`, 'hash'])
+    await db.run(
+      'INSERT INTO issueLists (id, name, listType, ownerId) VALUES (?, ?, ?, ?)',
+      [sourceListId, 'Source', 'custom', checkpointOwnerId],
+    )
+    await db.run(
+      'INSERT INTO issueLists (id, name, listType, ownerId) VALUES (?, ?, ?, ?)',
+      [linkedListId, 'Linked', 'custom', checkpointOwnerId],
+    )
+    await db.run(
+      'INSERT INTO issues (id, listId, title, createdBy) VALUES (?, ?, ?, ?)',
+      [issueId, sourceListId, 'Linked issue', checkpointOwnerId],
+    )
+    await db.run(
+      'INSERT INTO issueListLinks (id, issueId, listId, linkedBy) VALUES (?, ?, ?, ?)',
+      [`pg-test-link-${suffix}`, issueId, linkedListId, checkpointOwnerId],
+    )
+    await db.run(
+      'INSERT INTO checkpoints (id, issueId, checkpointDate, description) VALUES (?, ?, ?, ?)',
+      [checkpointId, issueId, '2026-07-13', 'Visible in linked list'],
+    )
+
+    const checkpoints = await db.all<{ id: string }>(`
+      SELECT DISTINCT c.* FROM checkpoints c
+      JOIN issues i ON i.id = c.issueId
+      JOIN issueListLinks il ON il.issueId = i.id
+      WHERE il.listId = ?
+    `, [linkedListId])
+    expect(checkpoints.map(row => row.id)).toContain(checkpointId)
+
+    const issue = await db.get<{ originListName: string }>(`
+      SELECT origin.name AS "originListName"
+      FROM issues i
+      JOIN issueLists origin ON i.listId = origin.id
+      WHERE i.id = ?
+    `, [issueId])
+    expect(issue?.originListName).toBe('Source')
   })
 })

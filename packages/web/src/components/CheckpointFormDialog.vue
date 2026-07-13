@@ -2,7 +2,11 @@
 import { ref, computed } from 'vue'
 import type { Checkpoint, CheckpointStatus } from '@open-issue/core'
 
-const props = defineProps<{ users: any[]; initial?: Partial<Checkpoint> }>()
+const props = defineProps<{
+  users: any[]
+  initial?: Partial<Checkpoint>
+  issueTitle?: string
+}>()
 const emit = defineEmits<{
   confirm: [data: { checkpointDate: string; description: string; responsibleUserId?: string; status?: CheckpointStatus }]
   close: []
@@ -10,7 +14,13 @@ const emit = defineEmits<{
 
 const isEdit = computed(() => !!props.initial?.id)
 
-const date = ref(props.initial?.checkpointDate || new Date().toISOString().slice(0, 10))
+function localToday(): string {
+  const now = new Date()
+  const local = new Date(now.getTime() - now.getTimezoneOffset() * 60_000)
+  return local.toISOString().slice(0, 10)
+}
+
+const date = ref(props.initial?.checkpointDate || localToday())
 const desc = ref(props.initial?.description || '')
 const responsible = ref(props.initial?.responsibleUserId || '')
 const status = ref<CheckpointStatus>(props.initial?.status || 'pending')
@@ -35,10 +45,16 @@ function submit() {
 <template>
   <el-dialog
     :model-value="true"
-    :title="isEdit ? '编辑点检项' : '添加点检项'"
+    :title="isEdit ? '编辑点检项' : '添加点检'"
     width="450px"
     @close="emit('close')"
   >
+    <template #header>
+      <div class="dialog-title">
+        <el-tag v-if="props.issueTitle" size="small" type="info" effect="plain">{{ props.issueTitle }}</el-tag>
+        <span>{{ isEdit ? '编辑点检项' : '添加点检' }}</span>
+      </div>
+    </template>
     <el-form label-position="top" @submit.prevent="submit">
       <el-form-item label="日期" required>
         <el-date-picker v-model="date" type="date" placeholder="选择日期" style="width:100%" value-format="YYYY-MM-DD" />
@@ -63,3 +79,8 @@ function submit() {
     </template>
   </el-dialog>
 </template>
+
+<style scoped>
+.dialog-title { display: flex; align-items: center; gap: 8px; min-width: 0; padding-right: 24px; }
+.dialog-title .el-tag { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+</style>

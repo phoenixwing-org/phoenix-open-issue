@@ -16,9 +16,10 @@ export class CheckpointService {
   async getByListId(listId: string): Promise<Record<string, Checkpoint[]>> {
     const db = getAsyncDb()
     const rows = await db.all(`
-      SELECT c.* FROM checkpoints c
+      SELECT DISTINCT c.* FROM checkpoints c
       JOIN issues i ON i.id = c.issueId
-      WHERE i.listId = ?
+      JOIN issueListLinks il ON il.issueId = i.id
+      WHERE il.listId = ?
       ORDER BY c.checkpointDate ASC, c.sortOrder ASC
     `, [listId]) as Checkpoint[]
 

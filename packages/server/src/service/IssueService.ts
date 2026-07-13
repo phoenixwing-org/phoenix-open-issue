@@ -40,7 +40,7 @@ export class IssueService {
     }
 
     const where = conditions.length > 0 ? ' AND ' + conditions.join(' AND ') : ''
-    const fromJoin = `FROM issues i JOIN issueListLinks il ON i.id = il.issueId AND il.listId = ? LEFT JOIN poiFunctions f ON i.functionId = f.id`
+    const fromJoin = `FROM issues i JOIN issueListLinks il ON i.id = il.issueId AND il.listId = ? LEFT JOIN issueLists origin ON i.listId = origin.id LEFT JOIN poiFunctions f ON i.functionId = f.id`
     const total = await db.get(`SELECT COUNT(*) as count FROM issues i JOIN issueListLinks il ON i.id = il.issueId AND il.listId = ?${where}`, [listId, ...params.slice(1)]) as { count: number }
 
     // 排序：默认关注度 → 优先级；sort 支持 "field:dir" 或 "field:dir,field2:dir2"
@@ -86,6 +86,7 @@ export class IssueService {
     const items = await db.all(
       `SELECT i.*,
         il.attentionLevel as _attentionLevel,
+        origin.name AS "originListName",
         f.functionName as _functionName, f.platform as _functionPlatform, f.externalId as _functionExternalId ${fromJoin}${where} ORDER BY ${orderBy} LIMIT ? OFFSET ?`,
       allParams,
     ) as (Issue & { _attentionLevel: number })[]
@@ -96,8 +97,9 @@ export class IssueService {
   async getById(id: string): Promise<Issue | undefined> {
     const db = getAsyncDb()
     return await db.get(
-      `SELECT i.*, f.functionName as _functionName, f.platform as _functionPlatform, f.externalId as _functionExternalId
+      `SELECT i.*, origin.name AS "originListName", f.functionName as _functionName, f.platform as _functionPlatform, f.externalId as _functionExternalId
        FROM issues i
+       LEFT JOIN issueLists origin ON i.listId = origin.id
        LEFT JOIN poiFunctions f ON i.functionId = f.id
        WHERE i.id = ?`,
       [id],

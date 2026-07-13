@@ -17,7 +17,7 @@ import type { Checkpoint } from '@open-issue/core'
 import { isOverdue } from '@open-issue/core'
 
 const props = defineProps<{ issueId?: string }>()
-const emit = defineEmits<{ close: [] }>()
+const emit = defineEmits<{ close: []; 'checkpoint-created': [] }>()
 const route = useRoute()
 const router = useRouter()
 const issueStore = useIssueStore()
@@ -85,7 +85,8 @@ async function onCreateCp(data: any) {
   await createCheckpoint(issueId, data)
   showCpForm.value = false
   ElMessage.success('点检项已添加')
-  loadCheckpoints()
+  await loadCheckpoints()
+  emit('checkpoint-created')
 }
 
 async function onToggleStatus(cp: Checkpoint) {
@@ -122,16 +123,43 @@ function goBack() {
         <el-button v-if="issueStore.currentIssue" size="small" type="primary" plain @click="showEdit = true">
           <el-icon><Edit /></el-icon> 编辑
         </el-button>
-        <el-button v-if="issueStore.currentIssue" size="small" type="warning" plain @click="showPush = true">
-          <el-icon><Promotion /></el-icon> 推送
-        </el-button>
-        <button class="hdr-btn-close" @click="goBack" title="关闭">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-            <path d="M4 4L12 12M12 4L4 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-          </svg>
-        </button>
+        <el-tooltip content="添加点检" placement="bottom">
+          <el-button
+            v-if="issueStore.currentIssue"
+            size="small"
+            type="success"
+            plain
+            circle
+            aria-label="添加点检"
+            @click="showCpForm = true"
+          >
+            <el-icon><Plus /></el-icon>
+          </el-button>
+        </el-tooltip>
+        <el-tooltip content="推送到其他列表" placement="bottom">
+          <el-button
+            v-if="issueStore.currentIssue"
+            size="small"
+            type="warning"
+            plain
+            circle
+            aria-label="推送到其他列表"
+            @click="showPush = true"
+          >
+            <el-icon><Promotion /></el-icon>
+          </el-button>
+        </el-tooltip>
       </template>
-      <template #help><PageHelpButton page-id="issueDetail" /></template>
+      <template #help>
+        <div class="header-right">
+          <PageHelpButton page-id="issueDetail" />
+          <button class="hdr-btn-close" @click="goBack" title="关闭">
+            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+              <path d="M4 4L12 12M12 4L4 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            </svg>
+          </button>
+        </div>
+      </template>
     </PnwPageHeader>
 
     <div v-if="issueStore.currentIssue" class="issue-detail">
@@ -139,6 +167,9 @@ function goBack() {
         <span class="issue-no">{{ issueStore.currentIssue.issueNo }}</span>
         <el-tag :type="statusTag[issueStore.currentIssue.status]">
           {{ statusLabel[issueStore.currentIssue.status] }}
+        </el-tag>
+        <el-tag v-if="issueStore.currentIssue.originListName" type="info" effect="plain">
+          归属：{{ issueStore.currentIssue.originListName }}
         </el-tag>
         <span class="meta-time">创建于 {{ new Date(issueStore.currentIssue.createdAt).toLocaleString('zh-CN') }}</span>
       </div>
@@ -257,6 +288,7 @@ function goBack() {
     <CheckpointFormDialog
       v-if="showCpForm"
       :users="activeUsers"
+      :issue-title="issueStore.currentIssue?.title"
       @confirm="onCreateCp"
       @close="showCpForm = false"
     />
@@ -316,6 +348,7 @@ function goBack() {
   background: #f0f0f0;
   color: #606266;
 }
+.header-right { display: flex; align-items: center; gap: 6px; }
 .detail-meta { display: flex; gap: 12px; align-items: center; margin-top: 8px; }
 .issue-no { font-family: monospace; font-size: 1rem; color: #409eff; font-weight: 600; }
 .meta-time { font-size: 0.8rem; color: #c0c4cc; }

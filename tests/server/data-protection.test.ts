@@ -98,6 +98,16 @@ describe('数据保护规则', () => {
     expect(row.status).toBe('skipped')
   })
 
+  it('列表点检查询包含关联进来的 Issue', async () => {
+    const { CheckpointService } = await import('../../packages/server/src/service/CheckpointService.js')
+    db.run(`INSERT INTO issueLists (id, name, listType, ownerId) VALUES ('list-linked', '关联列表', 'custom', ?)`, adminId)
+    db.run(`INSERT INTO issueListLinks (id, issueId, listId, linkedBy) VALUES ('link-linked', 'issue-1', 'list-linked', ?)`, adminId)
+
+    const grouped = await new CheckpointService().getByListId('list-linked')
+    expect(grouped['issue-1']).toHaveLength(1)
+    expect(grouped['issue-1'][0].id).toBe('checkpoint-1')
+  })
+
   it('组织节点拒绝物理删除', async () => {
     const { OrgUnitService } = await import('../../packages/server/src/service/OrgUnitService.js')
     await expect(new OrgUnitService().delete('org-1')).rejects.toThrow(/不允许删除/)

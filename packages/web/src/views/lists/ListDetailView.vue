@@ -19,7 +19,7 @@ import {
 const dict = useDictStore()
 import { getMembers, addMember, removeMember, transferOwner, updateMemberRole } from '@/api/issueLists'
 import { getAllUsers } from '@/api/auth'
-import { getCheckpointsByList, updateCheckpoint } from '@/api/checkpoints'
+import { createCheckpoint, getCheckpointsByList, updateCheckpoint } from '@/api/checkpoints'
 import { getIncomingPushes, handlePush } from '@/api/push'
 import { ElMessage } from 'element-plus';
 import { pnwPromptChoice, pnwPromptInput, pnwPropGroup, pnwPropEnum, pnwPropBool, pnwPropSheet } from 'phoenix-wing'
@@ -70,6 +70,7 @@ const showPush = ref(false)
 const pushIssueId = ref<string | null>(null)
 const showColumnSettings = ref(false)
 const editCheckpoint = ref<{ cp: Checkpoint; issueTitle: string } | null>(null)
+const createCheckpointFor = ref<{ id: string; title: string } | null>(null)
 const statusFilter = ref('')
 const severityFilter = ref('')
 const categoryFilter = ref('')
@@ -334,6 +335,23 @@ function openEditCheckpoint(cp: Checkpoint, issueTitle: string, e?: Event) {
   editCheckpoint.value = { cp, issueTitle }
 }
 
+function openCreateCheckpoint(row: { id: string; title: string }, e?: Event) {
+  e?.stopPropagation()
+  createCheckpointFor.value = { id: row.id, title: row.title }
+}
+
+async function onCreateCheckpoint(data: {
+  checkpointDate: string
+  description: string
+  responsibleUserId?: string
+}) {
+  if (!createCheckpointFor.value) return
+  await createCheckpoint(createCheckpointFor.value.id, data)
+  createCheckpointFor.value = null
+  ElMessage.success('点检项已添加')
+  await loadCheckpoints()
+}
+
 async function onEditCheckpoint(data: {
   checkpointDate: string
   description: string
@@ -345,6 +363,10 @@ async function onEditCheckpoint(data: {
   editCheckpoint.value = null
   ElMessage.success('点检已更新')
   await loadCheckpoints()
+}
+
+async function onCheckpointCreated() {
+  if (viewMode.value === 'timeline') await loadCheckpoints()
 }
 
 async function onCreateIssue(data: any) {
@@ -388,6 +410,14 @@ function linkAttention(row: Record<string, unknown>): number {
 
 function isUnwatched(row: Record<string, unknown>) {
   return linkAttention(row) === 0
+}
+
+function isPushedIssue(row: { listId: string }) {
+  return row.listId !== listId.value
+}
+
+function issueOriginTip(row: { originListName?: string | null }) {
+  return row.originListName ? `推送自：${row.originListName}` : '推送 Issue'
 }
 
 async function onAddMember(userId: string, role: string) {
@@ -517,6 +547,7 @@ provide('issueListCellCtx', reactive({
   openViewIssue,
   openQuickEdit,
   openEditCheckpoint,
+  openCreateCheckpoint,
 }))
 </script>
 
@@ -612,7 +643,13 @@ provide('issueListCellCtx', reactive({
         return ''
       }"
     >
-      <el-table-column type="index" label="#" width="45" align="center" fixed="left" />
+      <el-table-column label="#" width="45" align="center" fixed="left">
+        <template #default="{ row, $index }">
+          <el-tooltip :content="issueOriginTip(row)" :disabled="!isPushedIssue(row)" placement="top">
+            <span class="issue-row-index" :class="{ 'is-pushed': isPushedIssue(row) }">{{ $index + 1 }}</span>
+          </el-tooltip>
+        </template>
+      </el-table-column>
       <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip fixed="left" sortable="custom">
         <template #default="{ row }">
           <span class="cell-link" title="点击查看" @click="openViewIssue(row, $event)">{{ row.title }}</span>
@@ -652,6 +689,7 @@ provide('issueListCellCtx', reactive({
               @command="(cmd: string) => {
                 if (cmd === 'void') onVoidIssue(row.id, row.title)
                 else if (cmd === 'unvoid') onRestoreAttention(row.id)
+                else if (cmd === 'checkpoint') openCreateCheckpoint(row)
               }"
               size="small"
               trigger="click"
@@ -661,6 +699,7 @@ provide('issueListCellCtx', reactive({
               </el-button>
               <template #dropdown>
                 <el-dropdown-menu>
+                  <el-dropdown-item command="checkpoint">添加点检</el-dropdown-item>
                   <template v-if="isUnwatched(row)">
                     <el-dropdown-item command="unvoid" style="color:#67c23a">🔄 恢复默认(三星)</el-dropdown-item>
                   </template>
@@ -704,8 +743,16 @@ provide('issueListCellCtx', reactive({
       v-if="editCheckpoint"
       :users="activeUsers"
       :initial="editCheckpoint.cp"
+      :issue-title="editCheckpoint.issueTitle"
       @confirm="onEditCheckpoint"
       @close="editCheckpoint = null"
+    />
+    <CheckpointFormDialog
+      v-if="createCheckpointFor"
+      :users="activeUsers"
+      :issue-title="createCheckpointFor.title"
+      @confirm="onCreateCheckpoint"
+      @close="createCheckpointFor = null"
     />
     <ListFormDialog
       v-if="showEditList && currentList"
@@ -738,7 +785,12 @@ provide('issueListCellCtx', reactive({
 
     <!-- Issue 详情遮罩 -->
     <PnwAppModalOverlay :open="showIssueModal" aria-label="Issue 详情" panel-class="issue-detail-modal" @close="showIssueModal = false">
-      <IssueDetailView v-if="showIssueModal" :issue-id="modalIssueId" @close="showIssueModal = false" />
+      <IssueDetailView
+        v-if="showIssueModal"
+        :issue-id="modalIssueId"
+        @checkpoint-created="onCheckpointCreated"
+        @close="showIssueModal = false"
+      />
     </PnwAppModalOverlay>
   </div>
 </template>
@@ -778,6 +830,36 @@ provide('issueListCellCtx', reactive({
   color: #409eff;
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+.issue-row-index {
+  display: inline-grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  box-sizing: border-box;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  color: #606266;
+  font-variant-numeric: tabular-nums;
+}
+.issue-row-index.is-pushed {
+  position: relative;
+  background: #d9ecff;
+  border: 2px solid #409eff;
+  box-shadow: inset 3px 0 0 #1677ff, 0 0 0 1px rgba(64, 158, 255, 0.16);
+  color: #1677ff;
+  font-weight: 700;
+}
+.issue-row-index.is-pushed::after {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 8px;
+  height: 8px;
+  content: '';
+  background: #1677ff;
+  border: 2px solid #fff;
+  border-radius: 50%;
 }
 .row-actions {
   display: inline-flex;

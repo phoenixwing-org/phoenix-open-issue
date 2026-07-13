@@ -35,6 +35,8 @@ export type DetectionPhase =
 export interface Issue {
   id: string
   listId: string
+  /** 主归属列表名称；Issue 被推送到其他列表时用于标识来源。 */
+  originListName?: string | null
 
   // 第一层：基本信息
   issueNo: string                     // 可读编号，如 ISS-2026-0001
