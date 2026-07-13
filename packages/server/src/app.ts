@@ -10,7 +10,8 @@ export function createApp(): Express {
   const app = express()
 
   app.use(cors())
-  app.use(express.json())
+  // 备份/迁移 JSON 可能超过默认 100kb；导入接口需要更大 body。
+  app.use(express.json({ limit: '50mb' }))
 
   app.use('/api', routes)
 
