@@ -1,4 +1,4 @@
-export type CheckpointStatus = 'pending' | 'done' | 'skipped'
+export type CheckpointStatus = 'pending' | 'done' | 'skipped' | 'voided'
 
 export interface Checkpoint {
   id: string

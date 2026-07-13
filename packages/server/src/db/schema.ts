@@ -3,6 +3,7 @@ import { ensurePendingOrgUnit } from '../utils/pendingOrgUnit.js'
 import {
   applyColumnMigrations,
   dedupeIssueListLinks,
+  migrateCheckpointStatusVoided,
   migrateIssueListsListType,
   migrateUserSystemRole,
   migrateIssueListLinkAttention,
@@ -89,7 +90,7 @@ export function runSchema(db: PnwDbAdapter): void {
       issueId TEXT NOT NULL,
       checkpointDate TEXT NOT NULL,
       description TEXT NOT NULL,
-      status TEXT DEFAULT 'pending' CHECK(status IN ('pending','done','skipped')),
+      status TEXT DEFAULT 'pending' CHECK(status IN ('pending','done','skipped','voided')),
       responsibleUserId TEXT,
       sortOrder INTEGER DEFAULT 0,
       createdAt TEXT DEFAULT (datetime('now')),
@@ -164,6 +165,7 @@ export function runSchema(db: PnwDbAdapter): void {
 
   migrateUserSystemRole(db)
   migrateIssueListsListType(db)
+  migrateCheckpointStatusVoided(db)
   migrateIssueListLinkAttention(db)
   const dictRepair = repairDictDataAndIndex(db)
   if (!dictRepair.indexOk) {
@@ -176,5 +178,5 @@ export function runSchema(db: PnwDbAdapter): void {
 }
 
 // re-export for external use
-export { migrateUserSystemRole, migrateIssueListsListType, migrateIssueListLinkAttention, dedupeDictEntries, ensureDictUniqueIndex, migrateDictTagsFormat, repairDictDataAndIndex, hasDictUniqueIndex, countDictDuplicateGroups, ensureIssueNoIndexes } from './migrations.js'
+export { migrateUserSystemRole, migrateIssueListsListType, migrateCheckpointStatusVoided, migrateIssueListLinkAttention, dedupeDictEntries, ensureDictUniqueIndex, migrateDictTagsFormat, repairDictDataAndIndex, hasDictUniqueIndex, countDictDuplicateGroups, ensureIssueNoIndexes } from './migrations.js'
 export type { DictRepairResult, DictDedupeResult, DictDedupeDetail } from './migrations.js'

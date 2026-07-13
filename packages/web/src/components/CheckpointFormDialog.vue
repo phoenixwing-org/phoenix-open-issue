@@ -6,6 +6,7 @@ const props = defineProps<{
   users: any[]
   initial?: Partial<Checkpoint>
   issueTitle?: string
+  issueNo?: string
 }>()
 const emit = defineEmits<{
   confirm: [data: { checkpointDate: string; description: string; responsibleUserId?: string; status?: CheckpointStatus }]
@@ -29,6 +30,7 @@ const statusOptions = [
   { value: 'pending', label: '待处理' },
   { value: 'done', label: '已完成' },
   { value: 'skipped', label: '已跳过' },
+  { value: 'voided', label: '已作废' },
 ]
 
 function submit() {
@@ -51,13 +53,23 @@ function submit() {
   >
     <template #header>
       <div class="dialog-title">
-        <el-tag v-if="props.issueTitle" size="small" type="info" effect="plain">{{ props.issueTitle }}</el-tag>
         <span>{{ isEdit ? '编辑点检项' : '添加点检' }}</span>
+        <div v-if="props.issueTitle" class="issue-context">
+          <el-tag type="primary" effect="dark">{{ props.issueNo || '当前 Issue' }}</el-tag>
+          <strong :title="props.issueTitle">{{ props.issueTitle }}</strong>
+        </div>
       </div>
     </template>
     <el-form label-position="top" @submit.prevent="submit">
       <el-form-item label="日期" required>
-        <el-date-picker v-model="date" type="date" placeholder="选择日期" style="width:100%" value-format="YYYY-MM-DD" />
+        <el-date-picker
+          v-model="date"
+          type="date"
+          placeholder="选择日期"
+          style="width:100%"
+          value-format="YYYY-MM-DD"
+          :teleported="false"
+        />
       </el-form-item>
       <el-form-item label="描述" required>
         <el-input v-model="desc" placeholder="如：已流程到采购" />
@@ -81,6 +93,20 @@ function submit() {
 </template>
 
 <style scoped>
-.dialog-title { display: flex; align-items: center; gap: 8px; min-width: 0; padding-right: 24px; }
-.dialog-title .el-tag { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dialog-title { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; padding-right: 24px; }
+.issue-context {
+  display: flex;
+  flex-basis: 100%;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin-top: 2px;
+  padding: 7px 9px;
+  color: #1d4f91;
+  background: #ecf5ff;
+  border-left: 3px solid #409eff;
+  border-radius: 4px;
+  font-size: 0.86rem;
+}
+.issue-context strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 </style>

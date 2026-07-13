@@ -49,8 +49,8 @@ const statusTag: Record<string, string | undefined> = { open: 'info', in_progres
 const priorityTag: Record<string, string | undefined> = { low: 'info', medium: 'warning', high: 'danger', critical: undefined }
 const priorityLabel: Record<string, string> = { low: '低', medium: '中', high: '高', critical: '紧急' }
 const severityTag: Record<string, string | undefined> = { fatal: 'danger', major: 'warning', minor: 'info', trivial: undefined }
-const cpStatusLabel: Record<string, string> = { pending: '待处理', done: '已完成', skipped: '已跳过' }
-const cpStatusColor: Record<string, string> = { pending: '#909399', done: '#67c23a', skipped: '#e6a23c' }
+const cpStatusLabel: Record<string, string> = { pending: '待处理', done: '已完成', skipped: '已跳过', voided: '已作废' }
+const cpStatusColor: Record<string, string> = { pending: '#909399', done: '#67c23a', skipped: '#e6a23c', voided: '#f56c6c' }
 
 const sortedCheckpoints = computed(() => {
   const direction = settings.checkpointTimelineOrder === 'desc' ? -1 : 1
@@ -191,9 +191,8 @@ function goBack() {
         <el-button v-if="issueStore.currentIssue" size="small" type="primary" plain @click="showEdit = true">
           <el-icon><Edit /></el-icon> 编辑
         </el-button>
-        <el-tooltip content="添加点检" placement="bottom">
+        <el-tooltip v-if="issueStore.currentIssue" content="添加点检" placement="bottom">
           <el-button
-            v-if="issueStore.currentIssue"
             size="small"
             type="success"
             plain
@@ -204,9 +203,8 @@ function goBack() {
             <el-icon><Plus /></el-icon>
           </el-button>
         </el-tooltip>
-        <el-tooltip content="推送到其他列表" placement="bottom">
+        <el-tooltip v-if="issueStore.currentIssue" content="推送到其他列表" placement="bottom">
           <el-button
-            v-if="issueStore.currentIssue"
             size="small"
             type="warning"
             plain
@@ -361,18 +359,18 @@ function goBack() {
           </div>
         </el-timeline-item>
       </el-timeline>
-      <el-table v-else :data="sortedCheckpoints" size="small" class="checkpoint-table">
-        <el-table-column prop="checkpointDate" label="日期" width="104" />
-        <el-table-column label="状态" width="78">
+      <el-table v-else :data="sortedCheckpoints" size="small" class="checkpoint-table" :fit="true">
+        <el-table-column prop="checkpointDate" label="日期" width="100" />
+        <el-table-column label="状态" width="76">
           <template #default="{ row }">
             <CheckpointStatusTag :status="row.status" :overdue="checkpointOverdue(row)" @change="onChangeCheckpointStatus(row, $event)" />
           </template>
         </el-table-column>
-        <el-table-column prop="description" label="内容" min-width="180" show-overflow-tooltip>
+        <el-table-column prop="description" label="内容" min-width="120" show-overflow-tooltip>
           <template #default="{ row }"><span class="cp-table-desc" title="点击编辑点检" @click="openEditCheckpoint(row)">{{ row.description }}</span></template>
         </el-table-column>
-        <el-table-column label="负责人" min-width="88" show-overflow-tooltip>
-          <template #default="{ row }">{{ getUserName(row.responsibleUserId) }}</template>
+        <el-table-column label="负责人" min-width="76" show-overflow-tooltip>
+          <template #default="{ row }"><span :title="getUserName(row.responsibleUserId)">{{ getUserName(row.responsibleUserId) }}</span></template>
         </el-table-column>
       </el-table>
       </aside>
@@ -382,6 +380,7 @@ function goBack() {
       v-if="showCpForm"
       :users="activeUsers"
       :issue-title="issueStore.currentIssue?.title"
+      :issue-no="issueStore.currentIssue?.issueNo"
       @confirm="onCreateCp"
       @close="showCpForm = false"
     />
@@ -390,6 +389,7 @@ function goBack() {
       :users="activeUsers"
       :initial="editCheckpoint"
       :issue-title="issueStore.currentIssue?.title"
+      :issue-no="issueStore.currentIssue?.issueNo"
       @confirm="onEditCheckpoint"
       @close="editCheckpoint = null"
     />
@@ -452,7 +452,7 @@ function goBack() {
 .header-right { display: flex; align-items: center; gap: 6px; }
 .issue-workspace {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(360px, 420px);
+  grid-template-columns: minmax(0, 1fr) minmax(400px, 480px);
   gap: 28px;
   align-items: start;
 }

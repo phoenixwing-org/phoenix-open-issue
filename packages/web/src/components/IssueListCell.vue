@@ -27,7 +27,7 @@ const ctx = inject<{
   openViewIssue: (row: { id: string }, e?: Event) => void
   openQuickEdit: (row: any, field: string, e?: Event) => void
   openEditCheckpoint: (cp: Checkpoint, issueTitle: string, e?: Event) => void
-  openCreateCheckpoint: (row: { id: string; title: string }, e?: Event) => void
+  openCreateCheckpoint: (row: { id: string; title: string; issueNo?: string }, e?: Event) => void
   onUpdateCheckpointStatus: (cp: Checkpoint, status: Checkpoint['status']) => void
 }>('issueListCellCtx')!
 
@@ -214,7 +214,7 @@ const row = computed(() => props.row)
 .cp-mini-item { display: flex; gap: 6px; align-items: baseline; padding: 1px 0; }
 .cp-mini-item.cp-editable { cursor: pointer; border-radius: 2px; }
 .cp-mini-item.cp-editable:hover { background: #ecf5ff; }
-.cp-mini-item.cp-overdue { background: #fef0f0; border-radius: 2px; padding: 1px 4px; }
+.cp-mini-item.cp-overdue { margin: 0 -4px; background: #fef0f0; border-radius: 2px; padding: 1px 4px; }
 .cp-mini-item.cp-overdue.cp-editable:hover { background: #fde2e2; }
 .cp-mini-icon { flex-shrink: 0; font-size: 0.75rem; }
 .cp-mini-date { flex-shrink: 0; color: #909399; font-family: monospace; font-size: 0.75rem; }

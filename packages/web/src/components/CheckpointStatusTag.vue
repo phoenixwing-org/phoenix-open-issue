@@ -16,30 +16,35 @@ const labels: Record<CheckpointStatus, string> = {
   pending: '待处理',
   done: '已完成',
   skipped: '已跳过',
+  voided: '已作废',
 }
 
 const tagTypes: Record<CheckpointStatus, string | undefined> = {
   pending: 'info',
   done: 'success',
   skipped: 'warning',
+  voided: 'danger',
 }
 
 function compactLabel() {
   if (props.overdue && props.status === 'pending') return '⚠'
-  return { pending: '⏳', done: '✓', skipped: '—' }[props.status]
+  return { pending: '⏳', done: '✓', skipped: '—', voided: '×' }[props.status]
 }
 </script>
 
 <template>
-  <el-dropdown trigger="click" @command="(status: CheckpointStatus) => emit('change', status)">
-    <el-tooltip :content="`${labels[props.status]}，点击修改`" placement="top">
+  <el-dropdown
+    trigger="click"
+    :popper-style="{ zIndex: 9101 }"
+    @command="(status: CheckpointStatus) => emit('change', status)"
+  >
+    <span class="checkpoint-status-trigger" :title="`${labels[props.status]}，点击修改`" @click.stop>
       <el-tag
         :type="props.overdue && props.status === 'pending' ? 'danger' : tagTypes[props.status]"
         :class="['checkpoint-status-tag', { 'is-compact': props.compact }]"
         size="small"
-        @click.stop
       >{{ props.compact ? compactLabel() : labels[props.status] }}</el-tag>
-    </el-tooltip>
+    </span>
     <template #dropdown>
       <el-dropdown-menu>
         <el-dropdown-item v-for="(_, status) in labels" :key="status" :command="status">
@@ -53,5 +58,16 @@ function compactLabel() {
 <style scoped>
 .checkpoint-status-tag { cursor: pointer; user-select: none; }
 .checkpoint-status-tag:hover { opacity: 0.8; outline: 1px dashed currentColor; }
-.checkpoint-status-tag.is-compact { min-width: 18px; padding: 0 4px; text-align: center; }
+.checkpoint-status-tag.is-compact {
+  box-sizing: border-box;
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  text-align: center;
+}
+.checkpoint-status-trigger { display: inline-flex; }
 </style>

@@ -91,11 +91,11 @@ describe('数据保护规则', () => {
     expect((db.get('SELECT COUNT(*) AS c FROM pushRecords WHERE issueId = ?', 'issue-1') as { c: number }).c).toBe(1)
   })
 
-  it('点检删除兼容接口改为跳过', async () => {
+  it('点检删除兼容接口改为作废', async () => {
     const { CheckpointService } = await import('../../packages/server/src/service/CheckpointService.js')
     await new CheckpointService().delete('checkpoint-1', adminId)
     const row = db.get('SELECT status FROM checkpoints WHERE id = ?', 'checkpoint-1') as { status: string }
-    expect(row.status).toBe('skipped')
+    expect(row.status).toBe('voided')
   })
 
   it('列表点检查询包含关联进来的 Issue', async () => {
@@ -117,6 +117,33 @@ describe('数据保护规则', () => {
 
     const checkpoints = await new CheckpointService().getByIssueId('issue-1')
     expect(checkpoints.map(cp => cp.id)).toEqual(['checkpoint-2', 'checkpoint-1'])
+  })
+
+  it('旧点检表升级后支持作废状态', async () => {
+    const { pnwCreateDb } = await import('../../packages/server/src/db/pnwDbAdapter.js')
+    const { migrateCheckpointStatusVoided } = await import('../../packages/server/src/db/migrations.js')
+    const legacyPath = path.join(tempDir, 'legacy-checkpoints.sqlite')
+    const legacyDb = pnwCreateDb(legacyPath)
+    legacyDb.exec(`
+      CREATE TABLE checkpoints (
+        id TEXT PRIMARY KEY,
+        issueId TEXT NOT NULL,
+        checkpointDate TEXT NOT NULL,
+        description TEXT NOT NULL,
+        status TEXT DEFAULT 'pending' CHECK(status IN ('pending','done','skipped')),
+        responsibleUserId TEXT,
+        sortOrder INTEGER DEFAULT 0,
+        createdAt TEXT,
+        updatedAt TEXT
+      );
+      INSERT INTO checkpoints (id, issueId, checkpointDate, description, status)
+      VALUES ('legacy-cp', 'legacy-issue', '2026-07-13', '旧记录', 'skipped');
+    `)
+
+    expect(migrateCheckpointStatusVoided(legacyDb)).toBe(true)
+    legacyDb.run("UPDATE checkpoints SET status = 'voided' WHERE id = 'legacy-cp'")
+    expect(legacyDb.get('SELECT status FROM checkpoints WHERE id = ?', 'legacy-cp')).toEqual({ status: 'voided' })
+    legacyDb.close()
   })
 
   it('组织节点拒绝物理删除', async () => {

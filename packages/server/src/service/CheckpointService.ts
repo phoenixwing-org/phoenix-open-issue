@@ -101,7 +101,7 @@ export class CheckpointService {
     if (!canModifyIssue(role)) throw new ForbiddenError()
 
     await db.run(
-      `UPDATE checkpoints SET status = 'skipped', updatedAt = ? WHERE id = ?`,
+      `UPDATE checkpoints SET status = 'voided', updatedAt = ? WHERE id = ?`,
       [new Date().toISOString(), id],
     )
   }

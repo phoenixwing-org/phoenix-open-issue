@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, watch, computed, provide, reactive, inject } from 'vue'
+import { onActivated, ref, watch, computed, provide, reactive, inject } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useIssueListStore } from '@/stores/issueLists'
 import { useIssueStore } from '@/stores/issues'
@@ -70,7 +70,7 @@ const showPush = ref(false)
 const pushIssueId = ref<string | null>(null)
 const showColumnSettings = ref(false)
 const editCheckpoint = ref<{ cp: Checkpoint; issueTitle: string } | null>(null)
-const createCheckpointFor = ref<{ id: string; title: string } | null>(null)
+const createCheckpointFor = ref<{ id: string; title: string; issueNo?: string } | null>(null)
 const statusFilter = ref('')
 const severityFilter = ref('')
 const categoryFilter = ref('')
@@ -81,6 +81,7 @@ watch(viewMode, (v) => { settings.defaultViewMode = v })
 const checkpointMap = ref<Record<string, Checkpoint[]>>({})
 const incomingPushes = ref<any[]>([])
 const showPushInbox = ref(false)
+const loadedListId = ref<string | null>(null)
 
 // ── 标签映射（汽车行业标准） ──
 const statusLabel: Record<string, string> = {
@@ -97,7 +98,8 @@ const severityTag: Record<string, string | undefined> = {
 const priorityLabel: Record<string, string> = { low: '低', medium: '中', high: '高', critical: '紧急' }
 const priorityTag: Record<string, string | undefined> = { low: 'info', medium: 'warning', high: 'danger', critical: undefined }
 
-const currentList = computed(() => listStore.currentList)
+// 列表详情页会被 keep-alive 缓存。全局 store 正在加载另一列表时，不能短暂显示其数据。
+const currentList = computed(() => listStore.currentList?.id === listId.value ? listStore.currentList : null)
 
 function listTabTitle(name: string) {
   return name.length > 12 ? `${name.slice(0, 12)}…` : name
@@ -150,45 +152,53 @@ const userMap = computed<Record<string, string>>(() => {
   return map
 })
 
-onMounted(async () => {
-  await listStore.fetchList(listId.value)
+async function refreshListView() {
+  const targetListId = listId.value
+  loadedListId.value = null
+  await listStore.fetchList(targetListId)
+  if (listId.value !== targetListId) return
   syncListTabTitle()
-  await loadData()
-})
+  await loadData(targetListId)
+  if (listId.value === targetListId) loadedListId.value = targetListId
+}
 
-async function loadData() {
+onActivated(refreshListView)
+
+async function loadData(targetListId = listId.value) {
   const tasks: Promise<any>[] = [
-    issueStore.fetchIssues(listId.value, {
+    issueStore.fetchIssues(targetListId, {
       status: statusFilter.value || undefined,
       search: searchText.value || undefined,
       sort: settings.issueSort,
     }),
-    loadMembers(),
+    loadMembers(targetListId),
     loadAllUsers(),
   ]
   if (viewMode.value === 'timeline') {
-    tasks.push(loadCheckpoints())
+    tasks.push(loadCheckpoints(targetListId))
   }
-  tasks.push(loadIncomingPushes())
+  tasks.push(loadIncomingPushes(targetListId))
   await Promise.all(tasks)
 }
 
-async function loadCheckpoints() {
+async function loadCheckpoints(targetListId = listId.value) {
   try {
-    const res = await getCheckpointsByList(listId.value)
-    checkpointMap.value = res.data
+    const res = await getCheckpointsByList(targetListId)
+    if (listId.value === targetListId) checkpointMap.value = res.data
   } catch {
-    checkpointMap.value = {}
+    if (listId.value === targetListId) checkpointMap.value = {}
   }
 }
 
-async function loadIncomingPushes() {
+async function loadIncomingPushes(targetListId = listId.value) {
   try {
-    const res = await getIncomingPushes(listId.value)
-    incomingPushes.value = res.data
-    showPushInbox.value = incomingPushes.value.length > 0
+    const res = await getIncomingPushes(targetListId)
+    if (listId.value === targetListId) {
+      incomingPushes.value = res.data
+      showPushInbox.value = incomingPushes.value.length > 0
+    }
   } catch {
-    incomingPushes.value = []
+    if (listId.value === targetListId) incomingPushes.value = []
   }
 }
 
@@ -220,9 +230,9 @@ function getRecentCheckpoints(issueId: string): Checkpoint[] {
   return sorted.slice(0, maxCount)
 }
 
-async function loadMembers() {
-  const res = await getMembers(listId.value)
-  members.value = res.data
+async function loadMembers(targetListId = listId.value) {
+  const res = await getMembers(targetListId)
+  if (listId.value === targetListId) members.value = res.data
 }
 
 async function loadAllUsers() {
@@ -240,6 +250,7 @@ watch(viewMode, (mode) => {
 
 // 前端筛选（severity / category / 不关注）
 const filteredIssues = computed(() => {
+  if (loadedListId.value !== listId.value) return []
   let list = issueStore.issues
   if (showUnwatchedOnly.value) {
     list = list.filter(row => linkAttention(row) === 0)
@@ -324,9 +335,9 @@ function openEditCheckpoint(cp: Checkpoint, issueTitle: string, e?: Event) {
   editCheckpoint.value = { cp, issueTitle }
 }
 
-function openCreateCheckpoint(row: { id: string; title: string }, e?: Event) {
+function openCreateCheckpoint(row: { id: string; title: string; issueNo?: string }, e?: Event) {
   e?.stopPropagation()
-  createCheckpointFor.value = { id: row.id, title: row.title }
+  createCheckpointFor.value = { id: row.id, title: row.title, issueNo: row.issueNo }
 }
 
 async function onCreateCheckpoint(data: {
@@ -669,7 +680,7 @@ provide('issueListCellCtx', reactive({
         </template>
       </el-table-column>
 
-      <el-table-column label="操作" width="116" fixed="right" align="center">
+      <el-table-column label="操作" width="140" fixed="right" align="center">
         <template #default="{ row }">
           <div class="row-actions">
             <el-button class="row-action-btn" plain circle type="primary" size="small" aria-label="查看详情" @click.stop="goIssueDetail(row.id)" title="查看详情">
@@ -747,6 +758,7 @@ provide('issueListCellCtx', reactive({
       v-if="createCheckpointFor"
       :users="activeUsers"
       :issue-title="createCheckpointFor.title"
+      :issue-no="createCheckpointFor.issueNo"
       @confirm="onCreateCheckpoint"
       @close="createCheckpointFor = null"
     />
@@ -860,11 +872,12 @@ provide('issueListCellCtx', reactive({
 .row-actions {
   display: inline-grid;
   grid-auto-flow: column;
-  grid-auto-columns: 26px;
+  grid-auto-columns: 28px;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
+  padding: 0 2px;
 }
-.row-action-btn { width: 26px; height: 26px; margin: 0; padding: 0; }
+.row-action-btn { width: 28px; height: 28px; margin: 0; padding: 0; }
 .view-toggle {
   margin-left: 12px;
   flex-shrink: 0;
@@ -908,12 +921,16 @@ provide('issueListCellCtx', reactive({
 
 </style>
 <style>
-.issue-detail-modal .pnw-modal-panel {
-  width: min(1280px, 96vw);
-  max-height: min(92vh, 900px);
+.pnw-modal-panel.issue-detail-modal {
+  width: min(90vw, 1680px);
+  max-height: min(92vh, 980px);
   padding: 0;
 }
-.issue-detail-modal .pnw-modal-panel .page {
+.pnw-modal-panel.issue-detail-modal .page {
   padding: 24px;
+}
+@media (max-width: 720px) {
+  .pnw-modal-panel.issue-detail-modal { width: calc(100vw - 24px); }
+  .pnw-modal-panel.issue-detail-modal .page { padding: 16px; }
 }
 </style>

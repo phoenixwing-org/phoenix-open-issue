@@ -98,6 +98,9 @@ describePostgres('PostgreSQL integration', () => {
       'INSERT INTO checkpoints (id, issueId, checkpointDate, description) VALUES (?, ?, ?, ?)',
       [checkpointId, issueId, '2026-07-13', 'Visible in linked list'],
     )
+    await db.run("UPDATE checkpoints SET status = 'voided' WHERE id = ?", [checkpointId])
+    expect(await db.get<{ status: string }>('SELECT status FROM checkpoints WHERE id = ?', [checkpointId]))
+      .toEqual({ status: 'voided' })
 
     const checkpoints = await db.all<{ id: string }>(`
       SELECT DISTINCT c.* FROM checkpoints c
