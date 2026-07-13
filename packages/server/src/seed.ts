@@ -120,6 +120,7 @@ export async function seedEssential(): Promise<string[]> {
       await seedListTypeDict()
     }
     await db.exec("UPDATE users SET approved = 1 WHERE approved = 0")
+    await db.exec("UPDATE users SET systemRole = 'admin' WHERE username = 'admin' AND systemRole != 'admin'")
     return logs
   }
 

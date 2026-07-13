@@ -1,7 +1,7 @@
 import request from './request'
 
-export function exportDb() {
-  return request.get('/db/export')
+export function exportDb(passwordPolicy: 'resetAll' | 'resetAdmin' = 'resetAll') {
+  return request.get('/db/export', { params: { passwordPolicy } })
 }
 
 export function importDb(data: any, mode: 'replace' | 'merge' = 'replace') {

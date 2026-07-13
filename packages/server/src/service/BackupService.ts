@@ -1,12 +1,18 @@
 import { getAsyncDb } from '../db/connection.js'
 import { generateId } from '@open-issue/core'
 import bcrypt from 'bcryptjs'
+import { BadRequestError } from '../utils/errors.js'
 
 interface BackupData {
   version: number
   timestamp: string
+  passwordPolicy?: BackupPasswordPolicy
+  exportScope?: BackupExportScope
   tables: Record<string, Record<string, unknown>[]>
 }
+
+type BackupPasswordPolicy = 'resetAll' | 'resetAdmin'
+type BackupExportScope = 'full' | 'accessible'
 
 const TABLE_NAMES = [
   'users', 'orgUnits', 'issueLists', 'issueListMembers',
@@ -14,17 +20,19 @@ const TABLE_NAMES = [
 ]
 
 export class BackupService {
-  /** 导出全部数据为 JSON（排除 passwordHash） */
-  async export(): Promise<BackupData> {
+  /** 导出数据；迁移模式仅保留非 admin 用户的 bcrypt 哈希。 */
+  async export(passwordPolicy: BackupPasswordPolicy = 'resetAll', userId?: string): Promise<BackupData> {
     const db = getAsyncDb()
     const tables: Record<string, Record<string, unknown>[]> = {}
 
+    if (userId) return this.exportAccessibleData(userId)
+
     for (const table of TABLE_NAMES) {
       const rows = await db.all<Record<string, unknown>>(`SELECT * FROM "${table}"`)
-      // 去除敏感字段
+      // 常规备份不保留密码哈希；迁移模式仅保留非 admin 用户的哈希。
       if (table === 'users') {
         for (const row of rows) {
-          delete row.passwordHash
+          if (passwordPolicy === 'resetAll' || row.username === 'admin') delete row.passwordHash
         }
       }
       tables[table] = rows
@@ -33,21 +41,30 @@ export class BackupService {
     return {
       version: 1,
       timestamp: new Date().toISOString(),
+      passwordPolicy,
+      exportScope: 'full',
       tables,
     }
   }
 
   /** 导入数据 */
-  async import(data: BackupData, mode: 'replace' | 'merge'): Promise<{ imported: Record<string, number> }> {
+  async import(data: BackupData, mode: 'replace' | 'merge'): Promise<{
+    imported: Record<string, number>
+    passwords: { preserved: number; reset: number }
+  }> {
     if (!data || data.version !== 1) {
-      throw Object.assign(new Error('备份文件格式不正确或版本不兼容'), { statusCode: 400 })
+      throw new BadRequestError('备份文件格式不正确或版本不兼容')
     }
     if (!data.tables || typeof data.tables !== 'object') {
-      throw Object.assign(new Error('备份文件缺少 table 数据'), { statusCode: 400 })
+      throw new BadRequestError('备份文件缺少 table 数据')
+    }
+    if (data.exportScope === 'accessible') {
+      throw new BadRequestError('受限导出文件仅供个人数据留存，不能导入数据库')
     }
 
     const db = getAsyncDb()
     const imported: Record<string, number> = {}
+    const passwords = { preserved: 0, reset: 0 }
     const now = new Date().toISOString()
 
     await db.transaction(async tx => {
@@ -67,19 +84,27 @@ export class BackupService {
         let count = 0
         for (const row of rows) {
           if (table === 'users') {
-            const pwHash = bcrypt.hashSync('123456', 10)
+            const preservePassword = data.passwordPolicy === 'resetAdmin'
+              && row.username !== 'admin'
+              && isBcryptHash(row.passwordHash)
+            const pwHash = preservePassword ? row.passwordHash as string : bcrypt.hashSync('123456', 10)
             const result = await tx.run(
-              `INSERT INTO "users" ("id", "username", "email", "passwordHash", "displayName", "orgUnitId", "approved", "disabled", "createdAt", "updatedAt")
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING`,
+              `INSERT INTO "users" ("id", "username", "email", "passwordHash", "displayName", "orgUnitId", "approved", "disabled", "systemRole", "createdAt", "updatedAt")
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING`,
               [row.id, row.username, row.email ?? null, pwHash, row.displayName ?? null,
                row.orgUnitId ?? null, row.approved ?? 1, row.disabled ?? 0,
+               row.systemRole ?? (row.username === 'admin' ? 'admin' : 'editor'),
                row.createdAt || now, row.updatedAt || now],
             )
             count += result.changes
+            if (result.changes > 0) {
+              if (preservePassword) passwords.preserved++
+              else passwords.reset++
+            }
           } else {
             const cols = Object.keys(row).filter(k => row[k] !== undefined)
             if (!cols.every(isSafeIdentifier)) {
-              throw Object.assign(new Error(`备份 ${table} 包含非法列名`), { statusCode: 400 })
+              throw new BadRequestError(`备份 ${table} 包含非法列名`)
             }
             const placeholders = cols.map(() => '?').join(', ')
             const values = cols.map(k => row[k])
@@ -95,7 +120,63 @@ export class BackupService {
     })
 
     console.log(`📦 [BACKUP] import ${mode} — ${Object.values(imported).reduce((a, b) => a + b, 0)} rows`)
-    return { imported }
+    return { imported, passwords }
+  }
+
+  private async exportAccessibleData(userId: string): Promise<BackupData> {
+    const db = getAsyncDb()
+    const tables = emptyTables()
+    const lists = await db.all<Record<string, unknown>>(`
+      SELECT DISTINCT l.*
+      FROM issueLists l
+      LEFT JOIN issueListMembers m ON m.listId = l.id
+      WHERE (l.ownerId = ? OR m.userId = ?) AND l.isDeleted = 0
+      ORDER BY l.updatedAt DESC
+    `, [userId, userId])
+    const listIds = lists.map(row => row.id).filter((id): id is string => typeof id === 'string')
+    tables.issueLists = lists
+    if (!listIds.length) return {
+      version: 1,
+      timestamp: new Date().toISOString(),
+      passwordPolicy: 'resetAll',
+      exportScope: 'accessible',
+      tables,
+    }
+
+    const placeholders = listIds.map(() => '?').join(', ')
+    tables.issueListMembers = await db.all(
+      `SELECT * FROM issueListMembers WHERE listId IN (${placeholders})`,
+      listIds,
+    )
+    const issues = await db.all<Record<string, unknown>>(`
+      SELECT DISTINCT i.* FROM issues i
+      LEFT JOIN issueListLinks il ON il.issueId = i.id
+      WHERE i.listId IN (${placeholders}) OR il.listId IN (${placeholders})
+    `, [...listIds, ...listIds])
+    const issueIds = issues.map(row => row.id).filter((id): id is string => typeof id === 'string')
+    tables.issues = issues
+    tables.issueListLinks = await db.all(
+      `SELECT * FROM issueListLinks WHERE listId IN (${placeholders})`,
+      listIds,
+    )
+    tables.pushRecords = await db.all(
+      `SELECT * FROM pushRecords WHERE fromListId IN (${placeholders}) OR toListId IN (${placeholders})`,
+      [...listIds, ...listIds],
+    )
+    if (issueIds.length) {
+      const issuePlaceholders = issueIds.map(() => '?').join(', ')
+      tables.checkpoints = await db.all(
+        `SELECT * FROM checkpoints WHERE issueId IN (${issuePlaceholders})`,
+        issueIds,
+      )
+    }
+    return {
+      version: 1,
+      timestamp: new Date().toISOString(),
+      passwordPolicy: 'resetAll',
+      exportScope: 'accessible',
+      tables,
+    }
   }
 
   /** 数据库修正：为缺失 issueListLinks 的 Issue 补建链接记录 */
@@ -141,4 +222,12 @@ function isSafeIdentifier(value: string): boolean {
 
 function quoteIdentifier(value: string): string {
   return `"${value.replaceAll('"', '""')}"`
+}
+
+function isBcryptHash(value: unknown): value is string {
+  return typeof value === 'string' && /^\$2[aby]\$\d{2}\$[./A-Za-z0-9]{53}$/.test(value)
+}
+
+function emptyTables(): Record<string, Record<string, unknown>[]> {
+  return Object.fromEntries(TABLE_NAMES.map(table => [table, []]))
 }
