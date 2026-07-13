@@ -7,7 +7,7 @@ export class CheckpointService {
   async getByIssueId(issueId: string): Promise<Checkpoint[]> {
     const db = getAsyncDb()
     return await db.all(
-      'SELECT * FROM checkpoints WHERE issueId = ? ORDER BY checkpointDate ASC, sortOrder ASC',
+      'SELECT * FROM checkpoints WHERE issueId = ? ORDER BY checkpointDate DESC, sortOrder DESC',
       [issueId],
     ) as Checkpoint[]
   }
@@ -20,7 +20,7 @@ export class CheckpointService {
       JOIN issues i ON i.id = c.issueId
       JOIN issueListLinks il ON il.issueId = i.id
       WHERE il.listId = ?
-      ORDER BY c.checkpointDate ASC, c.sortOrder ASC
+      ORDER BY c.checkpointDate DESC, c.sortOrder DESC
     `, [listId]) as Checkpoint[]
 
     const grouped: Record<string, Checkpoint[]> = {}

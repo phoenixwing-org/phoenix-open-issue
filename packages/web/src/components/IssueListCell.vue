@@ -3,6 +3,7 @@ import { inject, computed } from 'vue'
 import type { IssueColumnKey } from '@/config/issueListColumns'
 import type { Checkpoint } from '@open-issue/core'
 import { ATTENTION_LEVEL_LABELS, isOverdue } from '@open-issue/core'
+import CheckpointStatusTag from '@/components/CheckpointStatusTag.vue'
 
 const props = defineProps<{
   columnKey: IssueColumnKey
@@ -23,11 +24,11 @@ const ctx = inject<{
   getRecentCheckpoints: (id: string) => Checkpoint[]
   checkpointMap: Record<string, Checkpoint[]>
   maxTimelineRows: number
-  cpIcon: (cp: Checkpoint) => string
   openViewIssue: (row: { id: string }, e?: Event) => void
   openQuickEdit: (row: any, field: string, e?: Event) => void
   openEditCheckpoint: (cp: Checkpoint, issueTitle: string, e?: Event) => void
   openCreateCheckpoint: (row: { id: string; title: string }, e?: Event) => void
+  onUpdateCheckpointStatus: (cp: Checkpoint, status: Checkpoint['status']) => void
 }>('issueListCellCtx')!
 
 const col = computed(() => props.columnKey)
@@ -178,7 +179,13 @@ const row = computed(() => props.row)
       title="点击编辑点检"
       @click="ctx.openEditCheckpoint(cp, row.title, $event)"
     >
-      <span class="cp-mini-icon">{{ ctx.cpIcon(cp) }}</span>
+      <CheckpointStatusTag
+        class="cp-mini-icon"
+        :status="cp.status"
+        compact
+        :overdue="isOverdue(cp.checkpointDate, cp.status).overdue"
+        @change="ctx.onUpdateCheckpointStatus(cp, $event)"
+      />
       <span class="cp-mini-date" :title="'点检日: ' + cp.checkpointDate">{{ ctx.formatCpDate(cp.checkpointDate) }}</span>
       <span class="cp-mini-desc">{{ cp.description }}</span>
       <span v-if="cp.responsibleUserId" class="cp-mini-who">{{ ctx.userMap[cp.responsibleUserId] || '' }}</span>

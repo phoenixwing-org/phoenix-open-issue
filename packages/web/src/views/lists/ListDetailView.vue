@@ -31,7 +31,7 @@ const showIssueModal = ref(false)
 const modalIssueId = ref('')
 import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
 import PageHelpButton from "@/components/PageHelpButton.vue"
-import { isOverdue, canAddMemberAsUser, canManageList, canTransferPrimaryOwnerAsUser, isSystemAdmin, DEFAULT_ATTENTION_LEVEL } from '@open-issue/core'
+import { canAddMemberAsUser, canManageList, canTransferPrimaryOwnerAsUser, isSystemAdmin, DEFAULT_ATTENTION_LEVEL } from '@open-issue/core'
 import type { Checkpoint } from '@open-issue/core'
 import IssueFormDialog from '@/components/IssueFormDialog.vue'
 import IssueQuickEditDialog from '@/components/IssueQuickEditDialog.vue'
@@ -220,17 +220,6 @@ function getRecentCheckpoints(issueId: string): Checkpoint[] {
   return sorted.slice(0, maxCount)
 }
 
-// 点检状态图标
-function cpIcon(cp: Checkpoint): string {
-  if (cp.status === 'done') return '✅'
-  if (cp.status === 'skipped') return '❌'
-  const { overdue } = isOverdue(cp.checkpointDate, cp.status)
-  if (overdue) return '⚠️'
-  // future pending
-  if (cp.checkpointDate > new Date().toISOString().slice(0, 10)) return '📅'
-  return '⏳'
-}
-
 async function loadMembers() {
   const res = await getMembers(listId.value)
   members.value = res.data
@@ -362,6 +351,13 @@ async function onEditCheckpoint(data: {
   await updateCheckpoint(editCheckpoint.value.cp.id, data)
   editCheckpoint.value = null
   ElMessage.success('点检已更新')
+  await loadCheckpoints()
+}
+
+async function onUpdateCheckpointStatus(cp: Checkpoint, status: Checkpoint['status']) {
+  if (cp.status === status) return
+  await updateCheckpoint(cp.id, { status })
+  ElMessage.success('点检状态已更新')
   await loadCheckpoints()
 }
 
@@ -543,11 +539,11 @@ provide('issueListCellCtx', reactive({
   getRecentCheckpoints,
   checkpointMap,
   get maxTimelineRows() { return settings.maxTimelineRows },
-  cpIcon,
   openViewIssue,
   openQuickEdit,
   openEditCheckpoint,
   openCreateCheckpoint,
+  onUpdateCheckpointStatus,
 }))
 </script>
 
@@ -673,16 +669,16 @@ provide('issueListCellCtx', reactive({
         </template>
       </el-table-column>
 
-      <el-table-column label="操作" width="118" fixed="right" align="center">
+      <el-table-column label="操作" width="116" fixed="right" align="center">
         <template #default="{ row }">
           <div class="row-actions">
-            <el-button link type="primary" size="small" @click.stop="goIssueDetail(row.id)" title="查看详情">
+            <el-button class="row-action-btn" plain circle type="primary" size="small" aria-label="查看详情" @click.stop="goIssueDetail(row.id)" title="查看详情">
               <el-icon><Search /></el-icon>
             </el-button>
-            <el-button link type="primary" size="small" @click.stop="openEditIssue(row)" title="编辑">
+            <el-button class="row-action-btn" plain circle type="primary" size="small" aria-label="编辑" @click.stop="openEditIssue(row)" title="编辑">
               <el-icon><Edit /></el-icon>
             </el-button>
-            <el-button link type="warning" size="small" @click.stop="onPushIssue(row.id)" title="推送到其他列表">
+            <el-button class="row-action-btn" plain circle type="warning" size="small" aria-label="推送到其他列表" @click.stop="onPushIssue(row.id)" title="推送到其他列表">
               <el-icon><Promotion /></el-icon>
             </el-button>
             <el-dropdown
@@ -694,7 +690,7 @@ provide('issueListCellCtx', reactive({
               size="small"
               trigger="click"
             >
-              <el-button link type="primary" size="small" @click.stop title="更多">
+              <el-button class="row-action-btn" plain circle type="info" size="small" aria-label="更多操作" @click.stop title="更多操作">
                 <el-icon><MoreFilled /></el-icon>
               </el-button>
               <template #dropdown>
@@ -862,10 +858,13 @@ provide('issueListCellCtx', reactive({
   border-radius: 50%;
 }
 .row-actions {
-  display: inline-flex;
+  display: inline-grid;
+  grid-auto-flow: column;
+  grid-auto-columns: 26px;
   align-items: center;
   gap: 2px;
 }
+.row-action-btn { width: 26px; height: 26px; margin: 0; padding: 0; }
 .view-toggle {
   margin-left: 12px;
   flex-shrink: 0;
@@ -910,7 +909,7 @@ provide('issueListCellCtx', reactive({
 </style>
 <style>
 .issue-detail-modal .pnw-modal-panel {
-  width: min(900px, 96vw);
+  width: min(1280px, 96vw);
   max-height: min(92vh, 900px);
   padding: 0;
 }

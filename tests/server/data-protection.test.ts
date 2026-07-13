@@ -108,6 +108,17 @@ describe('数据保护规则', () => {
     expect(grouped['issue-1'][0].id).toBe('checkpoint-1')
   })
 
+  it('点检默认按最新日期优先返回', async () => {
+    const { CheckpointService } = await import('../../packages/server/src/service/CheckpointService.js')
+    db.run(
+      `INSERT INTO checkpoints (id, issueId, checkpointDate, description, sortOrder)
+       VALUES ('checkpoint-2', 'issue-1', '2099-01-02', '较新的点检', 2)`,
+    )
+
+    const checkpoints = await new CheckpointService().getByIssueId('issue-1')
+    expect(checkpoints.map(cp => cp.id)).toEqual(['checkpoint-2', 'checkpoint-1'])
+  })
+
   it('组织节点拒绝物理删除', async () => {
     const { OrgUnitService } = await import('../../packages/server/src/service/OrgUnitService.js')
     await expect(new OrgUnitService().delete('org-1')).rejects.toThrow(/不允许删除/)

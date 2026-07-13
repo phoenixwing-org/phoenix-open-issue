@@ -8,6 +8,8 @@ export const useSettingsStore = defineStore('settings', () => {
 
   const colWidths = ref<Record<string, number>>(data.colWidths || {})
   const maxTimelineRows = ref<number>(data.maxTimelineRows || 3)
+  const checkpointTimelineOrder = ref<'desc' | 'asc'>(data.checkpointTimelineOrder === 'asc' ? 'asc' : 'desc')
+  const checkpointTimelineDisplay = ref<'cards' | 'table'>(data.checkpointTimelineDisplay === 'table' ? 'table' : 'cards')
   const defaultViewMode = ref<string>(data.defaultViewMode || 'complex')
   const cpYearThresholdMonths = ref<number>(data.cpYearThresholdMonths ?? 2)  // 点检日期隐藏年份的月数阈值
   const legacySort = data.issueSort === 'createdAt:desc' ? DEFAULT_ISSUE_SORT : (data.issueSort || DEFAULT_ISSUE_SORT)
@@ -21,6 +23,8 @@ export const useSettingsStore = defineStore('settings', () => {
     localStorage.setItem('open-issue-settings', JSON.stringify({
       colWidths: colWidths.value,
       maxTimelineRows: maxTimelineRows.value,
+      checkpointTimelineOrder: checkpointTimelineOrder.value,
+      checkpointTimelineDisplay: checkpointTimelineDisplay.value,
       defaultViewMode: defaultViewMode.value,
       cpYearThresholdMonths: cpYearThresholdMonths.value,
       issueSort: issueSort.value,
@@ -33,6 +37,8 @@ export const useSettingsStore = defineStore('settings', () => {
 
   watch(colWidths, persist, { deep: true })
   watch(maxTimelineRows, persist)
+  watch(checkpointTimelineOrder, persist)
+  watch(checkpointTimelineDisplay, persist)
   watch(defaultViewMode, persist)
   watch(cpYearThresholdMonths, persist)
   watch(issueSort, persist)
@@ -50,7 +56,7 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   return {
-    colWidths, maxTimelineRows, defaultViewMode, cpYearThresholdMonths, issueSort,
+    colWidths, maxTimelineRows, checkpointTimelineOrder, checkpointTimelineDisplay, defaultViewMode, cpYearThresholdMonths, issueSort,
     orgIncludeChildren, funcNumericSort, funcSearch, issueListColumns,
     setColWidth, setIssueListColumns,
   }
