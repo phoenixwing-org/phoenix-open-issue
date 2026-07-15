@@ -51,8 +51,8 @@ importers:
         specifier: ^8.22.0
         version: 8.22.0
       phoenix-wing:
-        specifier: ^0.1.4
-        version: 0.1.4(element-plus@2.14.2(vue@3.5.39(typescript@5.7.3)))(pinia@3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3)))(vue@3.5.39(typescript@5.7.3))
+        specifier: ^0.3.0
+        version: 0.3.0(element-plus@2.14.2(vue@3.5.39(typescript@5.7.3)))(pinia@3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3)))(vue@3.5.39(typescript@5.7.3))
       uuid:
         specifier: ^11.1.0
         version: 11.1.1
@@ -100,8 +100,8 @@ importers:
         specifier: ^2.10.2
         version: 2.14.2(vue@3.5.39(typescript@5.7.3))
       phoenix-wing:
-        specifier: ^0.1.1
-        version: 0.1.4(element-plus@2.14.2(vue@3.5.39(typescript@5.7.3)))(pinia@3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3)))(vue@3.5.39(typescript@5.7.3))
+        specifier: ^0.3.0
+        version: 0.3.0(element-plus@2.14.2(vue@3.5.39(typescript@5.7.3)))(pinia@3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3)))(vue@3.5.39(typescript@5.7.3))
       pinia:
         specifier: ^3.0.4
         version: 3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3))
@@ -1451,8 +1451,8 @@ packages:
   pgpass@1.0.5:
     resolution: {integrity: sha512-FdW9r/jQZhSeohs1Z3sI1yxFQNFvMcnmfuj4WBMUTxOrAyLMaTcE1aAMBiTlbMNaXvBCQuVi0R7hd8udDSP7ug==}
 
-  phoenix-wing@0.1.4:
-    resolution: {integrity: sha512-dRrY/Z4FKIQYfPT7UFPQZ2r+T8wCtGPe79P8Arqkm3hy+dQ2Y5blDgJ72do4Qt2l21afl+gcSDrWyGyPnQPzbQ==}
+  phoenix-wing@0.3.0:
+    resolution: {integrity: sha512-7yd3cmy9mZTNnej8hKwyjNJyIxDuX3awzIsYOlj5lO1Tgo2tAc1dKe0PyJSxz5yFXwZUFHUmdJnb3eut/uPOVw==}
     peerDependencies:
       element-plus: ^2.0.0
       pinia: ^2.0.0 || ^3.0.0
@@ -3129,7 +3129,7 @@ snapshots:
     dependencies:
       split2: 4.2.0
 
-  phoenix-wing@0.1.4(element-plus@2.14.2(vue@3.5.39(typescript@5.7.3)))(pinia@3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3)))(vue@3.5.39(typescript@5.7.3)):
+  phoenix-wing@0.3.0(element-plus@2.14.2(vue@3.5.39(typescript@5.7.3)))(pinia@3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3)))(vue@3.5.39(typescript@5.7.3)):
     optionalDependencies:
       element-plus: 2.14.2(vue@3.5.39(typescript@5.7.3))
       node-sqlite3-wasm: 0.8.59
