@@ -24,7 +24,7 @@
   },
   "packageManager": "pnpm@9.15.9",
   "devDependencies": {
-    "concurrently": "^9.2.3",
-    "vitest": "^4.1.9"
+    "concurrently": "^9.2.4",
+    "vitest": "^4.1.10"
   }
 }

@@ -1,52 +1,41 @@
 # phoenix-wing 依赖配置
 
-## 背景
+## 依赖原则
 
-`phoenix-wing` 已发布到 npm registry（`0.1.4`），但也需要支持本地联调（修改 phoenix-wing 源码的同时在 open-issue 中即时验证）。
+Open Issue 的前后端统一使用 npm 已发布的精确版本 `phoenix-wing@0.3.0`。
 
-方案：**Vite 自动检测**，本地有就用本地，没有就用 npm，无需手动切换。
+- `packages/server/package.json` 和 `packages/web/package.json` 都写明 `"phoenix-wing": "0.3.0"`。
+- Vite 不探测相邻的 `phoenix-wing` 仓库，也不配置本地源码 alias。
+- 不使用 `pnpm link`、`file:`、`workspace:` 等本地引用。
+- 相邻目录中 Wing 的源码、分支或依赖发生变化，不应影响 Open Issue 的安装、测试和构建。
 
-## 原理
+这样可以明确两个项目的边界：Wing 先独立发布 npm 版本，Open Issue 再按需升级和验证。
 
-`packages/web/vite.config.ts` 在启动时检查上级目录是否存在 `phoenix-wing/src`：
+## 安装与验证
 
-```
-phoenix/              ← 你的工作目录
-├── phoenix-wing/     ← 如果存在这个目录……
-│   └── src/
-└── phoenix-open-issue/
-    └── packages/web/
-        └── vite.config.ts   ← 这里检测并自动 alias
-```
-
-```ts
-const localWingSrc = resolve(__dirname, '../../../phoenix-wing/src')
-const hasLocalWing = fs.existsSync(localWingSrc)
-
-resolve: {
-  alias: {
-    '@': resolve(__dirname, 'src'),
-    ...(hasLocalWing ? { 'phoenix-wing': localWingSrc } : {}),
-  },
-},
-```
-
-- **有** `../phoenix-wing/src` → Vite alias 指向本地源码，修改即时热更新
-- **没有** → 无 alias，走 node_modules 中的 npm 版本
-
-## 用法
+在 Open Issue 根目录安装依赖：
 
 ```bash
-pnpm dev
+pnpm install
 ```
 
-就这一条命令，无需区分模式，无需 `pnpm link` / `pnpm unlink`。
-
-## 判断当前用的是哪个
+查看工作区实际解析的版本：
 
 ```bash
-ls -l packages/web/node_modules/phoenix-wing
+pnpm why phoenix-wing -r
+readlink packages/web/node_modules/phoenix-wing
+readlink packages/server/node_modules/phoenix-wing
 ```
 
-- 路径包含 `.pnpm/phoenix-wing@0.1.4` → npm 版本
-- 路径包含 `../../phoenix-wing` → 本地版本（仅当 Vite alias 未覆盖时出现；alias 优先级更高，所以 Vite 实际会用本地源码）
+预期两个包都解析为 `0.3.0`，符号链接目标位于 pnpm 的 `node_modules/.pnpm/phoenix-wing@0.3.0...` 目录；不应指向相邻的 `phoenix-wing` 项目。
+
+## 升级规则
+
+Wing 发布新版本后，不自动跟随升级。需要升级时应单独提交以下变更：
+
+1. 同步修改前后端 `package.json` 中的精确版本。
+2. 执行 `pnpm install` 更新 `pnpm-lock.yaml`。
+3. 执行 `pnpm test` 和 `pnpm build`，确认公共组件与后端适配接口兼容。
+4. 在更新日志中记录 Wing 版本和必要的兼容性调整。
+
+如需验证尚未发布的 Wing 代码，应在 Wing 项目自身完成测试；确需跨项目临时联调时，也不应把本地链接或 Vite alias 提交到 Open Issue。

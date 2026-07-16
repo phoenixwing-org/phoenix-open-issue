@@ -112,7 +112,7 @@ pnpm build           # 全部构建
 pnpm seed            # CLI 重新填充演示数据（force 追加可清空）
 ```
 
-> phoenix-wing 本地联调自动检测：上级目录有 `phoenix-wing/` 就用本地源码，没有就用 npm 库。详见 [phoenix-wing 依赖配置](doc/phoenix-wing依赖配置.md)。
+> phoenix-wing 固定使用 npm 发布的 `0.3.0`，不探测或引用相邻本地仓库。详见 [phoenix-wing 依赖配置](doc/phoenix-wing依赖配置.md)。
 
 
 
@@ -129,7 +129,7 @@ pnpm seed            # CLI 重新填充演示数据（force 追加可清空）
 | [推送工作流](doc/推送工作流.md)                        | 推送→确认/拒绝 完整流程        |
 | [待办点检](doc/待办点检.md)                          | 用自己系统追踪自己开发          |
 | [开发计划](doc/开发计划.md)                          | ADR 决策 + 路线图         |
-| [phoenix-wing 依赖配置](doc/phoenix-wing依赖配置.md) | npm 模式 vs 本地 link 模式 |
+| [phoenix-wing 依赖配置](doc/phoenix-wing依赖配置.md) | npm 固定版本与升级规则      |
 | [Linux 测试部署](doc/Linux测试部署.md)               | 构建、配置、systemd 与升级检查 |
 | [SQLite/PG 双数据库计划](doc/v0.4-PG双数据库适配计划.md) | PnwDbAdapter、迁移与双库测试方案 |
 | [PostgreSQL 部署与迁移](doc/PostgreSQL部署与迁移.md) | Linux 配置、SQLite JSON 迁移、校验与回滚 |

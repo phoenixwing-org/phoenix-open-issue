@@ -1,10 +1,8 @@
 import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
-import { resolvePhoenixWingPath } from './config/resolvePhoenixWing'
 
 const webRoot = resolve(__dirname)
-const localWingSrc = resolvePhoenixWingPath(webRoot)
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, webRoot, '')
@@ -19,7 +17,6 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         '@': resolve(__dirname, 'src'),
-        ...(localWingSrc ? { 'phoenix-wing': localWingSrc } : {}),
       },
       dedupe: ['vue', 'phoenix-wing'],
     },
