@@ -1,5 +1,6 @@
 import { Router } from 'express'
 import { AuthController } from '../controller/AuthController.js'
+import { ExternalAuthController } from '../controller/ExternalAuthController.js'
 import { OrgUnitController } from '../controller/OrgUnitController.js'
 import { IssueListController } from '../controller/IssueListController.js'
 import { IssueController } from '../controller/IssueController.js'
@@ -11,9 +12,11 @@ import { BackupController } from '../controller/BackupController.js'
 import { FunctionController } from '../controller/FunctionController.js'
 import { TestController } from '../controller/TestController.js'
 import { authMiddleware } from '../middleware/auth.js'
+import { createRateLimit } from '../middleware/rate-limit.js'
 
 const router: Router = Router()
 const authCtrl = new AuthController()
+const externalAuthCtrl = new ExternalAuthController()
 const orgCtrl = new OrgUnitController()
 const listCtrl = new IssueListController()
 const issueCtrl = new IssueController()
@@ -24,6 +27,9 @@ const dictCtrl = new DictController()
 const backupCtrl = new BackupController()
 const funcCtrl = new FunctionController()
 const testCtrl = new TestController()
+const oauthStartLimit = createRateLimit({ windowMs: 5 * 60_000, max: 30, message: '第三方登录请求过于频繁，请稍后重试' })
+const oauthCallbackLimit = createRateLimit({ windowMs: 5 * 60_000, max: 60, message: '第三方登录回调过于频繁，请稍后重试' })
+const oauthTicketLimit = createRateLimit({ windowMs: 5 * 60_000, max: 30, message: '登录票据交换过于频繁，请稍后重试' })
 
 function wrap(fn: (req: any, res: any) => unknown | Promise<unknown>) {
   return (req: any, res: any, next: any) => {
@@ -56,8 +62,15 @@ router.delete('/dict/tag/:tag', authMiddleware, wrap((req, res) => dictCtrl.dele
 // ═══ Auth ═══
 router.post('/auth/register', wrap((req, res) => authCtrl.register(req, res)))
 router.post('/auth/login',    wrap((req, res) => authCtrl.login(req, res)))
+router.get('/auth/providers', wrap((req, res) => externalAuthCtrl.providers(req, res)))
+router.get('/auth/oauth/:provider/start', oauthStartLimit, wrap((req, res) => externalAuthCtrl.startLogin(req, res)))
+router.get('/auth/oauth/:provider/callback', oauthCallbackLimit, wrap((req, res) => externalAuthCtrl.callback(req, res)))
+router.post('/auth/oauth/exchange-ticket', oauthTicketLimit, wrap((req, res) => externalAuthCtrl.exchangeTicket(req, res)))
 router.get('/auth/me',        authMiddleware, wrap((req, res) => authCtrl.me(req, res)))
 router.patch('/auth/change-password', authMiddleware, wrap((req, res) => authCtrl.changePassword(req, res)))
+router.get('/auth/external-identities', authMiddleware, wrap((req, res) => externalAuthCtrl.myIdentities(req, res)))
+router.post('/auth/oauth/:provider/link/start', oauthStartLimit, authMiddleware, wrap((req, res) => externalAuthCtrl.startLink(req, res)))
+router.delete('/auth/external-identity/:identityId', authMiddleware, wrap((req, res) => externalAuthCtrl.unlinkMyIdentity(req, res)))
 
 // ═══ User ═══
 router.get('/users',                authMiddleware, wrap((req, res) => authCtrl.getAllUsers(req, res)))
@@ -68,6 +81,8 @@ router.patch('/user/:userId/org',          authMiddleware, wrap((req, res) => au
 router.patch('/user/:userId/disable',      authMiddleware, wrap((req, res) => authCtrl.disableUser(req, res)))
 router.patch('/user/:userId/enable',       authMiddleware, wrap((req, res) => authCtrl.enableUser(req, res)))
 router.patch('/user/:userId/reset-password', authMiddleware, wrap((req, res) => authCtrl.adminResetPassword(req, res)))
+router.get('/user/:userId/external-identities', authMiddleware, wrap((req, res) => externalAuthCtrl.userIdentities(req, res)))
+router.delete('/user/:userId/external-identity/:identityId', authMiddleware, wrap((req, res) => externalAuthCtrl.unlinkUserIdentity(req, res)))
 
 // ═══ Org Unit ═══
 router.get('/org-units',        authMiddleware, wrap((req, res) => orgCtrl.getTree(req, res)))

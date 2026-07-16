@@ -9,10 +9,21 @@ const settings = useSettingsStore()
 import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
 import PageHelpButton from "@/components/PageHelpButton.vue"
 import { getOrgUnitUsers, createOrgUnit, updateOrgUnit } from '@/api/orgUnits'
-import { approveUser, updateUserOrg, updateUser, getAllUsers, getPendingUsers, disableUser, enableUser, adminResetPassword } from '@/api/auth'
+import {
+  approveUser,
+  updateUserOrg,
+  updateUser,
+  getAllUsers,
+  getPendingUsers,
+  disableUser,
+  enableUser,
+  adminResetPassword,
+  getUserExternalIdentities,
+  unlinkUserExternalIdentity,
+} from '@/api/auth'
 import { ElMessage } from 'element-plus'
 import { pnwPromptChoice } from 'phoenix-wing'
-import type { SystemRole } from '@open-issue/core'
+import type { ExternalIdentityAdminView, SystemRole } from '@open-issue/core'
 import { isSystemAdmin } from '@open-issue/core'
 import { useAuthStore } from '@/stores/auth'
 
@@ -160,6 +171,8 @@ const editOrgId = ref<string | null>(null)
 const editSystemRole = ref<SystemRole>('editor')
 const resetPasswordValue = ref('')
 const resetPasswordConfirm = ref('')
+const editExternalIdentities = ref<ExternalIdentityAdminView[]>([])
+const externalIdentitiesLoading = ref(false)
 
 async function onResetPassword() {
   if (!editUser.value) return
@@ -177,7 +190,7 @@ async function onResetPassword() {
   resetPasswordConfirm.value = ''
 }
 
-function onEditUser(u: any) {
+async function onEditUser(u: any) {
   editUser.value = u
   editDisplayName.value = u.displayName || ''
   editEmail.value = u.email || ''
@@ -185,7 +198,33 @@ function onEditUser(u: any) {
   editSystemRole.value = u.systemRole || 'editor'
   resetPasswordValue.value = ''
   resetPasswordConfirm.value = ''
+  editExternalIdentities.value = []
   showEditUser.value = true
+  externalIdentitiesLoading.value = true
+  try {
+    const res = await getUserExternalIdentities(u.id)
+    editExternalIdentities.value = res.data
+  } finally {
+    externalIdentitiesLoading.value = false
+  }
+}
+
+async function onAdminUnlinkExternal(identity: ExternalIdentityAdminView) {
+  if (!editUser.value) return
+  const label = identity.displayName || identity.email || identity.openId || '该飞书账号'
+  const result = await pnwPromptChoice({
+    title: '管理员解除飞书绑定',
+    message: `确定解除「${label}」与用户「${editUser.value.displayName || editUser.value.username}」的绑定？用户之后不能再用该飞书账号登录。`,
+    choices: [
+      { id: 'unlink', label: '解除绑定', variant: 'danger' },
+      { id: 'cancel', label: '取消' },
+    ],
+  })
+  if (result.choiceId !== 'unlink') return
+  await unlinkUserExternalIdentity(editUser.value.id, identity.id)
+  ElMessage.success('已解除飞书绑定')
+  const res = await getUserExternalIdentities(editUser.value.id)
+  editExternalIdentities.value = res.data
 }
 
 async function onSaveUser() {
@@ -465,6 +504,24 @@ function systemRoleLabel(role: string | undefined) {
           </el-select>
         </el-form-item>
         <el-divider />
+        <h4>第三方登录</h4>
+        <div v-loading="externalIdentitiesLoading" class="external-identities-admin">
+          <div v-for="identity in editExternalIdentities" :key="identity.id" class="external-identity-admin">
+            <div>
+              <strong>飞书 · {{ identity.displayName || identity.email || identity.openId }}</strong>
+              <p>租户 {{ identity.tenantKey || '未知' }} · {{ identity.status === 'active' ? '已绑定' : '已解除' }}</p>
+            </div>
+            <el-button
+              v-if="identity.status === 'active'"
+              link
+              type="danger"
+              size="small"
+              @click="onAdminUnlinkExternal(identity)"
+            >解除</el-button>
+          </div>
+          <p v-if="!editExternalIdentities.length && !externalIdentitiesLoading" class="text-muted">未绑定第三方登录</p>
+        </div>
+        <el-divider />
         <h4>密码重置（管理员）</h4>
         <p style="color:#909399;font-size:12px;margin:0 0 8px">至少 6 位字符，留空则不修改</p>
         <el-form-item label="新密码" :error="resetPasswordValue && resetPasswordValue.length < 6 ? '密码长度不能少于6位' : ''">
@@ -502,6 +559,9 @@ function systemRoleLabel(role: string | undefined) {
 .user-name-link { cursor: pointer; color: var(--el-color-primary); }
 .user-name-link:hover { text-decoration: underline; }
 .text-muted { color: #c0c4cc; font-size: 12px; }
+.external-identities-admin { min-height: 28px; }
+.external-identity-admin { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; margin-top: 8px; border: 1px solid #ebeef5; border-radius: 6px; }
+.external-identity-admin p { margin: 3px 0 0; color: #909399; font-size: 11px; }
 @media (max-width: 768px) {
   .org-layout { flex-direction: column; }
   .org-tree-panel { width: 100%; }

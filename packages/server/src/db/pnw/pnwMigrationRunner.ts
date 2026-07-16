@@ -1,4 +1,5 @@
 import type { PnwDbAdapter, PnwDbDialect, PnwDbExecutor } from './pnwDbTypes.js'
+import { externalAuthSchemaSql } from '../externalAuthSchema.js'
 
 export interface PnwMigration {
   id: string
@@ -25,6 +26,12 @@ export const OPEN_ISSUE_MIGRATIONS: readonly PnwMigration[] = [
     up: async (db, dialect) => {
       if (dialect !== 'postgres') return
       await db.exec('ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "tokenVersion" INTEGER NOT NULL DEFAULT 0')
+    },
+  },
+  {
+    id: '20260716-external-auth',
+    up: async (db, dialect) => {
+      await db.exec(externalAuthSchemaSql(dialect))
     },
   },
 ]

@@ -16,9 +16,10 @@ type BackupPasswordPolicy = 'resetAll' | 'resetAdmin'
 type BackupExportScope = 'full' | 'accessible'
 
 const TABLE_NAMES = [
-  'users', 'orgUnits', 'issueLists', 'issueListMembers',
+  'users', 'externalIdentities', 'orgUnits', 'issueLists', 'issueListMembers',
   'issues', 'issueListLinks', 'checkpoints', 'pushRecords', 'dict', 'poiFunctions',
 ]
+const TRANSIENT_TABLE_NAMES = ['oauthLoginTickets', 'oauthLoginAttempts']
 
 export class BackupService {
   /** 导出数据；迁移模式仅保留非 admin 用户的 bcrypt 哈希。 */
@@ -69,6 +70,10 @@ export class BackupService {
     const now = new Date().toISOString()
 
     await db.transaction(async tx => {
+      // 导入前撤销所有未完成 OAuth 事务和一次性票据，避免账号数据变化后继续使用旧凭证。
+      for (const table of TRANSIENT_TABLE_NAMES) {
+        await tx.run(`DELETE FROM "${table}"`)
+      }
       if (mode === 'replace') {
         for (const table of [...TABLE_NAMES].reverse()) {
           await tx.run(`DELETE FROM "${table}"`)

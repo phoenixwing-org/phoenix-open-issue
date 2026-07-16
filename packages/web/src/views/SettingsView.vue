@@ -1,24 +1,32 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { getAllDict, createDictItem, updateDictItem, deleteDictItem, applyDictPreset, deleteDictByTag, dedupeDict } from '@/api/dict'
 import { ElMessage } from 'element-plus';
 import { pnwPromptChoice, pnwAlert } from 'phoenix-wing'
-import { changePassword } from '@/api/auth'
+import {
+  changePassword,
+  getExternalAuthProviders,
+  getMyExternalIdentities,
+  startExternalLink,
+  unlinkMyExternalIdentity,
+} from '@/api/auth'
 import { exportDb, importDb, runDbRepair, type RepairTaskId, type RepairTaskResult } from '@/api/backup'
 import { importFunctions } from '@/api/functions'
 import { mapXlsxRow, parseDictTags } from '@open-issue/core'
 import * as XLSX from 'xlsx'
 import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
 import PageHelpButton from "@/components/PageHelpButton.vue"
-import type { DictItem } from '@open-issue/core'
+import type { DictItem, ExternalAuthProviderId, ExternalAuthProviderInfo, ExternalIdentityPublic } from '@open-issue/core'
 import { useDictStore, DICT_GROUPS } from '@/stores/dict'
 import { useAuthStore } from '@/stores/auth'
 
 const dictStore = useDictStore()
 const authStore = useAuthStore()
+const route = useRoute()
 const isSystemAdmin = computed(() => authStore.user?.systemRole === 'admin')
 
-const activeTab = ref('dict')
+const activeTab = ref(route.query.tab === 'login-methods' ? 'login-methods' : 'dict')
 
 // ═══════════════════ 数据字典 ═══════════════════
 const items = ref<DictItem[]>([])
@@ -54,7 +62,9 @@ async function load() {
   } finally { loading.value = false }
 }
 
-onMounted(load)
+onMounted(async () => {
+  await Promise.all([load(), loadLoginMethods()])
+})
 
 async function onApplyPreset(preset: string) {
   const label = presetLabels[preset] || preset
@@ -296,6 +306,61 @@ async function onChangePassword() {
     newPassword.value = ''
     confirmPassword.value = ''
   } catch { /* error handled by interceptor */ }
+}
+
+// ═══════════════════ 第三方登录方式 ═══════════════════
+const externalProviders = ref<ExternalAuthProviderInfo[]>([])
+const externalIdentities = ref<ExternalIdentityPublic[]>([])
+const loginMethodsLoading = ref(false)
+const bindingProvider = ref<ExternalAuthProviderId | ''>('')
+
+async function loadLoginMethods() {
+  loginMethodsLoading.value = true
+  try {
+    const [providersRes, identitiesRes] = await Promise.all([
+      getExternalAuthProviders(),
+      getMyExternalIdentities(),
+    ])
+    externalProviders.value = providersRes.data
+    externalIdentities.value = identitiesRes.data
+  } finally {
+    loginMethodsLoading.value = false
+  }
+}
+
+function hasActiveIdentity(provider: ExternalAuthProviderId): boolean {
+  return externalIdentities.value.some(identity => identity.provider === provider && identity.status === 'active')
+}
+
+async function onBindExternal(provider: ExternalAuthProviderId) {
+  bindingProvider.value = provider
+  try {
+    const res = await startExternalLink(provider)
+    window.location.assign(res.data.authorizationUrl)
+  } catch {
+    bindingProvider.value = ''
+  }
+}
+
+async function onUnlinkExternal(identity: ExternalIdentityPublic) {
+  const label = identity.displayName || identity.email || '当前飞书账号'
+  const result = await pnwPromptChoice({
+    title: '解除飞书绑定',
+    message: `确定解除「${label}」？解除后将不能再使用该飞书账号登录，但本地账号密码仍可正常使用。`,
+    choices: [
+      { id: 'unlink', label: '解除绑定', variant: 'danger' },
+      { id: 'cancel', label: '取消' },
+    ],
+  })
+  if (result.choiceId !== 'unlink') return
+  await unlinkMyExternalIdentity(identity.id)
+  ElMessage.success('已解除飞书绑定')
+  await loadLoginMethods()
+}
+
+function formatIdentityTime(value: string | null): string {
+  if (!value) return '尚未使用'
+  return new Date(value).toLocaleString('zh-CN', { hour12: false })
 }
 
 // ═══════════════════ 数据备份 ═══════════════════
@@ -615,6 +680,61 @@ async function onFuncImportConfirm() {
         </el-form>
       </el-tab-pane>
 
+      <!-- ═══ 登录方式 ═══ -->
+      <el-tab-pane label="🔐 登录方式" name="login-methods">
+        <div v-loading="loginMethodsLoading" class="login-methods" data-tour="settings-login-methods">
+          <div class="login-method local-method">
+            <div class="login-method-icon">🔑</div>
+            <div class="login-method-body">
+              <strong>本地账号密码</strong>
+              <p>账号：{{ authStore.user?.username }}。这是当前账号的基础登录方式。</p>
+            </div>
+            <el-tag type="success">已启用</el-tag>
+          </div>
+
+          <div
+            v-for="identity in externalIdentities"
+            :key="identity.id"
+            class="login-method"
+          >
+            <el-avatar v-if="identity.avatarUrl" :src="identity.avatarUrl" :size="42" />
+            <div v-else class="login-method-icon">🪶</div>
+            <div class="login-method-body">
+              <strong>飞书 · {{ identity.displayName || identity.email || '已绑定账号' }}</strong>
+              <p>租户：{{ identity.tenantKey || '未知' }} · 最后登录：{{ formatIdentityTime(identity.lastLoginAt) }}</p>
+            </div>
+            <el-tag v-if="identity.status === 'active'" type="success">已绑定</el-tag>
+            <el-tag v-else type="info">已解除</el-tag>
+            <el-button
+              v-if="identity.status === 'active'"
+              type="danger"
+              plain
+              size="small"
+              @click="onUnlinkExternal(identity)"
+            >解除绑定</el-button>
+          </div>
+
+          <div v-for="provider in externalProviders" :key="provider.id" class="provider-action">
+            <el-button
+              v-if="!hasActiveIdentity(provider.id)"
+              type="primary"
+              :loading="bindingProvider === provider.id"
+              @click="onBindExternal(provider.id)"
+            >🪶 绑定{{ provider.name }}账号</el-button>
+            <span v-else class="provider-hint">{{ provider.name }}已绑定，可在登录页直接使用。</span>
+          </div>
+
+          <el-alert
+            v-if="!externalProviders.length && !externalIdentities.length"
+            title="管理员尚未启用第三方登录；本地账号密码不受影响。"
+            type="info"
+            show-icon
+            :closable="false"
+          />
+          <p class="security-hint">第三方身份只用于确认登录用户，组织、角色和列表权限仍由本系统管理。</p>
+        </div>
+      </el-tab-pane>
+
       <!-- ═══ 数据备份 ═══ -->
       <el-tab-pane label="💾 数据备份" name="backup">
         <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px" data-tour="settings-backup">
@@ -738,4 +858,13 @@ async function onFuncImportConfirm() {
 .repair-result { margin-top: 8px; font-size: 0.82rem; }
 .repair-result ul { margin: 6px 0 0; padding-left: 18px; color: #606266; }
 .repair-result li { margin-bottom: 2px; }
+.login-methods { display: flex; flex-direction: column; gap: 12px; max-width: 760px; min-height: 120px; }
+.login-method { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: 1px solid #e4e7ed; border-radius: 9px; background: #fff; }
+.local-method { background: #fafcff; }
+.login-method-icon { width: 42px; height: 42px; display: grid; place-items: center; flex: 0 0 42px; border-radius: 10px; background: #eef4ff; font-size: 22px; }
+.login-method-body { flex: 1; min-width: 0; }
+.login-method-body p { margin: 4px 0 0; color: #909399; font-size: .8rem; }
+.provider-action { display: flex; align-items: center; min-height: 38px; }
+.provider-hint, .security-hint { color: #909399; font-size: .82rem; }
+.security-hint { margin: 2px 0 0; }
 </style>

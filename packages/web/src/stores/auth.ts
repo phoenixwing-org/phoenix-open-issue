@@ -1,8 +1,8 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { login as apiLogin, register as apiRegister, getMe } from '@/api/auth'
+import { login as apiLogin, register as apiRegister, getMe, exchangeExternalAuthTicket } from '@/api/auth'
 import { useDictStore } from '@/stores/dict'
-import type { LoginResult, UserPublic, RegisterResult } from '@open-issue/core'
+import type { ExternalAuthTicketResult, LoginResult, UserPublic, RegisterResult } from '@open-issue/core'
 
 export const useAuthStore = defineStore('auth', () => {
   const token = ref(localStorage.getItem('token') || '')
@@ -23,11 +23,22 @@ export const useAuthStore = defineStore('auth', () => {
   async function login(username: string, password: string) {
     const res = await apiLogin(username, password)
     const data = res.data as LoginResult
+    applySession(data)
+    return data
+  }
+
+  async function loginWithExternalTicket(ticket: string) {
+    const res = await exchangeExternalAuthTicket(ticket)
+    const data = res.data as ExternalAuthTicketResult
+    applySession(data)
+    return data
+  }
+
+  function applySession(data: LoginResult) {
     token.value = data.token
     user.value = data.user
     localStorage.setItem('token', data.token)
     localStorage.setItem('user', JSON.stringify(data.user))
-    return data
   }
 
   async function register(data: { username: string; password: string; displayName?: string; orgUnitId?: string }) {
@@ -60,5 +71,5 @@ export const useAuthStore = defineStore('auth', () => {
   // 初始化
   initFromStorage()
 
-  return { token, user, isLoggedIn, login, register, fetchMe, logout }
+  return { token, user, isLoggedIn, login, loginWithExternalTicket, register, fetchMe, logout }
 })

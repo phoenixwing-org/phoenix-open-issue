@@ -20,6 +20,11 @@ describe('pnwRunSchema', () => {
     ])))
     expect(await db.columnNames('issues')).toContain('functionId')
     expect(await db.indexExists('idx_dict_group_value')).toBe(true)
+    expect(await db.tableExists('externalIdentities')).toBe(true)
+    expect(await db.tableExists('oauthLoginAttempts')).toBe(true)
+    expect(await db.tableExists('oauthLoginTickets')).toBe(true)
+    expect(await db.columnNames('oauthLoginTickets')).toContain('returnTo')
+    expect(await db.indexExists('idx_external_identities_provider_subject')).toBe(true)
   })
 
   it('uses quoted camelCase identifiers in generated tables', async () => {

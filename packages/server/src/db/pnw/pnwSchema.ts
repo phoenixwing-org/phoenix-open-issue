@@ -1,4 +1,5 @@
 import type { PnwDbAdapter } from './pnwDbTypes.js'
+import { externalAuthSchemaSql } from '../externalAuthSchema.js'
 
 export async function pnwRunSchema(db: PnwDbAdapter): Promise<void> {
   const now = db.dialect === 'postgres' ? "(CURRENT_TIMESTAMP::TEXT)" : '(CURRENT_TIMESTAMP)'
@@ -154,4 +155,5 @@ export async function pnwRunSchema(db: PnwDbAdapter): Promise<void> {
     CREATE UNIQUE INDEX IF NOT EXISTS "idx_issueListLinks_unique" ON "issueListLinks"("issueId", "listId");
     CREATE UNIQUE INDEX IF NOT EXISTS "idx_dict_group_value" ON "dict"("groupName", "value");
   `)
+  await db.exec(externalAuthSchemaSql(db.dialect))
 }

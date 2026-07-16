@@ -10,6 +10,7 @@ import {
   repairDictDataAndIndex,
   ensureIssueNoIndexes,
 } from './migrations.js'
+import { externalAuthSchemaSql } from './externalAuthSchema.js'
 
 export function runSchema(db: PnwDbAdapter): void {
   // ---- 建表 ----
@@ -155,6 +156,7 @@ export function runSchema(db: PnwDbAdapter): void {
       UNIQUE(platform, externalId)
     );
   `)
+  db.exec(externalAuthSchemaSql('sqlite'))
 
   // ---- 迁移：旧库列增量添加（须在 CREATE TABLE 之后） ----
   applyColumnMigrations(db)

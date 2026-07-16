@@ -19,6 +19,15 @@ describe('pnwCompilePostgresParams', () => {
     )
   })
 
+  it('自动引用第三方登录表和身份字段', () => {
+    const result = pnwCompilePostgresParams(
+      'SELECT providerSubject, tenantKey FROM externalIdentities WHERE userId = ?',
+    )
+    expect(result.text).toBe(
+      'SELECT "providerSubject", "tenantKey" FROM "externalIdentities" WHERE "userId" = $1',
+    )
+  })
+
   it('不会改写字符串、注释或相似标识符', () => {
     const result = pnwCompilePostgresParams(
       "SELECT 'issueNo' AS textValue, customIssueNo FROM issues -- listId\nWHERE id = ?",

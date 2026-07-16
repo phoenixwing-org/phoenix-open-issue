@@ -1,4 +1,5 @@
 import request from './request'
+import type { ExternalAuthProviderId } from '@open-issue/core'
 
 export function login(username: string, password: string) {
   return request.post('/auth/login', { username, password })
@@ -48,4 +49,36 @@ export function adminResetPassword(userId: string, newPassword: string) {
 
 export function changePassword(oldPassword: string, newPassword: string) {
   return request.patch('/auth/change-password', { oldPassword, newPassword })
+}
+
+export function getExternalAuthProviders() {
+  return request.get('/auth/providers')
+}
+
+export function startExternalLogin(provider: ExternalAuthProviderId, returnTo?: string) {
+  return request.get(`/auth/oauth/${provider}/start`, { params: { returnTo } })
+}
+
+export function startExternalLink(provider: ExternalAuthProviderId, returnTo = '/settings?tab=login-methods') {
+  return request.post(`/auth/oauth/${provider}/link/start`, { returnTo })
+}
+
+export function exchangeExternalAuthTicket(ticket: string) {
+  return request.post('/auth/oauth/exchange-ticket', { ticket })
+}
+
+export function getMyExternalIdentities() {
+  return request.get('/auth/external-identities')
+}
+
+export function unlinkMyExternalIdentity(identityId: string) {
+  return request.delete(`/auth/external-identity/${identityId}`)
+}
+
+export function getUserExternalIdentities(userId: string) {
+  return request.get(`/user/${userId}/external-identities`)
+}
+
+export function unlinkUserExternalIdentity(userId: string, identityId: string) {
+  return request.delete(`/user/${userId}/external-identity/${identityId}`)
 }

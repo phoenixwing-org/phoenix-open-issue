@@ -6,6 +6,7 @@ export interface PnwCompiledSql {
 const PROJECT_IDENTIFIERS = new Set([
   'users', 'orgUnits', 'issueLists', 'issueListMembers', 'issues', 'checkpoints',
   'pushRecords', 'issueListLinks', 'dict', 'systemFlags', 'poiFunctions', 'schemaMigrations',
+  'externalIdentities', 'oauthLoginAttempts', 'oauthLoginTickets',
   'id', 'username', 'email', 'passwordHash', 'displayName', 'orgUnitId', 'approved',
   'disabled', 'systemRole', 'tokenVersion', 'createdAt', 'updatedAt', 'name', 'unitType', 'parentId',
   'description', 'listType', 'ownerId', 'archived', 'isDeleted', 'deletedAt', 'listId',
@@ -20,6 +21,11 @@ const PROJECT_IDENTIFIERS = new Set([
   'appliedAt', 'memberCount', 'issueCount', 'ownerName', 'myRole', 'issueTitle',
   'fromListName', 'toListName', '_attentionLevel', '_functionName', '_functionPlatform',
   '_functionExternalId',
+  'provider', 'providerSubject', 'tenantKey', 'openId', 'unionId', 'providerUserId',
+  'avatarUrl', 'metadataJson', 'linkSource', 'linkedByUserId', 'lastLoginAt',
+  'lastSyncedAt', 'revokedAt', 'purpose', 'stateHash',
+  'returnTo', 'expiresAt', 'usedAt', 'failureCode', 'ticketHash',
+  'identityId',
 ])
 
 /**

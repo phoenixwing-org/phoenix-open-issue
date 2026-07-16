@@ -3,6 +3,8 @@ import { ref, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useAuthStore } from '@/stores/auth'
 import { getOrgTree } from '@/api/orgUnits'
+import { getExternalAuthProviders, startExternalLogin } from '@/api/auth'
+import type { ExternalAuthProviderId, ExternalAuthProviderInfo } from '@open-issue/core'
 
 const router = useRouter()
 const route = useRoute()
@@ -17,6 +19,8 @@ const orgUnits = ref<any[]>([])
 const loading = ref(false)
 const error = ref('')
 const success = ref('')
+const authProviders = ref<ExternalAuthProviderInfo[]>([])
+const externalLoading = ref<ExternalAuthProviderId | ''>('')
 
 function flattenTree(nodes: any[], depth = 0): any[] {
   const result: any[] = []
@@ -28,11 +32,23 @@ function flattenTree(nodes: any[], depth = 0): any[] {
 }
 
 onMounted(async () => {
-  try {
-    const res = await getOrgTree()
-    orgUnits.value = flattenTree(res.data)
-  } catch { /* ignore */ }
+  const [orgResult, providersResult] = await Promise.allSettled([getOrgTree(), getExternalAuthProviders()])
+  if (orgResult.status === 'fulfilled') orgUnits.value = flattenTree(orgResult.value.data)
+  if (providersResult.status === 'fulfilled') authProviders.value = providersResult.value.data
 })
+
+async function startExternal(provider: ExternalAuthProviderId) {
+  error.value = ''
+  externalLoading.value = provider
+  try {
+    const returnTo = typeof route.query.redirect === 'string' ? route.query.redirect : '/dashboard'
+    const res = await startExternalLogin(provider, returnTo)
+    window.location.assign(res.data.authorizationUrl)
+  } catch (e: any) {
+    error.value = e.response?.data?.message || '无法发起飞书登录'
+    externalLoading.value = ''
+  }
+}
 
 async function submit() {
   error.value = ''
@@ -96,6 +112,21 @@ async function submit() {
         </el-button>
       </el-form>
 
+      <template v-if="!isRegister && authProviders.length">
+        <el-divider>或</el-divider>
+        <el-button
+          v-for="provider in authProviders"
+          :key="provider.id"
+          size="large"
+          class="external-login-button"
+          :loading="externalLoading === provider.id"
+          :disabled="!!externalLoading"
+          @click="startExternal(provider.id)"
+        >
+          <span class="feishu-mark">🪶</span>{{ provider.buttonText }}
+        </el-button>
+      </template>
+
       <div class="login-footer">
         <el-button link type="primary" @click="isRegister = !isRegister">
           {{ isRegister ? '已有账号？去登录' : '没有账号？去注册' }}
@@ -158,4 +189,7 @@ async function submit() {
   text-align: center;
   margin-top: 8px;
 }
+.external-login-button { width: 100%; font-weight: 600; border-color: #3370ff; color: #245bdb; }
+.external-login-button:hover { background: #f2f6ff; border-color: #245bdb; color: #1c4fc4; }
+.feishu-mark { margin-right: 8px; }
 </style>

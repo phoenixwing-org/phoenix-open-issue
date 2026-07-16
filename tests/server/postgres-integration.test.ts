@@ -16,6 +16,7 @@ describePostgres('PostgreSQL integration', () => {
   const sourceListId = `pg-test-source-${suffix}`
   const linkedListId = `pg-test-linked-${suffix}`
   const issueId = `pg-test-issue-${suffix}`
+  const externalIdentityId = `pg-test-external-identity-${suffix}`
   const checkpointId = `pg-test-checkpoint-${suffix}`
   let db: PnwPostgresAdapter
 
@@ -31,6 +32,7 @@ describePostgres('PostgreSQL integration', () => {
 
   afterAll(async () => {
     if (!db) return
+    await db.run('DELETE FROM externalIdentities WHERE id = ?', [externalIdentityId])
     await db.run('DELETE FROM checkpoints WHERE id = ?', [checkpointId])
     await db.run('DELETE FROM issueListLinks WHERE issueId = ?', [issueId])
     await db.run('DELETE FROM issues WHERE id = ?', [issueId])
@@ -54,6 +56,17 @@ describePostgres('PostgreSQL integration', () => {
       [userId],
     )
     expect(row).toEqual({ displayName: 'PG Test', systemRole: 'editor' })
+
+    await db.run(
+      `INSERT INTO externalIdentities
+       (id, userId, provider, providerSubject, tenantKey, openId)
+       VALUES (?, ?, ?, ?, ?, ?)`,
+      [externalIdentityId, userId, 'feishu', `tenant-${suffix}:open-${suffix}`, `tenant-${suffix}`, `open-${suffix}`],
+    )
+    expect(await db.get<{ tenantKey: string }>(
+      'SELECT tenantKey FROM externalIdentities WHERE id = ?',
+      [externalIdentityId],
+    )).toEqual({ tenantKey: `tenant-${suffix}` })
   })
 
   it('rolls back failed transactions', async () => {

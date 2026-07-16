@@ -51,16 +51,14 @@ export class AuthService {
       throw new UnauthorizedError('用户名或密码错误')
     }
 
-    if (!user.approved) {
-      throw new UnauthorizedError('账号尚未通过管理员批准')
-    }
+    return this.createLoginResult(user)
+  }
 
-    if (user.disabled) {
-      throw new UnauthorizedError('账号已被禁用，请联系管理员')
-    }
-
-    const token = signToken({ userId: user.id, username: user.username, tokenVersion: user.tokenVersion ?? 0 })
-    return { token, user: toPublic(user) }
+  /** 第三方身份精确匹配后，仍通过本地账号状态签发本项目会话。 */
+  async loginUserById(userId: string): Promise<LoginResult> {
+    const user = await getAsyncDb().get<User>('SELECT * FROM "users" WHERE "id" = ?', [userId])
+    if (!user) throw new UnauthorizedError('用户不存在')
+    return this.createLoginResult(user)
   }
 
   async getMe(userId: string): Promise<UserPublic> {
@@ -206,5 +204,16 @@ export class AuthService {
     await db.run('UPDATE "users" SET "passwordHash" = ?, "tokenVersion" = "tokenVersion" + 1, "updatedAt" = ? WHERE "id" = ?',
       [passwordHash, new Date().toISOString(), userId])
     console.log(`🔑 [ADMIN_RESET_PW] user "${user.username}" password reset by "${actorId}"`)
+  }
+
+  private createLoginResult(user: User): LoginResult {
+    if (!user.approved) {
+      throw new UnauthorizedError('账号尚未通过管理员批准')
+    }
+    if (user.disabled) {
+      throw new UnauthorizedError('账号已被禁用，请联系管理员')
+    }
+    const token = signToken({ userId: user.id, username: user.username, tokenVersion: user.tokenVersion ?? 0 })
+    return { token, user: toPublic(user) }
   }
 }
