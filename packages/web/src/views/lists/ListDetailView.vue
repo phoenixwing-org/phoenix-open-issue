@@ -674,7 +674,7 @@ provide('issueListCellCtx', reactive({
         <el-radio-button value="complex">📋📋 复杂</el-radio-button>
         <el-radio-button value="timeline">📋📋📋 跟踪</el-radio-button>
       </el-radio-group>
-      <el-button size="small" @click="showColumnSettings = true" title="配置各视图的显示列与顺序">
+      <el-button size="small" @click="showColumnSettings = true" title="配置各视图的显示列与顺序" data-tour="list-columns">
         <el-icon><Setting /></el-icon> 列设置
       </el-button>
     </div>
@@ -687,6 +687,7 @@ provide('issueListCellCtx', reactive({
       :closable="false"
       show-icon
       style="margin-bottom:12px"
+      data-tour="list-push-inbox"
     >
       <template #default>
         <div class="push-inbox">
@@ -715,6 +716,7 @@ provide('issueListCellCtx', reactive({
       @sort-change="onSortChange"
       @header-dragend="onColResize"
       highlight-current-row
+      data-tour="list-table"
       :row-class-name="(row: any) => {
         const lv = linkAttention(row)
         if (lv === 0) return 'row-unwatched'
@@ -795,7 +797,7 @@ provide('issueListCellCtx', reactive({
       <template #empty><el-empty description="暂无 Issue" /></template>
     </el-table>
 
-    <div class="pagination-bar">
+    <div class="pagination-bar" data-tour="list-pagination">
       <span class="pagination-summary">
         当前 {{ filteredIssues.length }} 条<span v-if="filteredIssues.length !== issueStore.issues.length"> / 共 {{ issueStore.issues.length }} 条</span>
       </span>

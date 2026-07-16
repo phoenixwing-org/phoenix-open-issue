@@ -266,7 +266,7 @@ function systemRoleLabel(role: string | undefined) {
   <div class="page">
     <PnwPageHeader title="组织架构">
       <template #actions>
-        <el-button v-if="isAdmin" type="primary" size="small" @click="showCreate = true"><el-icon><Plus /></el-icon> 新建节点</el-button>
+        <el-button v-if="isAdmin" type="primary" size="small" @click="showCreate = true" data-tour="org-create"><el-icon><Plus /></el-icon> 新建节点</el-button>
       </template>
       <template #help><PageHelpButton page-id="org" /></template>
     </PnwPageHeader>
@@ -274,7 +274,7 @@ function systemRoleLabel(role: string | undefined) {
     <p v-if="!isAdmin" class="panel-hint" style="margin-bottom:12px">仅系统管理员可编辑组织节点、审批用户及管理成员。</p>
 
     <div class="org-layout">
-      <div class="org-tree-panel">
+      <div class="org-tree-panel" data-tour="org-tree">
         <el-tree
           ref="treeRef"
           :data="treeDisplayData"
@@ -296,7 +296,7 @@ function systemRoleLabel(role: string | undefined) {
         </el-tree>
       </div>
 
-      <div class="org-detail-panel">
+      <div class="org-detail-panel" data-tour="org-detail">
         <template v-if="selectedUnit && !editingUnit">
           <h3>{{ selectedUnit.name }}</h3>
           <el-tag size="small" :color="dict.getGroupColor('orgUnitType', selectedUnit.unitType)" style="color:#fff;border:none">
@@ -341,6 +341,7 @@ function systemRoleLabel(role: string | undefined) {
             size="small"
             empty-text="暂无人员"
             class="user-table"
+            data-tour="org-users"
           >
             <el-table-column label="显示名称" min-width="120">
               <template #default="{ row }">

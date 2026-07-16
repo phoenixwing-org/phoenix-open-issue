@@ -26,7 +26,7 @@ async function startTour() {
 <template>
   <PnwWelcomeShell>
     <template #brand>
-      <div class="brand-area">
+      <div class="brand-area" data-tour="welcome-brand">
         <div class="brand-icon">OI</div>
         <div>
           <div class="brand-name">Open Issue List</div>
@@ -67,7 +67,7 @@ async function startTour() {
         <div class="card">
           <div class="card-icon">📊</div>
           <h3>组织推送</h3>
-          <p>按组织架构层级推送 Issue，支持覆盖/合并策略</p>
+          <p>在有共同成员的列表间推送 Issue，由目标列表管理员审批关联</p>
         </div>
       </div>
 

@@ -145,21 +145,23 @@ async function onExport() {
   <div class="page">
     <PnwPageHeader title="功能表">
       <template #actions>
-        <el-button v-if="isSystemAdmin" type="primary" @click="openCreate">+ 新建</el-button>
-        <el-upload v-if="isSystemAdmin" :auto-upload="false" :show-file-list="false" accept=".xlsx" @change="onImportFile">
-          <el-button>📥 导入 XLSX</el-button>
-        </el-upload>
-        <el-button :loading="exporting" @click="onExport">📤 导出 JSON</el-button>
+        <div class="function-actions" data-tour="functions-actions">
+          <el-button v-if="isSystemAdmin" type="primary" @click="openCreate">+ 新建</el-button>
+          <el-upload v-if="isSystemAdmin" :auto-upload="false" :show-file-list="false" accept=".xlsx" @change="onImportFile">
+            <el-button>📥 导入 XLSX</el-button>
+          </el-upload>
+          <el-button :loading="exporting" @click="onExport">📤 导出 JSON</el-button>
+        </div>
       </template>
       <template #help><PageHelpButton page-id="functions" /></template>
     </PnwPageHeader>
 
-    <div style="margin-bottom:12px;display:flex;gap:8px">
+    <div style="margin-bottom:12px;display:flex;gap:8px" data-tour="functions-filters">
       <el-input v-model="settings.funcSearch" placeholder="搜索功能名/平台/ID..." style="width:260px" clearable @input="doLoad" />
       <el-checkbox v-model="settings.funcNumericSort" @change="doLoad" style="margin-left:12px">外部ID按数字排序</el-checkbox>
     </div>
 
-    <el-table :data="store.items" v-loading="store.loading" stripe @sort-change="onSortChange">
+    <el-table :data="store.items" v-loading="store.loading" stripe @sort-change="onSortChange" data-tour="functions-table">
       <el-table-column prop="platform" label="平台" width="140" sortable="custom" />
       <el-table-column prop="externalId" label="外部 ID" width="100" sortable="custom" />
       <el-table-column prop="functionName" label="功能名称" min-width="180" show-overflow-tooltip sortable="custom" />
@@ -228,4 +230,6 @@ async function onExport() {
 
 <style scoped>
 .page { padding: 0; }
+.function-actions { display: inline-flex; align-items: center; gap: 8px; }
+.function-actions :deep(.el-button + .el-button) { margin-left: 0; }
 </style>

@@ -126,20 +126,20 @@ onMounted(async () => {
       <el-alert v-if="!available" type="info" show-icon :closable="false"
         title="当前环境未安装 Vitest，仅开发/内网环境可用" />
 
-      <div class="toolbar">
+      <div class="toolbar" data-tour="test-toolbar">
         <el-button type="primary" :loading="running" :disabled="!available || running" @click="onRunAll">
           全部运行
         </el-button>
         <span v-if="files.length" class="hint">{{ files.length }} 个文件 · {{ totalCases }} 条用例</span>
       </div>
 
-      <el-table v-loading="loading" :data="files" stripe style="width: 100%; margin-top: 16px">
+      <el-table v-loading="loading" :data="files" stripe style="width: 100%; margin-top: 16px" data-tour="test-files">
         <el-table-column prop="filePath" label="测试文件" min-width="320" />
         <el-table-column prop="packageName" label="包" width="100" />
         <el-table-column prop="caseCount" label="用例数" width="90" align="center" />
       </el-table>
 
-      <div v-if="lastResult" class="result-box">
+      <div v-if="lastResult" class="result-box" data-tour="test-result">
         <h3>最近运行 · {{ lastResult.ranAt }}</h3>
         <p>
           共 {{ lastResult.summary.total }} 条 ·

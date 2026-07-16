@@ -474,7 +474,7 @@ async function onFuncImportConfirm() {
       <template #help><PageHelpButton page-id="settings" /></template>
     </PnwPageHeader>
 
-    <el-tabs v-model="activeTab">
+    <el-tabs v-model="activeTab" data-tour="settings-tabs">
       <!-- ═══ 数据字典 ═══ -->
       <el-tab-pane label="📚 数据字典" name="dict">
         <p style="color:#909399;font-size:0.82rem;margin-bottom:12px">
@@ -488,7 +488,7 @@ async function onFuncImportConfirm() {
           <el-button type="danger" size="small" plain @click="showDeleteByTag = true">🗑 删除一类值</el-button>
         </div>
 
-        <div v-loading="loading">
+        <div v-loading="loading" data-tour="settings-dict-list">
           <div v-for="g in groups" :key="g.value" style="margin-bottom:20px">
             <h3 style="margin-bottom:8px">{{ g.label }} ({{ groupedItems()[g.value]?.length || 0 }})</h3>
             <el-table :data="groupedItems()[g.value]" size="small" stripe>
@@ -598,7 +598,7 @@ async function onFuncImportConfirm() {
 
       <!-- ═══ 修改密码 ═══ -->
       <el-tab-pane label="🔑 修改密码" name="password">
-        <el-form label-position="top" style="max-width:400px" @submit.prevent="onChangePassword">
+        <el-form label-position="top" style="max-width:400px" @submit.prevent="onChangePassword" data-tour="settings-password">
           <el-form-item label="当前密码">
             <el-input v-model="oldPassword" type="password" show-password />
           </el-form-item>
@@ -617,7 +617,7 @@ async function onFuncImportConfirm() {
 
       <!-- ═══ 数据备份 ═══ -->
       <el-tab-pane label="💾 数据备份" name="backup">
-        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px">
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px" data-tour="settings-backup">
           <el-button type="primary" :loading="exporting" @click="onExport('resetAll')">
             📥 {{ isSystemAdmin ? '备份导出' : '导出我的数据' }}
           </el-button>
@@ -671,7 +671,7 @@ async function onFuncImportConfirm() {
           若控制台提示数据字典重复，请先执行<strong>数据字典补全</strong>（系统仍可正常登录使用）。
         </p>
 
-        <div class="repair-list">
+        <div class="repair-list" data-tour="settings-repair">
           <div v-for="task in REPAIR_TASKS" :key="task.id" class="repair-item">
             <div class="repair-item-head">
               <strong>{{ task.title }}</strong>
@@ -701,7 +701,7 @@ async function onFuncImportConfirm() {
         <p style="color:#909399;font-size:0.82rem;margin-bottom:12px">
           从 <code>.xlsx</code> 文件导入功能表数据。已存在的 (平台+ID) 将更新，新的将新增。
         </p>
-        <el-upload :auto-upload="false" :show-file-list="false" accept=".xlsx" @change="onFuncImportFile">
+        <el-upload :auto-upload="false" :show-file-list="false" accept=".xlsx" @change="onFuncImportFile" data-tour="settings-function-import">
           <el-button type="primary">📥 选择 XLSX 文件</el-button>
         </el-upload>
         <p style="margin-top:8px;color:#909399;font-size:0.78rem">

@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed } from "vue";
-import { driver } from "driver.js";
+import { computed, ref } from "vue";
+import { driver, type DriveStep } from "driver.js";
 import "driver.js/dist/driver.css";
 import { PAGE_HELP } from "@/content/pageHelp";
 
@@ -9,25 +9,39 @@ const props = defineProps<{
 }>();
 
 const help = computed(() => PAGE_HELP[props.pageId]);
+const popoverVisible = ref(false);
+
+function isTourStepVisible(step: DriveStep): boolean {
+  if (typeof step.element !== "string") return true;
+  const target = document.querySelector(step.element);
+  return Boolean(target && target.getClientRects().length > 0);
+}
 
 function runPageTour() {
   const content = help.value;
   if (!content?.tourSteps?.length) return;
-  const d = driver({
-    showProgress: true,
-    progressText: "{{current}} / {{total}}",
-    nextBtnText: "下一步",
-    prevBtnText: "上一步",
-    doneBtnText: "完成",
-    steps: content.tourSteps,
-  });
-  d.drive();
+  const visibleSteps = content.tourSteps.filter(isTourStepVisible);
+  if (!visibleSteps.length) return;
+
+  popoverVisible.value = false;
+  window.setTimeout(() => {
+    const d = driver({
+      showProgress: true,
+      progressText: "{{current}} / {{total}}",
+      nextBtnText: "下一步",
+      prevBtnText: "上一步",
+      doneBtnText: "完成",
+      steps: visibleSteps,
+    });
+    d.drive();
+  }, 120);
 }
 </script>
 
 <template>
   <el-popover
     v-if="help"
+    v-model:visible="popoverVisible"
     placement="bottom-end"
     :width="320"
     trigger="click"

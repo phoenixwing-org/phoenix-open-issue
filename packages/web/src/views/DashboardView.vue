@@ -56,16 +56,20 @@ async function switchView(view: 'mine' | 'all' | 'archived') {
 }
 
 async function onArchive(listId: string, name: string, archived: boolean) {
-  if (archived) {
-    try {
-      await ElMessageBox.confirm(
-        `确定归档列表「${name}」？归档后会从默认视图隐藏，可在「归档」视图中取消归档。`,
-        '确认归档',
-        { confirmButtonText: '归档', cancelButtonText: '取消', type: 'warning' },
-      )
-    } catch {
-      return
-    }
+  try {
+    await ElMessageBox.confirm(
+      archived
+        ? `确定归档列表「${name}」？归档后会从默认视图隐藏，可在「归档」视图中取消归档。`
+        : `确定取消归档列表「${name}」？恢复后会回到正常列表视图。`,
+      archived ? '确认归档' : '确认取消归档',
+      {
+        confirmButtonText: archived ? '归档' : '取消归档',
+        cancelButtonText: '返回',
+        type: archived ? 'warning' : 'info',
+      },
+    )
+  } catch {
+    return
   }
   await store.archiveList(listId, archived)
 }
@@ -118,7 +122,7 @@ async function onCreate(data: { name: string; listType: string; description?: st
     <div v-loading="store.loading">
       <el-empty v-if="!store.lists.length && !store.loading" description="还没有列表，点击上方按钮创建" />
 
-      <div class="list-cards">
+      <div class="list-cards" data-tour="dashboard-cards">
         <div
           v-for="list in store.lists" :key="list.id"
           class="list-card"

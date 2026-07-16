@@ -189,36 +189,38 @@ function goBack() {
   <div class="page">
     <PnwPageHeader :title="issueStore.currentIssue?.title || 'Issue 详情'">
       <template #actions>
-        <el-button v-if="isModal" size="small" plain @click="openAsPage" title="在页面中打开，可使用帮助和巡游">
-          <el-icon><FullScreen /></el-icon> 页面模式
-        </el-button>
-        <el-button v-if="issueStore.currentIssue && canModify" size="small" type="primary" plain @click="showEdit = true">
-          <el-icon><Edit /></el-icon> 编辑
-        </el-button>
-        <el-tooltip v-if="issueStore.currentIssue && canModify" content="添加点检" placement="bottom">
-          <el-button
-            size="small"
-            type="success"
-            plain
-            circle
-            aria-label="添加点检"
-            @click="showCpForm = true"
-          >
-            <el-icon><Plus /></el-icon>
+        <div v-if="isModal || (issueStore.currentIssue && (canModify || canPush))" class="header-actions" data-tour="issue-actions">
+          <el-button v-if="isModal" size="small" plain @click="openAsPage" title="在页面中打开，可使用帮助和巡游">
+            <el-icon><FullScreen /></el-icon> 页面模式
           </el-button>
-        </el-tooltip>
-        <el-tooltip v-if="issueStore.currentIssue && canPush" content="推送到其他列表" placement="bottom">
-          <el-button
-            size="small"
-            type="warning"
-            plain
-            circle
-            aria-label="推送到其他列表"
-            @click="showPush = true"
-          >
-            <el-icon><Promotion /></el-icon>
+          <el-button v-if="issueStore.currentIssue && canModify" size="small" type="primary" plain @click="showEdit = true">
+            <el-icon><Edit /></el-icon> 编辑
           </el-button>
-        </el-tooltip>
+          <el-tooltip v-if="issueStore.currentIssue && canModify" content="添加点检" placement="bottom">
+            <el-button
+              size="small"
+              type="success"
+              plain
+              circle
+              aria-label="添加点检"
+              @click="showCpForm = true"
+            >
+              <el-icon><Plus /></el-icon>
+            </el-button>
+          </el-tooltip>
+          <el-tooltip v-if="issueStore.currentIssue && canPush" content="推送到其他列表" placement="bottom">
+            <el-button
+              size="small"
+              type="warning"
+              plain
+              circle
+              aria-label="推送到其他列表"
+              @click="showPush = true"
+            >
+              <el-icon><Promotion /></el-icon>
+            </el-button>
+          </el-tooltip>
+        </div>
       </template>
       <template #help>
         <div class="header-right">
@@ -304,7 +306,7 @@ function goBack() {
       </el-descriptions>
 
       <!-- 8D 报告（仅填写后显示） -->
-      <el-descriptions v-if="issueStore.currentIssue.containment || issueStore.currentIssue.rootCause || issueStore.currentIssue.correctiveAction" title="8D 报告" :column="1" border size="small" class="detail-desc-block">
+      <el-descriptions v-if="issueStore.currentIssue.containment || issueStore.currentIssue.rootCause || issueStore.currentIssue.correctiveAction" title="8D 报告" :column="1" border size="small" class="detail-desc-block" data-tour="issue-8d">
         <el-descriptions-item label="D3 临时遏制措施">
           {{ issueStore.currentIssue.containment || '—' }}
         </el-descriptions-item>
@@ -421,6 +423,8 @@ function goBack() {
   gap: 20px;
   margin-bottom: 20px;
 }
+.header-actions { display: inline-flex; align-items: center; gap: 8px; }
+.header-actions :deep(.el-button + .el-button) { margin-left: 0; }
 .page-head h2 {
   font-size: 1.15rem;
   font-weight: 650;

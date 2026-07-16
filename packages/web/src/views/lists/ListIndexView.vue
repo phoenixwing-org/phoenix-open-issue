@@ -144,16 +144,20 @@ async function onDelete(id: string, name: string) {
 }
 
 async function onArchive(id: string, name: string, archived: boolean) {
-  if (archived) {
-    try {
-      await ElMessageBox.confirm(
-        `确定归档列表「${name}」？归档后会从默认视图隐藏，可在「已归档」视图中取消归档。`,
-        '确认归档',
-        { confirmButtonText: '归档', cancelButtonText: '取消', type: 'warning' },
-      )
-    } catch {
-      return
-    }
+  try {
+    await ElMessageBox.confirm(
+      archived
+        ? `确定归档列表「${name}」？归档后会从默认视图隐藏，可在「已归档」视图中取消归档。`
+        : `确定取消归档列表「${name}」？恢复后会回到正常列表视图。`,
+      archived ? '确认归档' : '确认取消归档',
+      {
+        confirmButtonText: archived ? '归档' : '取消归档',
+        cancelButtonText: '返回',
+        type: archived ? 'warning' : 'info',
+      },
+    )
+  } catch {
+    return
   }
   await store.archiveList(id, archived)
   await loadLists()
@@ -178,19 +182,20 @@ async function onRestore(id: string, name: string) {
   <div class="page">
     <PnwPageHeader title="列表管理">
       <template #actions>
+        <el-button v-if="['all', 'active'].includes(listView) && canCreateList" type="primary" @click="showCreate = true" data-tour="lists-create">
+          <el-icon><Plus /></el-icon> 新建列表
+        </el-button>
         <el-radio-group
           v-model="listView"
           size="small"
           @change="switchView"
+          data-tour="lists-status"
         >
           <el-radio-button value="all">全部</el-radio-button>
           <el-radio-button value="active">正常</el-radio-button>
           <el-radio-button value="archived">已归档</el-radio-button>
           <el-radio-button v-if="isAdmin" value="deleted">已删除</el-radio-button>
         </el-radio-group>
-        <el-button v-if="['all', 'active'].includes(listView) && canCreateList" type="primary" @click="showCreate = true" data-tour="lists-create">
-          <el-icon><Plus /></el-icon> 新建列表
-        </el-button>
       </template>
       <template #help><PageHelpButton page-id="lists" /></template>
     </PnwPageHeader>
@@ -279,7 +284,7 @@ async function onRestore(id: string, name: string) {
       </template>
     </el-table>
 
-    <div class="pagination-bar">
+    <div class="pagination-bar" data-tour="lists-pagination">
       <span class="pagination-summary">
         当前 {{ filteredLists.length }} 条<span v-if="filteredLists.length !== store.lists.length"> / 共 {{ store.lists.length }} 条</span>
       </span>

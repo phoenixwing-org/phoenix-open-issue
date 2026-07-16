@@ -49,7 +49,7 @@ function goList(listId: string) {
       <template #help><PageHelpButton page-id="pushHistory" /></template>
     </PnwPageHeader>
 
-    <el-table :data="records" v-loading="loading" stripe size="small">
+    <el-table :data="records" v-loading="loading" stripe size="small" data-tour="push-table">
       <el-table-column label="时间" width="140">
         <template #default="{ row }">{{ new Date(row.pushedAt).toLocaleString('zh-CN') }}</template>
       </el-table-column>
