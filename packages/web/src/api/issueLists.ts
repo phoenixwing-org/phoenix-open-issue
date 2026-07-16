@@ -1,8 +1,17 @@
 import request from './request'
 
 // 返回列表 → 复数
-export function getMyLists()       { return request.get('/lists') }
-export function getAllLists()      { return request.get('/lists/all') }
+export function getMyLists(includeArchived = false) {
+  return request.get('/lists', { params: includeArchived ? { includeArchived: true } : undefined })
+}
+export function getAllLists(includeArchived = false, includeDeleted = false) {
+  return request.get('/lists/all', {
+    params: {
+      ...(includeArchived ? { includeArchived: true } : {}),
+      ...(includeDeleted ? { includeDeleted: true } : {}),
+    },
+  })
+}
 export function getArchivedLists() { return request.get('/lists/archived') }
 export function getDeletedLists()  { return request.get('/lists/deleted') }
 

@@ -9,10 +9,10 @@ export const useIssueListStore = defineStore('issueLists', () => {
   const currentList = ref<IssueList | null>(null)
   const loading = ref(false)
 
-  async function fetchLists() {
+  async function fetchLists(includeArchived = false) {
     loading.value = true
     try {
-      const res = await api.getMyLists()
+      const res = await api.getMyLists(includeArchived)
       lists.value = res.data
     } catch (e: any) {
     } finally {
@@ -20,10 +20,10 @@ export const useIssueListStore = defineStore('issueLists', () => {
     }
   }
 
-  async function fetchAllLists() {
+  async function fetchAllLists(includeArchived = false, includeDeleted = false) {
     loading.value = true
     try {
-      const res = await api.getAllLists()
+      const res = await api.getAllLists(includeArchived, includeDeleted)
       lists.value = res.data
     } catch (e: any) {
     } finally {

@@ -100,11 +100,22 @@ beforeAll(async () => {
 
   db.run(`INSERT INTO issueLists (id, name, listType, ownerId) VALUES ('list-a', '列表 A', 'custom', ?)`, adminId)
   db.run(`INSERT INTO issueLists (id, name, listType, ownerId) VALUES ('list-b', '列表 B', 'custom', ?)`, adminId)
+  db.run(`INSERT INTO issueLists (id, name, listType, ownerId, archived) VALUES ('list-archived-access', '可访问归档列表', 'custom', ?, 1)`, adminId)
+  db.run(`INSERT INTO issueLists (id, name, listType, ownerId, archived) VALUES ('list-archived-private', '无权归档列表', 'custom', ?, 1)`, adminId)
+  db.run(`
+    INSERT INTO issueLists (id, name, listType, ownerId, isDeleted, deletedAt)
+    VALUES ('list-deleted', '已删除列表', 'custom', ?, 1, CURRENT_TIMESTAMP)
+  `, adminId)
   for (const member of [
     ['member-a-admin', 'list-a', adminId, 'owner'],
     ['member-a-viewer', 'list-a', viewerId, 'editor'],
     ['member-b-admin', 'list-b', adminId, 'owner'],
     ['member-b-editor', 'list-b', editorId, 'editor'],
+    ['member-archived-access-admin', 'list-archived-access', adminId, 'owner'],
+    ['member-archived-access-viewer', 'list-archived-access', viewerId, 'editor'],
+    ['member-archived-private-admin', 'list-archived-private', adminId, 'owner'],
+    ['member-archived-private-editor', 'list-archived-private', editorId, 'editor'],
+    ['member-deleted-admin', 'list-deleted', adminId, 'owner'],
   ]) {
     db.run('INSERT INTO issueListMembers (id, listId, userId, role) VALUES (?, ?, ?, ?)', member)
   }
@@ -142,6 +153,51 @@ afterAll(async () => {
 })
 
 describe.sequential('HTTP 权限与认证回归', () => {
+  it('列表全部视图按当前用户权限合并正常、归档和删除状态', async () => {
+    const viewerActive = await request('/api/lists', viewerToken)
+    expect(viewerActive.status).toBe(200)
+    expect(viewerActive.body.map((list: { id: string }) => list.id)).toEqual(['list-a'])
+
+    const viewerAll = await request('/api/lists?includeArchived=true', viewerToken)
+    expect(viewerAll.status).toBe(200)
+    expect(viewerAll.body.map((list: { id: string }) => list.id).sort()).toEqual([
+      'list-a',
+      'list-archived-access',
+    ])
+    expect(viewerAll.body).not.toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'list-archived-private' }),
+      expect.objectContaining({ id: 'list-deleted' }),
+    ]))
+
+    expect((await request('/api/lists/all?includeArchived=true&includeDeleted=true', viewerToken)).status).toBe(403)
+
+    const adminAll = await request('/api/lists/all?includeArchived=true&includeDeleted=true', adminToken)
+    expect(adminAll.status).toBe(200)
+    expect(adminAll.body).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: 'list-a', archived: 0, isDeleted: 0 }),
+      expect.objectContaining({ id: 'list-archived-access', archived: 1, isDeleted: 0 }),
+      expect.objectContaining({ id: 'list-deleted', isDeleted: 1 }),
+    ]))
+  })
+
+  it('归档列表可取消归档，系统查看用户不能执行该操作', async () => {
+    expect((await request('/api/list/list-archived-access/archive', viewerToken, {
+      method: 'PATCH', body: JSON.stringify({ archived: false }),
+    })).status).toBe(403)
+
+    const restored = await request('/api/list/list-archived-access/archive', adminToken, {
+      method: 'PATCH', body: JSON.stringify({ archived: false }),
+    })
+    expect(restored.status).toBe(200)
+    expect(restored.body.archived).toBe(0)
+
+    const archivedAgain = await request('/api/list/list-archived-access/archive', adminToken, {
+      method: 'PATCH', body: JSON.stringify({ archived: true }),
+    })
+    expect(archivedAgain.status).toBe(200)
+    expect(archivedAgain.body.archived).toBe(1)
+  })
+
   it('systemRole=viewer 即使是列表 editor 也只能查看', async () => {
     expect((await request('/api/list/list-a', viewerToken)).status).toBe(200)
     expect((await request('/api/list/list-a/issues', viewerToken)).status).toBe(200)

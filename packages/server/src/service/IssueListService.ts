@@ -101,24 +101,28 @@ export class IssueListService {
     }
   }
 
-  async getMyLists(userId: string): Promise<IssueList[]> {
+  async getMyLists(userId: string, includeArchived = false): Promise<IssueList[]> {
     const db = getAsyncDb()
     const lists = await db.all(`
       SELECT DISTINCT l.*
       FROM issueLists l
       LEFT JOIN issueListMembers m ON m.listId = l.id
-      WHERE (l.ownerId = ? OR m.userId = ?) AND l.archived = 0 AND ${NOT_DELETED}
+      WHERE (l.ownerId = ? OR m.userId = ?)
+        AND ${NOT_DELETED}
+        ${includeArchived ? '' : 'AND l.archived = 0'}
       ORDER BY l.updatedAt DESC
     `, [userId, userId]) as IssueList[]
     return this.enrichLists(lists, userId)
   }
 
-  async getAllLists(userId: string): Promise<IssueList[]> {
+  async getAllLists(userId: string, includeArchived = false, includeDeleted = false): Promise<IssueList[]> {
     const db = getAsyncDb()
     await assertSystemAdminAsync(db, userId)
     const lists = await db.all(`
       SELECT l.* FROM issueLists l
-      WHERE l.archived = 0 AND ${NOT_DELETED}
+      WHERE 1 = 1
+        ${includeDeleted ? '' : `AND ${NOT_DELETED}`}
+        ${includeArchived ? '' : 'AND l.archived = 0'}
       ORDER BY l.updatedAt DESC
     `) as IssueList[]
     return this.enrichLists(lists, userId)

@@ -60,8 +60,8 @@ Base URL: `http://localhost:3400/api`
 
 ## List
 
-### GET /lists — 我的列表
-### GET /lists/all — 全部（系统管理员）
+### GET /lists — 当前用户可访问的正常列表；`?includeArchived=true` 时包含可访问的归档列表
+### GET /lists/all — 全系统正常列表（系统管理员）；`includeArchived=true` 包含归档，`includeDeleted=true` 包含软删除
 ### GET /lists/archived — 当前用户可访问的归档列表；系统管理员返回全部
 ### GET /lists/deleted — 已软删除列表（系统管理员）
 
@@ -70,6 +70,7 @@ Base URL: `http://localhost:3400/api`
 ### PUT /list/:id
 ### DELETE /list/:id
 ### PATCH /list/:id/archive — `{ "archived": true }`
+传 `false` 可取消归档。归档与软删除是两个独立字段；列表管理界面将其合并显示为正常、已归档、已删除三种生命周期状态。
 ### PATCH /list/:id/restore — 恢复软删除列表（系统管理员）
 
 ### GET /list/:id/members

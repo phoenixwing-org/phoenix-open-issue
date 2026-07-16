@@ -16,7 +16,8 @@ const listTypeDict = useDictGroup('listType')
 const openTab = inject<(pageId: string, title: string, contextKey?: string) => void>('openTab')!
 const showCreate = ref(false)
 const editTarget = ref<string | null>(null)
-const listView = ref<'active' | 'deleted'>('active')
+type ListView = 'all' | 'active' | 'archived' | 'deleted'
+const listView = ref<ListView>('all')
 const searchText = ref('')
 const listTypeFilter = ref('')
 const currentPage = ref(1)
@@ -42,6 +43,18 @@ const paginatedLists = computed(() => {
 })
 
 const hasActiveFilters = computed(() => Boolean(searchText.value.trim() || listTypeFilter.value))
+const emptyDescription = computed(() => ({
+  all: '暂无可访问的列表',
+  active: '暂无正常列表',
+  archived: '暂无已归档列表',
+  deleted: '暂无已删除列表',
+})[listView.value])
+
+function lifecycleStatus(row: { archived?: number; isDeleted?: number }) {
+  if (row.isDeleted) return { label: '已删除', type: 'danger' as const }
+  if (row.archived) return { label: '已归档', type: 'info' as const }
+  return { label: '正常', type: 'success' as const }
+}
 
 watch([searchText, listTypeFilter, pageSize, listView], () => { currentPage.value = 1 })
 watch(() => filteredLists.value.length, (total) => {
@@ -59,16 +72,25 @@ onMounted(() => {
 })
 
 async function loadLists() {
-  if (listView.value === 'deleted') {
-    await store.fetchDeletedLists()
-  } else if (isAdmin.value) {
-    await store.fetchAllLists()
-  } else {
-    await store.fetchLists()
+  switch (listView.value) {
+    case 'all':
+      if (isAdmin.value) await store.fetchAllLists(true, true)
+      else await store.fetchLists(true)
+      break
+    case 'active':
+      if (isAdmin.value) await store.fetchAllLists()
+      else await store.fetchLists()
+      break
+    case 'archived':
+      await store.fetchArchivedLists()
+      break
+    case 'deleted':
+      await store.fetchDeletedLists()
+      break
   }
 }
 
-async function switchView(view: 'active' | 'deleted') {
+async function switchView(view: ListView) {
   listView.value = view
   await loadLists()
 }
@@ -115,9 +137,26 @@ async function onDelete(id: string, name: string) {
       { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' },
     )
     await store.deleteList(id)
+    await loadLists()
   } catch {
     // 用户取消
   }
+}
+
+async function onArchive(id: string, name: string, archived: boolean) {
+  if (archived) {
+    try {
+      await ElMessageBox.confirm(
+        `确定归档列表「${name}」？归档后会从默认视图隐藏，可在「已归档」视图中取消归档。`,
+        '确认归档',
+        { confirmButtonText: '归档', cancelButtonText: '取消', type: 'warning' },
+      )
+    } catch {
+      return
+    }
+  }
+  await store.archiveList(id, archived)
+  await loadLists()
 }
 
 async function onRestore(id: string, name: string) {
@@ -128,6 +167,7 @@ async function onRestore(id: string, name: string) {
       { confirmButtonText: '恢复', cancelButtonText: '取消', type: 'info' },
     )
     await store.restoreList(id)
+    await loadLists()
   } catch {
     // 用户取消
   }
@@ -139,15 +179,16 @@ async function onRestore(id: string, name: string) {
     <PnwPageHeader title="列表管理">
       <template #actions>
         <el-radio-group
-          v-if="isAdmin"
           v-model="listView"
           size="small"
           @change="switchView"
         >
+          <el-radio-button value="all">全部</el-radio-button>
           <el-radio-button value="active">正常</el-radio-button>
-          <el-radio-button value="deleted">已删除</el-radio-button>
+          <el-radio-button value="archived">已归档</el-radio-button>
+          <el-radio-button v-if="isAdmin" value="deleted">已删除</el-radio-button>
         </el-radio-group>
-        <el-button v-if="listView === 'active' && canCreateList" type="primary" @click="showCreate = true" data-tour="lists-create">
+        <el-button v-if="['all', 'active'].includes(listView) && canCreateList" type="primary" @click="showCreate = true" data-tour="lists-create">
           <el-icon><Plus /></el-icon> 新建列表
         </el-button>
       </template>
@@ -174,7 +215,7 @@ async function onRestore(id: string, name: string) {
         <template #default="{ row }">
           <el-tooltip :content="row.name" placement="top" :show-after="500" :hide-after="0">
             <el-link
-              v-if="listView === 'active'"
+              v-if="!row.isDeleted"
               type="primary"
               @click="goDetail(row.id, row.name)"
               class="cell-link"
@@ -187,6 +228,13 @@ async function onRestore(id: string, name: string) {
         <template #default="{ row }">
           <el-tag :color="listTypeDict.color(row.listType)" effect="dark" size="small" style="color:#fff">
             {{ listTypeDict.label(row.listType) }}
+          </el-tag>
+        </template>
+      </el-table-column>
+      <el-table-column label="状态" width="90" align="center">
+        <template #default="{ row }">
+          <el-tag :type="lifecycleStatus(row).type" size="small">
+            {{ lifecycleStatus(row).label }}
           </el-tag>
         </template>
       </el-table-column>
@@ -206,13 +254,18 @@ async function onRestore(id: string, name: string) {
       <el-table-column v-else label="更新时间" width="160" sortable>
         <template #default="{ row }">{{ new Date(row.updatedAt).toLocaleString('zh-CN') }}</template>
       </el-table-column>
-      <el-table-column label="操作" width="120" fixed="right">
+      <el-table-column label="操作" width="190" fixed="right">
         <template #default="{ row }">
-          <template v-if="listView === 'deleted'">
+          <template v-if="row.isDeleted">
             <el-button link type="success" size="small" @click.stop="onRestore(row.id, row.name)">恢复</el-button>
           </template>
           <template v-else>
             <el-button v-if="canEdit(row)" link type="primary" size="small" @click.stop="editTarget = row.id">编辑</el-button>
+            <el-button
+              v-if="canEdit(row)"
+              link type="warning" size="small"
+              @click.stop="onArchive(row.id, row.name, !row.archived)"
+            >{{ row.archived ? '取消归档' : '归档' }}</el-button>
             <el-button
               v-if="canDelete(row)"
               link type="danger" size="small"
@@ -222,7 +275,7 @@ async function onRestore(id: string, name: string) {
         </template>
       </el-table-column>
       <template #empty>
-        <el-empty :description="listView === 'deleted' ? '暂无已删除列表' : '暂无列表'" />
+        <el-empty :description="emptyDescription" />
       </template>
     </el-table>
 

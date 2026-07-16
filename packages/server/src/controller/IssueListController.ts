@@ -7,12 +7,16 @@ const listService = new IssueListService()
 
 export class IssueListController {
   async getMyLists(req: Request, res: Response): Promise<void> {
-    const lists = await listService.getMyLists(req.user!.userId)
+    const lists = await listService.getMyLists(req.user!.userId, req.query.includeArchived === 'true')
     res.json(lists)
   }
 
   async getAllLists(req: Request, res: Response): Promise<void> {
-    const lists = await listService.getAllLists(req.user!.userId)
+    const lists = await listService.getAllLists(
+      req.user!.userId,
+      req.query.includeArchived === 'true',
+      req.query.includeDeleted === 'true',
+    )
     res.json(lists)
   }
 

@@ -2,7 +2,7 @@
 import { computed, onMounted, ref, inject } from 'vue'
 import { useIssueListStore } from '@/stores/issueLists'
 import { useDictGroup } from '@/composables/useDictGroup'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { getSeedStatus, addTestData, declineTestData } from '@/api/push'
 import PnwPageHeader from 'phoenix-wing/layout/PnwPageHeader.vue'
 import PageHelpButton from '@/components/PageHelpButton.vue'
@@ -55,8 +55,19 @@ async function switchView(view: 'mine' | 'all' | 'archived') {
   else await store.fetchLists()
 }
 
-async function onArchive(listId: string) {
-  await store.archiveList(listId, true)
+async function onArchive(listId: string, name: string, archived: boolean) {
+  if (archived) {
+    try {
+      await ElMessageBox.confirm(
+        `确定归档列表「${name}」？归档后会从默认视图隐藏，可在「归档」视图中取消归档。`,
+        '确认归档',
+        { confirmButtonText: '归档', cancelButtonText: '取消', type: 'warning' },
+      )
+    } catch {
+      return
+    }
+  }
+  await store.archiveList(listId, archived)
 }
 
 onMounted(async () => {
@@ -127,11 +138,11 @@ async function onCreate(data: { name: string; listType: string; description?: st
           <div class="card-meta">
             {{ new Date(list.updatedAt).toLocaleDateString('zh-CN') }}
             <el-button
-              v-if="listView !== 'archived' && canArchive(list)"
-              link size="small" type="info"
-              @click.stop="onArchive(list.id)"
-              title="归档此列表"
-            >📦</el-button>
+              v-if="canArchive(list)"
+              link size="small" :type="listView === 'archived' ? 'primary' : 'info'"
+              @click.stop="onArchive(list.id, list.name, listView !== 'archived')"
+              :title="listView === 'archived' ? '取消归档' : '归档此列表'"
+            >{{ listView === 'archived' ? '取消归档' : '📦' }}</el-button>
           </div>
         </div>
       </div>
