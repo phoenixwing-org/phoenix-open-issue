@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useFunctionStore } from '@/stores/functions'
 import { useSettingsStore } from '@/stores/settings'
 import { ElMessage } from 'element-plus'
@@ -9,9 +9,12 @@ import PageHelpButton from '@/components/PageHelpButton.vue'
 import { mapXlsxRow } from '@open-issue/core'
 import * as XLSX from 'xlsx'
 import * as api from '@/api/functions'
+import { useAuthStore } from '@/stores/auth'
 
 const store = useFunctionStore()
 const settings = useSettingsStore()
+const auth = useAuthStore()
+const isSystemAdmin = computed(() => auth.user?.systemRole === 'admin')
 
 // ── 列表 ──
 const sortField = ref('')
@@ -142,8 +145,8 @@ async function onExport() {
   <div class="page">
     <PnwPageHeader title="功能表">
       <template #actions>
-        <el-button type="primary" @click="openCreate">+ 新建</el-button>
-        <el-upload :auto-upload="false" :show-file-list="false" accept=".xlsx" @change="onImportFile">
+        <el-button v-if="isSystemAdmin" type="primary" @click="openCreate">+ 新建</el-button>
+        <el-upload v-if="isSystemAdmin" :auto-upload="false" :show-file-list="false" accept=".xlsx" @change="onImportFile">
           <el-button>📥 导入 XLSX</el-button>
         </el-upload>
         <el-button :loading="exporting" @click="onExport">📤 导出 JSON</el-button>
@@ -164,7 +167,7 @@ async function onExport() {
       <el-table-column prop="clientGroup" label="客户群体" width="120" />
       <el-table-column prop="developGroup" label="开发组" width="120" />
       <el-table-column prop="createdAt" label="创建时间" width="160" />
-      <el-table-column label="操作" width="140" align="center" fixed="right">
+      <el-table-column v-if="isSystemAdmin" label="操作" width="140" align="center" fixed="right">
         <template #default="{ row }">
           <el-button link size="small" @click="openEdit(row)">编辑</el-button>
           <el-button link size="small" type="warning" @click="onDelete(row)">停用</el-button>

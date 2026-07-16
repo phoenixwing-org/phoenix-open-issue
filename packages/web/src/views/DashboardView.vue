@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref, inject } from 'vue'
+import { computed, onMounted, ref, inject } from 'vue'
 import { useIssueListStore } from '@/stores/issueLists'
 import { useDictGroup } from '@/composables/useDictGroup'
 import { ElMessage } from 'element-plus'
@@ -7,12 +7,21 @@ import { getSeedStatus, addTestData, declineTestData } from '@/api/push'
 import PnwPageHeader from 'phoenix-wing/layout/PnwPageHeader.vue'
 import PageHelpButton from '@/components/PageHelpButton.vue'
 import ListFormDialog from '@/components/ListFormDialog.vue'
+import { useAuthStore } from '@/stores/auth'
+import { canPerformListAction, isSystemAdmin, isSystemViewer } from '@open-issue/core'
 
 const store = useIssueListStore()
+const auth = useAuthStore()
 const listTypeDict = useDictGroup('listType')
 const openTab = inject<(pageId: string, title: string, contextKey?: string) => void>('openTab')!
 const showCreate = ref(false)
 const listView = ref<'mine' | 'all' | 'archived'>('mine')
+const isAdmin = computed(() => isSystemAdmin(auth.user ?? undefined))
+const canCreateList = computed(() => Boolean(auth.user && !isSystemViewer(auth.user)))
+
+function canArchive(list: { myRole?: any }) {
+  return canPerformListAction(auth.user ?? undefined, list.myRole ?? null, 'manage-list')
+}
 
 // ── 测试数据提示 ──
 const showSeedPrompt = ref(false)
@@ -52,6 +61,7 @@ async function onArchive(listId: string) {
 
 onMounted(async () => {
   await store.fetchLists()
+  if (!isAdmin.value) return
 
   // 检查是否需要询问测试数据
   let statusRes: any
@@ -84,10 +94,10 @@ async function onCreate(data: { name: string; listType: string; description?: st
       <template #actions>
         <el-radio-group v-model="listView" size="small" @change="switchView" data-tour="dashboard-views">
           <el-radio-button value="mine">👤 我的</el-radio-button>
-          <el-radio-button value="all">🌐 所有</el-radio-button>
+          <el-radio-button v-if="isAdmin" value="all">🌐 所有</el-radio-button>
           <el-radio-button value="archived">📦 归档</el-radio-button>
         </el-radio-group>
-        <el-button type="primary" @click="showCreate = true" data-tour="dashboard-create">
+        <el-button v-if="canCreateList" type="primary" @click="showCreate = true" data-tour="dashboard-create">
           <el-icon><Plus /></el-icon> 新建列表
         </el-button>
       </template>
@@ -117,7 +127,7 @@ async function onCreate(data: { name: string; listType: string; description?: st
           <div class="card-meta">
             {{ new Date(list.updatedAt).toLocaleDateString('zh-CN') }}
             <el-button
-              v-if="listView !== 'archived'"
+              v-if="listView !== 'archived' && canArchive(list)"
               link size="small" type="info"
               @click.stop="onArchive(list.id)"
               title="归档此列表"
@@ -139,7 +149,7 @@ async function onCreate(data: { name: string; listType: string; description?: st
       @close="showSeedPrompt = false"
     >
       <p style="margin-bottom:12px">
-        系统已创建管理员账号 <code>admin / 123456</code>。
+        系统已创建管理员账号；初始密码由服务端部署配置提供。
       </p>
       <p>是否添加演示数据？（示例列表、Issue、点检等）</p>
       <p style="color:#909399;font-size:0.82rem;margin-top:8px">

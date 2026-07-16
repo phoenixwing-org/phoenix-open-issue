@@ -71,9 +71,9 @@ function goList(listId: string) {
         </template>
       </el-table-column>
       <el-table-column prop="note" label="备注" min-width="100" show-overflow-tooltip />
-      <el-table-column label="操作" width="140" fixed="right" v-if="records.some(r => r.status === 'pending')">
+      <el-table-column label="操作" width="140" fixed="right" v-if="records.some(r => r.status === 'pending' && r._canHandle)">
         <template #default="{ row }">
-          <template v-if="row.status === 'pending'">
+          <template v-if="row.status === 'pending' && row._canHandle">
             <el-button size="small" type="success" @click="onAccept(row.id)">接受</el-button>
             <el-button size="small" type="danger" @click="onReject(row.id)">拒绝</el-button>
           </template>

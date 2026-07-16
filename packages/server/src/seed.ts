@@ -3,6 +3,7 @@ import { generateId, normalizeDictTags } from '@open-issue/core'
 import bcrypt from 'bcryptjs'
 import { ensurePendingOrgUnitAsync } from './utils/pendingOrgUnit.js'
 import type { PnwDbExecutor } from './db/pnw/pnwDbTypes.js'
+import { config } from './config.js'
 
 // ═══════════════════ System Flags ═══════════════════
 export async function getSystemFlag(key: string): Promise<string | undefined> {
@@ -119,19 +120,18 @@ export async function seedEssential(): Promise<string[]> {
     } else {
       await seedListTypeDict()
     }
-    await db.exec("UPDATE users SET approved = 1 WHERE approved = 0")
     await db.exec("UPDATE users SET systemRole = 'admin' WHERE username = 'admin' AND systemRole != 'admin'")
     return logs
   }
 
   console.log('🌱 Seeding essential data (admin + dict)...')
   const now = new Date().toISOString()
-  const pw = bcrypt.hashSync('123456', 10)
+  const pw = bcrypt.hashSync(config.bootstrapAdminPassword, 10)
 
   // admin 账号
   await db.run(`INSERT INTO users (id, username, email, passwordHash, displayName, orgUnitId, approved, systemRole, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [generateId(), 'admin', 'admin@example.com', pw, '管理员', null, 1, 'admin', now, now])
-  console.log('  👤 admin / 123456')
+  console.log('  👤 admin account created; password comes from INITIAL_ADMIN_PASSWORD')
 
   // 字典
   await seedDict()
@@ -139,7 +139,7 @@ export async function seedEssential(): Promise<string[]> {
   // 确保待定组存在
   await ensurePendingOrgUnitAsync(db)
 
-  logs.push('创建 admin (密码: 123456)')
+  logs.push('创建 admin（密码来自 INITIAL_ADMIN_PASSWORD）')
   logs.push('初始化数据字典')
   return logs
 }

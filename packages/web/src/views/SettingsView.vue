@@ -480,7 +480,7 @@ async function onFuncImportConfirm() {
         <p style="color:#909399;font-size:0.82rem;margin-bottom:12px">
           各分组内「值」不可重复（含严重度、问题分类等）。标签可填多个，英文逗号分隔（如 <code>automotive,general</code>）。
         </p>
-        <div style="margin-bottom:12px;display:flex;gap:8px" data-tour="settings-dict-toolbar">
+        <div v-if="isSystemAdmin" style="margin-bottom:12px;display:flex;gap:8px" data-tour="settings-dict-toolbar">
           <el-button type="default" size="small" @click="onApplyPreset('automotive')">🚗 汽车默认值</el-button>
           <el-button type="default" size="small" @click="onApplyPreset('software')">💻 软件默认值</el-button>
           <el-button type="primary" size="small" @click="showAdd = true">+ 添加</el-button>
@@ -514,7 +514,7 @@ async function onFuncImportConfirm() {
                   <el-tag :type="row.enabled ? 'success' : 'info'" size="small">{{ row.enabled ? '启用' : '禁用' }}</el-tag>
                 </template>
               </el-table-column>
-              <el-table-column label="操作" width="140">
+              <el-table-column v-if="isSystemAdmin" label="操作" width="140">
                 <template #default="{ row }">
                   <el-button link size="small" @click="onOpenEdit(row)">编辑</el-button>
                   <el-button link size="small" @click="onToggle(row)">{{ row.enabled ? '禁用' : '启用' }}</el-button>

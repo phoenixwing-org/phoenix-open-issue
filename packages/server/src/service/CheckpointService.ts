@@ -1,11 +1,13 @@
 import { getAsyncDb } from '../db/connection.js'
-import { NotFoundError, ForbiddenError } from '../utils/errors.js'
-import { generateId, checkListAccess, canModifyIssue } from '@open-issue/core'
-import type { Checkpoint, CreateCheckpointInput, UpdateCheckpointInput, MemberRole } from '@open-issue/core'
+import { NotFoundError } from '../utils/errors.js'
+import { generateId } from '@open-issue/core'
+import type { Checkpoint, CreateCheckpointInput, UpdateCheckpointInput } from '@open-issue/core'
+import { assertIssueReadableAsync, assertListActionAsync, getIssueOriginListIdAsync } from '../utils/access.js'
 
 export class CheckpointService {
-  async getByIssueId(issueId: string): Promise<Checkpoint[]> {
+  async getByIssueId(issueId: string, userId: string): Promise<Checkpoint[]> {
     const db = getAsyncDb()
+    await assertIssueReadableAsync(db, issueId, userId)
     return await db.all(
       'SELECT * FROM checkpoints WHERE issueId = ? ORDER BY checkpointDate DESC, sortOrder DESC',
       [issueId],
@@ -13,8 +15,9 @@ export class CheckpointService {
   }
 
   /** 批量获取列表下所有 Issue 的点检，按 issueId 分组返回 */
-  async getByListId(listId: string): Promise<Record<string, Checkpoint[]>> {
+  async getByListId(listId: string, userId: string): Promise<Record<string, Checkpoint[]>> {
     const db = getAsyncDb()
+    await assertListActionAsync(db, listId, userId, 'read', '无权查看此列表的点检项')
     const rows = await db.all(`
       SELECT DISTINCT c.* FROM checkpoints c
       JOIN issues i ON i.id = c.issueId
@@ -31,20 +34,15 @@ export class CheckpointService {
     return grouped
   }
 
-  async getById(id: string): Promise<Checkpoint | undefined> {
+  private async getRawById(id: string): Promise<Checkpoint | undefined> {
     const db = getAsyncDb()
     return await db.get('SELECT * FROM checkpoints WHERE id = ?', [id]) as Checkpoint | undefined
   }
 
   async create(issueId: string, input: CreateCheckpointInput, userId: string): Promise<Checkpoint> {
     const db = getAsyncDb()
-    // 权限：通过 issue 所属的 list 来检查
-    const issue = await db.get('SELECT listId FROM issues WHERE id = ?', [issueId]) as { listId: string } | undefined
-    if (!issue) throw new NotFoundError('Issue')
-
-    const members = await db.all('SELECT * FROM issueListMembers WHERE listId = ?', [issue.listId]) as Array<{ userId: string; role: MemberRole }>
-    const role = checkListAccess(userId, members)
-    if (!canModifyIssue(role)) throw new ForbiddenError()
+    const listId = await getIssueOriginListIdAsync(db, issueId)
+    await assertListActionAsync(db, listId, userId, 'modify-issue')
 
     const id = generateId()
     const now = new Date().toISOString()
@@ -63,15 +61,11 @@ export class CheckpointService {
 
   async update(id: string, input: UpdateCheckpointInput, userId: string): Promise<Checkpoint> {
     const db = getAsyncDb()
-    const cp = await this.getById(id)
+    const cp = await this.getRawById(id)
     if (!cp) throw new NotFoundError('点检项')
 
-    const issue = await db.get('SELECT listId FROM issues WHERE id = ?', [cp.issueId]) as { listId: string } | undefined
-    if (!issue) throw new NotFoundError('Issue')
-
-    const members = await db.all('SELECT * FROM issueListMembers WHERE listId = ?', [issue.listId]) as Array<{ userId: string; role: MemberRole }>
-    const role = checkListAccess(userId, members)
-    if (!canModifyIssue(role)) throw new ForbiddenError()
+    const listId = await getIssueOriginListIdAsync(db, cp.issueId)
+    await assertListActionAsync(db, listId, userId, 'modify-issue')
 
     await db.run(
       `UPDATE checkpoints
@@ -90,15 +84,11 @@ export class CheckpointService {
 
   async delete(id: string, userId: string): Promise<void> {
     const db = getAsyncDb()
-    const cp = await this.getById(id)
+    const cp = await this.getRawById(id)
     if (!cp) throw new NotFoundError('点检项')
 
-    const issue = await db.get('SELECT listId FROM issues WHERE id = ?', [cp.issueId]) as { listId: string } | undefined
-    if (!issue) throw new NotFoundError('Issue')
-
-    const members = await db.all('SELECT * FROM issueListMembers WHERE listId = ?', [issue.listId]) as Array<{ userId: string; role: MemberRole }>
-    const role = checkListAccess(userId, members)
-    if (!canModifyIssue(role)) throw new ForbiddenError()
+    const listId = await getIssueOriginListIdAsync(db, cp.issueId)
+    await assertListActionAsync(db, listId, userId, 'modify-issue')
 
     await db.run(
       `UPDATE checkpoints SET status = 'voided', updatedAt = ? WHERE id = ?`,

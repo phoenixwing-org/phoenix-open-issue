@@ -22,6 +22,7 @@ export function runSchema(db: PnwDbAdapter): void {
       displayName TEXT,
       orgUnitId TEXT,
       approved INTEGER NOT NULL DEFAULT 0,
+      tokenVersion INTEGER NOT NULL DEFAULT 0,
       createdAt TEXT DEFAULT (datetime('now')),
       updatedAt TEXT DEFAULT (datetime('now'))
     );

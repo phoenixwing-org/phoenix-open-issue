@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { checkListAccess, canManageList, canDeleteList, canDeleteListAsUser, canAddMember, canAddMemberAsUser, canTransferPrimaryOwnerAsUser, canModifyIssue, canCreateIssue, canEditOwnIssue } from './permission.js'
+import { checkListAccess, canManageList, canDeleteList, canDeleteListAsUser, canAddMember, canAddMemberAsUser, canTransferPrimaryOwnerAsUser, canModifyIssue, canCreateIssue, canEditOwnIssue, canPerformListAction } from './permission.js'
 
 const members = [
   { userId: 'u1', role: 'owner' as const },
@@ -137,5 +137,38 @@ describe('canEditOwnIssue', () => {
 
   it('viewer cannot edit own', () => {
     expect(canEditOwnIssue('viewer')).toBe(false)
+  })
+})
+
+describe('canPerformListAction', () => {
+  it('system viewer is globally read-only even with owner role', () => {
+    const user = { systemRole: 'viewer' as const }
+    expect(canPerformListAction(user, 'owner', 'read')).toBe(true)
+    expect(canPerformListAction(user, 'owner', 'manage-list')).toBe(false)
+    expect(canPerformListAction(user, 'owner', 'create-issue')).toBe(false)
+    expect(canPerformListAction(user, 'owner', 'handle-push')).toBe(false)
+    expect(canDeleteListAsUser('owner', user, 'u1', 'u1')).toBe(false)
+    expect(canAddMemberAsUser('owner', user)).toBe(false)
+    expect(canTransferPrimaryOwnerAsUser('owner', user)).toBe(false)
+  })
+
+  it('system editor follows list role', () => {
+    const user = { systemRole: 'editor' as const }
+    expect(canPerformListAction(user, 'editor', 'modify-issue')).toBe(true)
+    expect(canPerformListAction(user, 'viewer', 'modify-issue')).toBe(false)
+    expect(canPerformListAction(user, 'reporter', 'create-issue')).toBe(true)
+  })
+
+  it('system admin can manage a list without membership', () => {
+    expect(canPerformListAction({ systemRole: 'admin' }, null, 'read')).toBe(true)
+    expect(canPerformListAction({ systemRole: 'admin' }, null, 'delete-list')).toBe(true)
+  })
+
+  it('push permissions follow the documented owner/admin/editor matrix', () => {
+    expect(canPerformListAction({ systemRole: 'editor' }, 'editor', 'push')).toBe(true)
+    expect(canPerformListAction({ systemRole: 'editor' }, 'reporter', 'push')).toBe(false)
+    expect(canPerformListAction({ systemRole: 'editor' }, 'viewer', 'push')).toBe(false)
+    expect(canPerformListAction({ systemRole: 'editor' }, 'admin', 'handle-push')).toBe(true)
+    expect(canPerformListAction({ systemRole: 'editor' }, 'editor', 'handle-push')).toBe(false)
   })
 })

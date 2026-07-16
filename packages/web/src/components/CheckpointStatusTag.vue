@@ -5,9 +5,11 @@ const props = withDefaults(defineProps<{
   status: CheckpointStatus
   compact?: boolean
   overdue?: boolean
+  disabled?: boolean
 }>(), {
   compact: false,
   overdue: false,
+  disabled: false,
 })
 
 const emit = defineEmits<{ change: [status: CheckpointStatus] }>()
@@ -34,14 +36,15 @@ function compactLabel() {
 
 <template>
   <el-dropdown
+    :disabled="props.disabled"
     trigger="click"
     :popper-style="{ zIndex: 9101 }"
     @command="(status: CheckpointStatus) => emit('change', status)"
   >
-    <span class="checkpoint-status-trigger" :title="`${labels[props.status]}，点击修改`" @click.stop>
+    <span class="checkpoint-status-trigger" :title="props.disabled ? labels[props.status] : `${labels[props.status]}，点击修改`" @click.stop>
       <el-tag
         :type="props.overdue && props.status === 'pending' ? 'danger' : tagTypes[props.status]"
-        :class="['checkpoint-status-tag', { 'is-compact': props.compact }]"
+        :class="['checkpoint-status-tag', { 'is-compact': props.compact, 'is-disabled': props.disabled }]"
         size="small"
       >{{ props.compact ? compactLabel() : labels[props.status] }}</el-tag>
     </span>
@@ -58,6 +61,8 @@ function compactLabel() {
 <style scoped>
 .checkpoint-status-tag { cursor: pointer; user-select: none; }
 .checkpoint-status-tag:hover { opacity: 0.8; outline: 1px dashed currentColor; }
+.checkpoint-status-tag.is-disabled { cursor: default; }
+.checkpoint-status-tag.is-disabled:hover { opacity: 1; outline: 0; }
 .checkpoint-status-tag.is-compact {
   box-sizing: border-box;
   display: inline-flex;

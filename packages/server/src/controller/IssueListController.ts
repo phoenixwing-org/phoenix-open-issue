@@ -38,7 +38,7 @@ export class IssueListController {
   }
 
   async getMembers(req: Request, res: Response): Promise<void> {
-    const members = await listService.getMembersWithUser(routeParam(req, 'id'))
+    const members = await listService.getMembersWithUser(routeParam(req, 'id'), req.user!.userId)
     res.json(members)
   }
 

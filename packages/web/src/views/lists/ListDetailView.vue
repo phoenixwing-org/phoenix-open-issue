@@ -31,7 +31,7 @@ const showIssueModal = ref(false)
 const modalIssueId = ref('')
 import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
 import PageHelpButton from "@/components/PageHelpButton.vue"
-import { canAddMemberAsUser, canManageList, canTransferPrimaryOwnerAsUser, isSystemAdmin, DEFAULT_ATTENTION_LEVEL } from '@open-issue/core'
+import { canPerformListAction, DEFAULT_ATTENTION_LEVEL } from '@open-issue/core'
 import type { Checkpoint } from '@open-issue/core'
 import IssueFormDialog from '@/components/IssueFormDialog.vue'
 import IssueQuickEditDialog from '@/components/IssueQuickEditDialog.vue'
@@ -72,10 +72,14 @@ const showColumnSettings = ref(false)
 const editCheckpoint = ref<{ cp: Checkpoint; issueTitle: string } | null>(null)
 const createCheckpointFor = ref<{ id: string; title: string; issueNo?: string } | null>(null)
 const statusFilter = ref('')
+const priorityFilter = ref('')
 const severityFilter = ref('')
 const categoryFilter = ref('')
 const showUnwatchedOnly = ref(false) // 前端筛选：勾选后仅显示关注度为 0（不关注）的行
 const searchText = ref('')
+const currentPage = ref(1)
+const pageSize = ref(30)
+const PAGE_SIZE_OPTIONS = [30, 50, 100]
 const viewMode = ref<'simple' | 'complex' | 'timeline'>((settings.defaultViewMode as 'simple' | 'complex' | 'timeline') || 'complex')
 watch(viewMode, (v) => { settings.defaultViewMode = v })
 const checkpointMap = ref<Record<string, Checkpoint[]>>({})
@@ -118,14 +122,26 @@ const myMemberRole = computed(() => {
   if (!uid) return null
   return members.value.find(m => m.userId === uid)?.role ?? null
 })
-const isSysAdmin = computed(() => isSystemAdmin(auth.user ?? undefined))
-const canManageMembers = computed(() => canAddMemberAsUser(myMemberRole.value as any, auth.user ?? undefined))
-const canGrantOwner = computed(() => isSysAdmin.value || myMemberRole.value === 'owner' || myMemberRole.value === 'admin')
-const isOwner = computed(() => canTransferPrimaryOwnerAsUser(myMemberRole.value as any, auth.user ?? undefined))
-const canEditList = computed(() => {
-  if (isSysAdmin.value) return true
-  return canManageList(myMemberRole.value as any)
-})
+const canDo = (action: Parameters<typeof canPerformListAction>[2]) =>
+  canPerformListAction(auth.user ?? undefined, myMemberRole.value as any, action)
+const canManageMembers = computed(() => canDo('manage-members'))
+const canGrantOwner = computed(() => canManageMembers.value)
+const isOwner = computed(() => canManageMembers.value && (auth.user?.systemRole === 'admin' || myMemberRole.value === 'owner'))
+const canEditList = computed(() => canDo('manage-list'))
+const canCreateIssue = computed(() => canDo('create-issue'))
+const canHandlePush = computed(() => canDo('handle-push'))
+
+function canModifyRow(row: any) {
+  return Boolean(row?._canModify)
+}
+
+function canAdjustAttention(row: any) {
+  return Boolean(row?._canSetAttention)
+}
+
+function canPushRow(row: any) {
+  return Boolean(row?._canPush)
+}
 
 const primaryOwnerName = computed(() => {
   const list = currentList.value
@@ -167,8 +183,6 @@ onActivated(refreshListView)
 async function loadData(targetListId = listId.value) {
   const tasks: Promise<any>[] = [
     issueStore.fetchIssues(targetListId, {
-      status: statusFilter.value || undefined,
-      search: searchText.value || undefined,
       sort: settings.issueSort,
     }),
     loadMembers(targetListId),
@@ -243,19 +257,30 @@ async function loadAllUsers() {
 // 表单下拉选择时排除已禁用用户
 const activeUsers = computed(() => allUsers.value.filter((u: any) => !u.disabled))
 
-watch([statusFilter, searchText], () => loadData())
 watch(viewMode, (mode) => {
   if (mode === 'timeline') loadCheckpoints()
 })
 
-// 前端筛选（severity / category / 不关注）
+// Issue 全量加载后，搜索、筛选和分页均在前端完成。
 const filteredIssues = computed(() => {
   if (loadedListId.value !== listId.value) return []
   let list = issueStore.issues
+
+  const keyword = searchText.value.trim().toLocaleLowerCase()
+  if (keyword) {
+    list = list.filter(issue => [issue.issueNo, issue.title, issue.description]
+      .some(value => value?.toLocaleLowerCase().includes(keyword)))
+  }
   if (showUnwatchedOnly.value) {
     list = list.filter(row => linkAttention(row) === 0)
   } else {
     list = list.filter(row => linkAttention(row) !== 0)
+  }
+  if (statusFilter.value) {
+    list = list.filter(i => i.status === statusFilter.value)
+  }
+  if (priorityFilter.value) {
+    list = list.filter(i => i.priority === priorityFilter.value)
   }
   if (severityFilter.value) {
     list = list.filter(i => i.severity === severityFilter.value)
@@ -266,6 +291,41 @@ const filteredIssues = computed(() => {
   return list
 })
 
+const paginatedIssues = computed(() => {
+  const start = (currentPage.value - 1) * pageSize.value
+  return filteredIssues.value.slice(start, start + pageSize.value)
+})
+
+const hasActiveFilters = computed(() => Boolean(
+  searchText.value.trim()
+  || statusFilter.value
+  || priorityFilter.value
+  || severityFilter.value
+  || categoryFilter.value
+  || showUnwatchedOnly.value,
+))
+
+watch(
+  [searchText, statusFilter, priorityFilter, severityFilter, categoryFilter, showUnwatchedOnly, pageSize],
+  () => { currentPage.value = 1 },
+)
+
+watch(() => filteredIssues.value.length, (total) => {
+  const lastPage = Math.max(1, Math.ceil(total / pageSize.value))
+  if (currentPage.value > lastPage) currentPage.value = lastPage
+})
+
+watch(listId, () => { currentPage.value = 1 })
+
+function clearFilters() {
+  searchText.value = ''
+  statusFilter.value = ''
+  priorityFilter.value = ''
+  severityFilter.value = ''
+  categoryFilter.value = ''
+  showUnwatchedOnly.value = false
+}
+
 function goIssueDetail(id: string) { modalIssueId.value = id; showIssueModal.value = true }
 
 function openViewIssue(row: { id: string }, e?: Event) {
@@ -275,12 +335,14 @@ function openViewIssue(row: { id: string }, e?: Event) {
 
 function openEditIssue(row: any, e?: Event) {
   e?.stopPropagation()
+  if (!canModifyRow(row)) return
   editIssueRow.value = row
   showEditIssue.value = true
 }
 
 function openQuickEdit(row: any, field: IssueQuickEditField, e?: Event) {
   e?.stopPropagation()
+  if (field === 'attention' ? !canAdjustAttention(row) : !canModifyRow(row)) return
   let value: string | number | null
   switch (field) {
     case 'attention':
@@ -332,11 +394,13 @@ async function onQuickEditConfirm(value: string | number | null) {
 
 function openEditCheckpoint(cp: Checkpoint, issueTitle: string, e?: Event) {
   e?.stopPropagation()
+  if (!canModifyRow(issueStore.issues.find(issue => issue.id === cp.issueId))) return
   editCheckpoint.value = { cp, issueTitle }
 }
 
 function openCreateCheckpoint(row: { id: string; title: string; issueNo?: string }, e?: Event) {
   e?.stopPropagation()
+  if (!canModifyRow(row)) return
   createCheckpointFor.value = { id: row.id, title: row.title, issueNo: row.issueNo }
 }
 
@@ -366,6 +430,7 @@ async function onEditCheckpoint(data: {
 }
 
 async function onUpdateCheckpointStatus(cp: Checkpoint, status: Checkpoint['status']) {
+  if (!canModifyRow(issueStore.issues.find(issue => issue.id === cp.issueId))) return
   if (cp.status === status) return
   await updateCheckpoint(cp.id, { status })
   ElMessage.success('点检状态已更新')
@@ -390,8 +455,9 @@ async function onEditList(data: { name: string; listType: string; description?: 
   syncListTabTitle()
 }
 
-function onPushIssue(issueId: string) {
-  pushIssueId.value = issueId
+function onPushIssue(row: any) {
+  if (!canPushRow(row)) return
+  pushIssueId.value = row.id
   showPush.value = true
 }
 
@@ -550,6 +616,8 @@ provide('issueListCellCtx', reactive({
   getRecentCheckpoints,
   checkpointMap,
   get maxTimelineRows() { return settings.maxTimelineRows },
+  canModifyRow,
+  canAdjustAttention,
   openViewIssue,
   openQuickEdit,
   openEditCheckpoint,
@@ -564,17 +632,20 @@ provide('issueListCellCtx', reactive({
       <template #actions>
         <el-button @click="showMembers = true" data-tour="list-members"><el-icon><User /></el-icon> 成员 ({{ members.length }})</el-button>
         <el-button v-if="canEditList" @click="showEditList = true" data-tour="list-edit"><el-icon><Edit /></el-icon> 编辑</el-button>
-        <el-button type="primary" @click="showCreateIssue = true" data-tour="list-create-issue"><el-icon><Plus /></el-icon> 新建 Issue</el-button>
+        <el-button v-if="canCreateIssue" type="primary" @click="showCreateIssue = true" data-tour="list-create-issue"><el-icon><Plus /></el-icon> 新建 Issue</el-button>
       </template>
       <template #help><PageHelpButton page-id="listDetail" /></template>
     </PnwPageHeader>
 
     <!-- 筛选栏 -->
     <div class="filters" data-tour="list-filters">
-      <el-input v-model="searchText" placeholder="搜索标题/描述..." clearable style="width:200px" size="small" />
+      <el-input v-model="searchText" placeholder="搜索编号/标题/描述..." clearable style="width:220px" size="small" />
       <el-checkbox v-model="showUnwatchedOnly" size="small" style="margin-left:4px">只显示【不关注】</el-checkbox>
       <el-select v-model="statusFilter" placeholder="状态" clearable size="small" style="width:110px">
         <el-option v-for="(l, v) in statusLabel" :key="v" :label="l" :value="v" />
+      </el-select>
+      <el-select v-model="priorityFilter" placeholder="优先级" clearable size="small" style="width:100px">
+        <el-option v-for="(l, v) in priorityLabel" :key="v" :label="l" :value="v" />
       </el-select>
       <el-select v-model="severityFilter" placeholder="严重度" clearable size="small" style="width:100px">
         <el-option v-for="o in dict.getOptions('severity')" :key="o.value" :label="o.label" :value="o.value" />
@@ -582,6 +653,7 @@ provide('issueListCellCtx', reactive({
       <el-select v-model="categoryFilter" placeholder="分类" clearable size="small" style="width:100px">
         <el-option v-for="o in dict.getOptions('issueCategory')" :key="o.value" :label="o.label" :value="o.value" />
       </el-select>
+      <el-button v-if="hasActiveFilters" size="small" link type="primary" @click="clearFilters">清除筛选</el-button>
       <span v-if="viewMode === 'timeline'" style="font-size:0.8rem;color:#909399;display:inline-flex;align-items:center;gap:4px">
         显示最近
         <el-select :model-value="settings.maxTimelineRows" @update:model-value="settings.maxTimelineRows = $event" size="small" style="width:65px">
@@ -624,7 +696,7 @@ provide('issueListCellCtx', reactive({
               → 📋 <strong>{{ pr.issueTitle }}</strong>
               <span class="push-inbox-meta">{{ new Date(pr.pushedAt).toLocaleString('zh-CN') }}</span>
             </span>
-            <span class="push-inbox-actions">
+            <span v-if="canHandlePush" class="push-inbox-actions">
               <el-button size="small" type="success" @click.stop="onAcceptPush(pr.id)">接受</el-button>
               <el-button size="small" type="danger" @click.stop="onRejectPush(pr.id)">拒绝</el-button>
             </span>
@@ -635,7 +707,7 @@ provide('issueListCellCtx', reactive({
 
     <!-- Issue 表格（汽车行业 Open Issue 标准列） -->
     <el-table
-      :data="filteredIssues"
+      :data="paginatedIssues"
       v-loading="issueStore.loading"
       stripe border
       size="small"
@@ -653,7 +725,7 @@ provide('issueListCellCtx', reactive({
       <el-table-column label="#" width="45" align="center" fixed="left">
         <template #default="{ row, $index }">
           <el-tooltip :content="issueOriginTip(row)" :disabled="!isPushedIssue(row)" placement="top">
-            <span class="issue-row-index" :class="{ 'is-pushed': isPushedIssue(row) }">{{ $index + 1 }}</span>
+            <span class="issue-row-index" :class="{ 'is-pushed': isPushedIssue(row) }">{{ (currentPage - 1) * pageSize + $index + 1 }}</span>
           </el-tooltip>
         </template>
       </el-table-column>
@@ -686,13 +758,14 @@ provide('issueListCellCtx', reactive({
             <el-button class="row-action-btn" plain circle type="primary" size="small" aria-label="查看详情" @click.stop="goIssueDetail(row.id)" title="查看详情">
               <el-icon><Search /></el-icon>
             </el-button>
-            <el-button class="row-action-btn" plain circle type="primary" size="small" aria-label="编辑" @click.stop="openEditIssue(row)" title="编辑">
+            <el-button v-if="canModifyRow(row)" class="row-action-btn" plain circle type="primary" size="small" aria-label="编辑" @click.stop="openEditIssue(row)" title="编辑">
               <el-icon><Edit /></el-icon>
             </el-button>
-            <el-button class="row-action-btn" plain circle type="warning" size="small" aria-label="推送到其他列表" @click.stop="onPushIssue(row.id)" title="推送到其他列表">
+            <el-button v-if="canPushRow(row)" class="row-action-btn" plain circle type="warning" size="small" aria-label="推送到其他列表" @click.stop="onPushIssue(row)" title="推送到其他列表">
               <el-icon><Promotion /></el-icon>
             </el-button>
             <el-dropdown
+              v-if="canModifyRow(row) || canAdjustAttention(row)"
               @command="(cmd: string) => {
                 if (cmd === 'void') onVoidIssue(row.id, row.title)
                 else if (cmd === 'unvoid') onRestoreAttention(row.id)
@@ -706,11 +779,11 @@ provide('issueListCellCtx', reactive({
               </el-button>
               <template #dropdown>
                 <el-dropdown-menu>
-                  <el-dropdown-item command="checkpoint">添加点检</el-dropdown-item>
-                  <template v-if="isUnwatched(row)">
+                  <el-dropdown-item v-if="canModifyRow(row)" command="checkpoint">添加点检</el-dropdown-item>
+                  <template v-if="canAdjustAttention(row) && isUnwatched(row)">
                     <el-dropdown-item command="unvoid" style="color:#67c23a">🔄 恢复默认(三星)</el-dropdown-item>
                   </template>
-                  <template v-else>
+                  <template v-else-if="canAdjustAttention(row)">
                     <el-dropdown-item command="void" style="color:#e6a23c">⊘ 设为不关注</el-dropdown-item>
                   </template>
                 </el-dropdown-menu>
@@ -721,6 +794,22 @@ provide('issueListCellCtx', reactive({
       </el-table-column>
       <template #empty><el-empty description="暂无 Issue" /></template>
     </el-table>
+
+    <div class="pagination-bar">
+      <span class="pagination-summary">
+        当前 {{ filteredIssues.length }} 条<span v-if="filteredIssues.length !== issueStore.issues.length"> / 共 {{ issueStore.issues.length }} 条</span>
+      </span>
+      <el-pagination
+        v-if="filteredIssues.length > PAGE_SIZE_OPTIONS[0]"
+        v-model:current-page="currentPage"
+        v-model:page-size="pageSize"
+        :page-sizes="PAGE_SIZE_OPTIONS"
+        :total="filteredIssues.length"
+        layout="sizes, prev, pager, next"
+        background
+        small
+      />
+    </div>
 
     <IssueFormDialog v-if="showCreateIssue" :all-users="activeUsers" @confirm="onCreateIssue" @close="showCreateIssue = false" />
     <IssueFormDialog
@@ -828,7 +917,21 @@ provide('issueListCellCtx', reactive({
   display: flex;
   gap: 8px;
   align-items: center;
+  flex-wrap: wrap;
   margin-bottom: 12px;
+}
+.pagination-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  min-height: 32px;
+  margin-top: 12px;
+}
+.pagination-summary {
+  color: #909399;
+  font-size: 0.8rem;
+  white-space: nowrap;
 }
 .cell-link {
   cursor: pointer;

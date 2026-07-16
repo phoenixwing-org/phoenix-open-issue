@@ -16,7 +16,7 @@ describe('pnwRunSchema', () => {
 
     expect(await db.tableExists('schemaMigrations')).toBe(true)
     expect(await db.columnNames('users')).toEqual(expect.objectContaining(new Set([
-      'approved', 'disabled', 'systemRole',
+      'approved', 'disabled', 'systemRole', 'tokenVersion',
     ])))
     expect(await db.columnNames('issues')).toContain('functionId')
     expect(await db.indexExists('idx_dict_group_value')).toBe(true)

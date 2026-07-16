@@ -43,6 +43,8 @@ const showCpForm = ref(false)
 const editCheckpoint = ref<Checkpoint | null>(null)
 const showPush = ref(false)
 const showEdit = ref(false)
+const canModify = computed(() => Boolean((issueStore.currentIssue as any)?._canModify))
+const canPush = computed(() => Boolean((issueStore.currentIssue as any)?._canPush))
 
 const statusLabel: Record<string, string> = { open: '待处理', in_progress: '进行中', resolved: '已解决', closed: '已关闭', cancelled: '已取消' }
 const statusTag: Record<string, string | undefined> = { open: 'info', in_progress: 'warning', resolved: 'success', closed: undefined, cancelled: 'danger' }
@@ -103,6 +105,7 @@ async function onCreateCp(data: any) {
 }
 
 function openEditCheckpoint(cp: Checkpoint) {
+  if (!canModify.value) return
   editCheckpoint.value = cp
 }
 
@@ -121,6 +124,7 @@ async function onEditCheckpoint(data: {
 }
 
 async function onChangeCheckpointStatus(cp: Checkpoint, status: CheckpointStatus) {
+  if (!canModify.value) return
   if (cp.status === status) return
   await updateCheckpoint(cp.id, { status })
   ElMessage.success(`点检已更新为${cpStatusLabel[status]}`)
@@ -188,10 +192,10 @@ function goBack() {
         <el-button v-if="isModal" size="small" plain @click="openAsPage" title="在页面中打开，可使用帮助和巡游">
           <el-icon><FullScreen /></el-icon> 页面模式
         </el-button>
-        <el-button v-if="issueStore.currentIssue" size="small" type="primary" plain @click="showEdit = true">
+        <el-button v-if="issueStore.currentIssue && canModify" size="small" type="primary" plain @click="showEdit = true">
           <el-icon><Edit /></el-icon> 编辑
         </el-button>
-        <el-tooltip v-if="issueStore.currentIssue" content="添加点检" placement="bottom">
+        <el-tooltip v-if="issueStore.currentIssue && canModify" content="添加点检" placement="bottom">
           <el-button
             size="small"
             type="success"
@@ -203,7 +207,7 @@ function goBack() {
             <el-icon><Plus /></el-icon>
           </el-button>
         </el-tooltip>
-        <el-tooltip v-if="issueStore.currentIssue" content="推送到其他列表" placement="bottom">
+        <el-tooltip v-if="issueStore.currentIssue && canPush" content="推送到其他列表" placement="bottom">
           <el-button
             size="small"
             type="warning"
@@ -350,9 +354,9 @@ function goBack() {
           :color="cpStatusColor[cp.status]"
           placement="top"
         >
-          <div class="cp-card cp-editable" :class="getCheckpointClass(cp)" title="点击编辑点检" @click="openEditCheckpoint(cp)">
+          <div :class="['cp-card', getCheckpointClass(cp), { 'cp-editable': canModify }]" :title="canModify ? '点击编辑点检' : ''" @click="openEditCheckpoint(cp)">
             <div class="cp-header">
-              <CheckpointStatusTag :status="cp.status" :overdue="checkpointOverdue(cp)" @change="onChangeCheckpointStatus(cp, $event)" />
+              <CheckpointStatusTag :status="cp.status" :overdue="checkpointOverdue(cp)" :disabled="!canModify" @change="onChangeCheckpointStatus(cp, $event)" />
               <span class="cp-responsible">负责人: {{ getUserName(cp.responsibleUserId) }}</span>
             </div>
             <p class="cp-desc">{{ cp.description }}</p>
@@ -363,11 +367,11 @@ function goBack() {
         <el-table-column prop="checkpointDate" label="日期" width="100" />
         <el-table-column label="状态" width="76">
           <template #default="{ row }">
-            <CheckpointStatusTag :status="row.status" :overdue="checkpointOverdue(row)" @change="onChangeCheckpointStatus(row, $event)" />
+            <CheckpointStatusTag :status="row.status" :overdue="checkpointOverdue(row)" :disabled="!canModify" @change="onChangeCheckpointStatus(row, $event)" />
           </template>
         </el-table-column>
         <el-table-column prop="description" label="内容" min-width="120" show-overflow-tooltip>
-          <template #default="{ row }"><span class="cp-table-desc" title="点击编辑点检" @click="openEditCheckpoint(row)">{{ row.description }}</span></template>
+          <template #default="{ row }"><span :class="{ 'cp-table-desc': canModify }" :title="canModify ? '点击编辑点检' : ''" @click="openEditCheckpoint(row)">{{ row.description }}</span></template>
         </el-table-column>
         <el-table-column label="负责人" min-width="76" show-overflow-tooltip>
           <template #default="{ row }"><span :title="getUserName(row.responsibleUserId)">{{ getUserName(row.responsibleUserId) }}</span></template>

@@ -10,6 +10,7 @@ export const COLUMN_MIGRATIONS: { table: string; column: string; sql: string }[]
   { table: 'users', column: 'approved', sql: 'ALTER TABLE users ADD COLUMN approved INTEGER NOT NULL DEFAULT 1' },
   { table: 'users', column: 'disabled', sql: 'ALTER TABLE users ADD COLUMN disabled INTEGER NOT NULL DEFAULT 0' },
   { table: 'users', column: 'systemRole', sql: "ALTER TABLE users ADD COLUMN systemRole TEXT NOT NULL DEFAULT 'editor'" },
+  { table: 'users', column: 'tokenVersion', sql: 'ALTER TABLE users ADD COLUMN tokenVersion INTEGER NOT NULL DEFAULT 0' },
   { table: 'issueLists', column: 'archived', sql: 'ALTER TABLE issueLists ADD COLUMN archived INTEGER NOT NULL DEFAULT 0' },
   { table: 'issueLists', column: 'isDeleted', sql: 'ALTER TABLE issueLists ADD COLUMN isDeleted INTEGER NOT NULL DEFAULT 0' },
   { table: 'issueLists', column: 'deletedAt', sql: 'ALTER TABLE issueLists ADD COLUMN deletedAt TEXT' },

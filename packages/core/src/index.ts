@@ -31,6 +31,8 @@ export {
   canDeleteList,
   canDeleteListAsUser,
   isSystemAdmin,
+  isSystemViewer,
+  canPerformListAction,
   canAddMember,
   canAddMemberAsUser,
   canTransferPrimaryOwnerAsUser,
@@ -43,6 +45,7 @@ export {
   mapXlsxRow,
   diffImportRows,
 } from './algorithms/index.js'
+export type { ListAction } from './algorithms/index.js'
 
 // 工具
 export { generateId } from './utils/id.js'

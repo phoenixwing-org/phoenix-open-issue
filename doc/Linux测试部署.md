@@ -12,7 +12,7 @@ pnpm test
 pnpm build
 ```
 
-发布基线要求：测试和构建均成功。当前基线为 66 项测试。
+发布基线要求：测试和构建均成功；PostgreSQL 专用用例在未配置测试库时会明确跳过。
 
 ## 2. 配置
 
@@ -29,6 +29,7 @@ PostgreSQL 部署请使用 `packages/server/.env.postgres.example`，具体步�
 ```dotenv
 PORT=3400
 JWT_SECRET=替换为足够长的随机字符串
+INITIAL_ADMIN_PASSWORD=替换为至少12位的强密码
 DB_PATH=/var/lib/open-issue/open-issue.sqlite
 SERVE_STATIC=true
 STATIC_DIR=../web/dist
@@ -77,8 +78,8 @@ WantedBy=multi-user.target
 
 ## 5. 上线前检查
 
-1. 修改默认管理员密码 `admin / 123456`。
-2. 使用随机 `JWT_SECRET`，不要提交 `.env`。
+1. 配置至少 12 位的 `INITIAL_ADMIN_PASSWORD`；它也是无密码备份导入后的重置密码。
+2. 使用至少 32 位的随机 `JWT_SECRET`，不要提交 `.env`。生产启动会拒绝示例值和弱值。
 3. 通过设置页导出一次数据库备份并验证可恢复。
 4. 确认 `/var/lib/open-issue` 位于持久化磁盘。
 5. 不执行 `pnpm seed force`，该命令会重建演示数据。

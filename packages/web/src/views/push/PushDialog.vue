@@ -34,7 +34,7 @@ async function onPreview() {
 }
 
 async function onPush() {
-  if (!targetListId.value || !previewResult.value?.canPush) return
+  if (!targetListId.value || !previewResult.value?.canPush || !props.preselectedIssueIds?.length) return
   loading.value = true
   try {
     const res = await pushIssues({
@@ -57,7 +57,7 @@ async function onPush() {
 <template>
   <el-dialog model-value :title="'推送到其他列表'" width="500px" @close="emit('close')">
     <el-form label-position="top">
-      <el-alert v-if="!props.preselectedIssueIds?.length" title="未选择 Issue，将推送列表中的全部条目" type="info" :closable="false" style="margin-bottom:12px" />
+      <el-alert v-if="!props.preselectedIssueIds?.length" title="请先在列表中选择要推送的 Issue" type="warning" :closable="false" style="margin-bottom:12px" />
       <el-alert v-else :title="`将推送 ${props.preselectedIssueIds.length} 个 Issue`" type="info" :closable="false" style="margin-bottom:12px" />
 
       <el-form-item label="目标列表">
@@ -84,7 +84,7 @@ async function onPush() {
     </el-form>
     <template #footer>
       <el-button @click="emit('close')">取消</el-button>
-      <el-button type="primary" :disabled="!previewResult?.canPush" :loading="loading" @click="onPush">
+      <el-button type="primary" :disabled="!previewResult?.canPush || !props.preselectedIssueIds?.length" :loading="loading" @click="onPush">
         确认推送
       </el-button>
     </template>

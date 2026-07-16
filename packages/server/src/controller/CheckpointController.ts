@@ -7,12 +7,12 @@ const cpService = new CheckpointService()
 
 export class CheckpointController {
   async getByIssueId(req: Request, res: Response): Promise<void> {
-    const checkpoints = await cpService.getByIssueId(routeParam(req, 'issueId'))
+    const checkpoints = await cpService.getByIssueId(routeParam(req, 'issueId'), req.user!.userId)
     res.json(checkpoints)
   }
 
   async getByListId(req: Request, res: Response): Promise<void> {
-    const grouped = await cpService.getByListId(routeParam(req, 'listId'))
+    const grouped = await cpService.getByListId(routeParam(req, 'listId'), req.user!.userId)
     res.json(grouped)
   }
 

@@ -7,7 +7,7 @@ const PROJECT_IDENTIFIERS = new Set([
   'users', 'orgUnits', 'issueLists', 'issueListMembers', 'issues', 'checkpoints',
   'pushRecords', 'issueListLinks', 'dict', 'systemFlags', 'poiFunctions', 'schemaMigrations',
   'id', 'username', 'email', 'passwordHash', 'displayName', 'orgUnitId', 'approved',
-  'disabled', 'systemRole', 'createdAt', 'updatedAt', 'name', 'unitType', 'parentId',
+  'disabled', 'systemRole', 'tokenVersion', 'createdAt', 'updatedAt', 'name', 'unitType', 'parentId',
   'description', 'listType', 'ownerId', 'archived', 'isDeleted', 'deletedAt', 'listId',
   'userId', 'role', 'joinedAt', 'issueNo', 'title', 'status', 'closeReason', 'closedBy',
   'priority', 'severity', 'category', 'detectionPhase', 'reporterId', 'assigneeId',

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "tsx watch src/main.ts",
     "build": "tsc",
-    "start": "node dist/main.js",
+    "start": "NODE_ENV=production node dist/main.js",
     "seed": "tsx src/seed.ts"
   },
   "dependencies": {

@@ -46,6 +46,8 @@ pnpm dev              # 一键启动 core + server + web（首次启动自动创
 
 **默认管理员**：`admin` / `123456`
 
+> `123456` 仅用于本地开发。生产启动必须设置至少 32 位的 `JWT_SECRET` 和至少 12 位的 `INITIAL_ADMIN_PASSWORD`，示例占位值会被拒绝。
+
 首次登录后，仪表盘会弹窗询问是否添加演示数据（示例列表、Issue、点检等）。选择「添加」可快速体验完整功能，选择「不需要」则不再询问。
 
 > CLI 强制重填：`pnpm seed`（或 `pnpm seed force` 清空后重填）
@@ -131,6 +133,7 @@ pnpm seed            # CLI 重新填充演示数据（force 追加可清空）
 | [Linux 测试部署](doc/Linux测试部署.md)               | 构建、配置、systemd 与升级检查 |
 | [SQLite/PG 双数据库计划](doc/v0.4-PG双数据库适配计划.md) | PnwDbAdapter、迁移与双库测试方案 |
 | [PostgreSQL 部署与迁移](doc/PostgreSQL部署与迁移.md) | Linux 配置、SQLite JSON 迁移、校验与回滚 |
+| [多人权限与列表筛选加固](doc/多人权限与列表筛选加固.md) | 系统/列表权限矩阵、筛选分页、认证和回归测试 |
 
 ## 路线图
 

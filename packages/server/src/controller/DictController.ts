@@ -1,6 +1,8 @@
 import type { Request, Response } from 'express'
 import { DictService, DICT_PRESETS } from '../service/DictService.js'
 import { routeParam } from '../utils/request.js'
+import { assertSystemAdminAsync } from '../utils/admin.js'
+import { getAsyncDb } from '../db/connection.js'
 
 const dictService = new DictService()
 
@@ -38,6 +40,7 @@ export class DictController {
   }
 
   async create(req: Request, res: Response): Promise<void> {
+    await assertSystemAdminAsync(getAsyncDb(), req.user!.userId)
     const { groupName, value, label, tags } = req.body
     const item = await dictService.create(groupName, value, label, tags)
     res.status(201).json(item)
@@ -45,6 +48,7 @@ export class DictController {
 
   /** 应用预设字典 */
   async applyPreset(req: Request, res: Response): Promise<void> {
+    await assertSystemAdminAsync(getAsyncDb(), req.user!.userId)
     const { preset } = req.body
     const presetData = DICT_PRESETS[preset]
     if (!presetData) {
@@ -65,11 +69,13 @@ export class DictController {
   }
 
   async update(req: Request, res: Response): Promise<void> {
+    await assertSystemAdminAsync(getAsyncDb(), req.user!.userId)
     const item = await dictService.update(routeParam(req, 'id'), req.body)
     res.json(item)
   }
 
   async delete(req: Request, res: Response): Promise<void> {
+    await assertSystemAdminAsync(getAsyncDb(), req.user!.userId)
     const id = routeParam(req, 'id')
     if (await dictService.isCore(id)) {
       res.status(403).json({
@@ -94,12 +100,14 @@ export class DictController {
 
   /** 按标签批量删除字典项 */
   async deleteByTag(req: Request, res: Response): Promise<void> {
+    await assertSystemAdminAsync(getAsyncDb(), req.user!.userId)
     const result = await dictService.deleteByTag(routeParam(req, 'tag'))
     res.json(result)
   }
 
   /** 同分组 value 去重（引用按 value，不影响 Issue 等） */
-  async dedupe(_req: Request, res: Response): Promise<void> {
+  async dedupe(req: Request, res: Response): Promise<void> {
+    await assertSystemAdminAsync(getAsyncDb(), req.user!.userId)
     const result = await dictService.dedupe()
     res.json(result)
   }

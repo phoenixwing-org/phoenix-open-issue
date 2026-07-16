@@ -24,6 +24,8 @@ const ctx = inject<{
   getRecentCheckpoints: (id: string) => Checkpoint[]
   checkpointMap: Record<string, Checkpoint[]>
   maxTimelineRows: number
+  canModifyRow: (row: any) => boolean
+  canAdjustAttention: (row: any) => boolean
   openViewIssue: (row: { id: string }, e?: Event) => void
   openQuickEdit: (row: any, field: string, e?: Event) => void
   openEditCheckpoint: (cp: Checkpoint, issueTitle: string, e?: Event) => void
@@ -47,36 +49,36 @@ const row = computed(() => props.row)
   <!-- severity -->
   <el-tag
     v-else-if="col === 'severity'"
-    class="cell-editable-tag"
+    :class="{ 'cell-editable-tag': ctx.canModifyRow(row) }"
     :type="ctx.severityTag[row.severity]"
     size="small"
     effect="dark"
-    @click="ctx.openQuickEdit(row, 'severity', $event)"
+    @click="ctx.canModifyRow(row) && ctx.openQuickEdit(row, 'severity', $event)"
   >{{ ctx.dict.getLabel('severity', row.severity) || row.severity }}</el-tag>
 
   <!-- priority -->
   <el-tag
     v-else-if="col === 'priority'"
-    class="cell-editable-tag"
+    :class="{ 'cell-editable-tag': ctx.canModifyRow(row) }"
     :type="ctx.priorityTag[row.priority]"
     size="small"
-    @click="ctx.openQuickEdit(row, 'priority', $event)"
+    @click="ctx.canModifyRow(row) && ctx.openQuickEdit(row, 'priority', $event)"
   >{{ ctx.priorityLabel[row.priority] || row.priority }}</el-tag>
 
   <!-- category -->
   <template v-else-if="col === 'category'">
     <el-tag
       v-if="row.category"
-      class="cell-editable-tag"
+      :class="{ 'cell-editable-tag': ctx.canModifyRow(row) }"
       type="info"
       size="small"
-      @click="ctx.openQuickEdit(row, 'category', $event)"
+      @click="ctx.canModifyRow(row) && ctx.openQuickEdit(row, 'category', $event)"
     >{{ ctx.dict.getLabel('issueCategory', row.category) || row.category }}</el-tag>
     <span
       v-else
-      class="cell-editable cell-na"
-      title="点击设置"
-      @click="ctx.openQuickEdit(row, 'category', $event)"
+      :class="{ 'cell-editable': ctx.canModifyRow(row), 'cell-na': true }"
+      :title="ctx.canModifyRow(row) ? '点击设置' : ''"
+      @click="ctx.canModifyRow(row) && ctx.openQuickEdit(row, 'category', $event)"
     >—</span>
   </template>
 
@@ -84,17 +86,17 @@ const row = computed(() => props.row)
   <template v-else-if="col === 'detectionPhase'">
     <el-tag
       v-if="row.detectionPhase"
-      class="cell-editable-tag"
+      :class="{ 'cell-editable-tag': ctx.canModifyRow(row) }"
       type="info"
       size="small"
       effect="plain"
-      @click="ctx.openQuickEdit(row, 'detectionPhase', $event)"
+      @click="ctx.canModifyRow(row) && ctx.openQuickEdit(row, 'detectionPhase', $event)"
     >{{ ctx.dict.getLabel('detectionPhase', row.detectionPhase) || row.detectionPhase }}</el-tag>
     <span
       v-else
-      class="cell-editable cell-na"
-      title="点击设置"
-      @click="ctx.openQuickEdit(row, 'detectionPhase', $event)"
+      :class="{ 'cell-editable': ctx.canModifyRow(row), 'cell-na': true }"
+      :title="ctx.canModifyRow(row) ? '点击设置' : ''"
+      @click="ctx.canModifyRow(row) && ctx.openQuickEdit(row, 'detectionPhase', $event)"
     >—</span>
   </template>
 
@@ -102,15 +104,15 @@ const row = computed(() => props.row)
   <template v-else-if="col === 'function'">
     <span
       v-if="row._functionName"
-      class="cell-editable cell-text"
-      title="点击修改"
-      @click="ctx.openQuickEdit(row, 'function', $event)"
+      :class="{ 'cell-editable': ctx.canModifyRow(row), 'cell-text': true }"
+      :title="ctx.canModifyRow(row) ? '点击修改' : ''"
+      @click="ctx.canModifyRow(row) && ctx.openQuickEdit(row, 'function', $event)"
     >{{ row._functionName }}</span>
     <span
       v-else
-      class="cell-editable cell-na"
-      title="点击关联功能"
-      @click="ctx.openQuickEdit(row, 'function', $event)"
+      :class="{ 'cell-editable': ctx.canModifyRow(row), 'cell-na': true }"
+      :title="ctx.canModifyRow(row) ? '点击关联功能' : ''"
+      @click="ctx.canModifyRow(row) && ctx.openQuickEdit(row, 'function', $event)"
     >—</span>
   </template>
 
@@ -124,15 +126,15 @@ const row = computed(() => props.row)
   <template v-else-if="col === 'assignee'">
     <span
       v-if="row.assigneeId && ctx.userMap[row.assigneeId]"
-      class="cell-editable"
-      title="点击修改"
-      @click="ctx.openQuickEdit(row, 'assignee', $event)"
+      :class="{ 'cell-editable': ctx.canModifyRow(row) }"
+      :title="ctx.canModifyRow(row) ? '点击修改' : ''"
+      @click="ctx.canModifyRow(row) && ctx.openQuickEdit(row, 'assignee', $event)"
     >👤{{ ctx.userMap[row.assigneeId] }}</span>
     <span
       v-else
-      class="cell-editable cell-na"
-      title="点击指定"
-      @click="ctx.openQuickEdit(row, 'assignee', $event)"
+      :class="{ 'cell-editable': ctx.canModifyRow(row), 'cell-na': true }"
+      :title="ctx.canModifyRow(row) ? '点击指定' : ''"
+      @click="ctx.canModifyRow(row) && ctx.openQuickEdit(row, 'assignee', $event)"
     >—</span>
   </template>
 
@@ -143,27 +145,27 @@ const row = computed(() => props.row)
   <template v-else-if="col === 'attention'">
     <el-tag
       v-if="ctx.linkAttention(row) === 0"
-      class="cell-editable-tag"
+      :class="{ 'cell-editable-tag': ctx.canAdjustAttention(row) }"
       type="info"
       size="small"
-      @click="ctx.openQuickEdit(row, 'attention', $event)"
+      @click="ctx.canAdjustAttention(row) && ctx.openQuickEdit(row, 'attention', $event)"
     >不关注</el-tag>
     <el-tag
       v-else
-      class="cell-editable-tag"
+      :class="{ 'cell-editable-tag': ctx.canAdjustAttention(row) }"
       :type="ctx.linkAttention(row) >= 4 ? 'danger' : ctx.linkAttention(row) >= 3 ? 'warning' : 'success'"
       size="small"
-      @click="ctx.openQuickEdit(row, 'attention', $event)"
+      @click="ctx.canAdjustAttention(row) && ctx.openQuickEdit(row, 'attention', $event)"
     >{{ ATTENTION_LEVEL_LABELS[ctx.linkAttention(row) as 0|1|2|3|4|5] }}</el-tag>
   </template>
 
   <!-- status -->
   <el-tag
     v-else-if="col === 'status'"
-    class="cell-editable-tag"
+    :class="{ 'cell-editable-tag': ctx.canModifyRow(row) }"
     :type="ctx.statusTag[row.status]"
     size="small"
-    @click="ctx.openQuickEdit(row, 'status', $event)"
+    @click="ctx.canModifyRow(row) && ctx.openQuickEdit(row, 'status', $event)"
   >{{ ctx.statusLabel[row.status] || row.status }}</el-tag>
 
   <!-- createdAt -->
@@ -174,16 +176,16 @@ const row = computed(() => props.row)
     <div
       v-for="cp in ctx.getRecentCheckpoints(row.id)"
       :key="cp.id"
-      class="cp-mini-item cp-editable"
-      :class="{ 'cp-overdue': isOverdue(cp.checkpointDate, cp.status).overdue }"
-      title="点击编辑点检"
-      @click="ctx.openEditCheckpoint(cp, row.title, $event)"
+      :class="['cp-mini-item', { 'cp-editable': ctx.canModifyRow(row), 'cp-overdue': isOverdue(cp.checkpointDate, cp.status).overdue }]"
+      :title="ctx.canModifyRow(row) ? '点击编辑点检' : ''"
+      @click="ctx.canModifyRow(row) && ctx.openEditCheckpoint(cp, row.title, $event)"
     >
       <CheckpointStatusTag
         class="cp-mini-icon"
         :status="cp.status"
         compact
         :overdue="isOverdue(cp.checkpointDate, cp.status).overdue"
+        :disabled="!ctx.canModifyRow(row)"
         @change="ctx.onUpdateCheckpointStatus(cp, $event)"
       />
       <span class="cp-mini-date" :title="'点检日: ' + cp.checkpointDate">{{ ctx.formatCpDate(cp.checkpointDate) }}</span>
@@ -194,7 +196,7 @@ const row = computed(() => props.row)
     <div v-if="(ctx.checkpointMap[row.id]?.length || 0) > ctx.maxTimelineRows" class="cp-mini-more">
       … 共 {{ ctx.checkpointMap[row.id].length }} 条
     </div>
-    <button class="cp-mini-add" type="button" title="添加点检" @click.stop="ctx.openCreateCheckpoint(row, $event)">+</button>
+    <button v-if="ctx.canModifyRow(row)" class="cp-mini-add" type="button" title="添加点检" @click.stop="ctx.openCreateCheckpoint(row, $event)">+</button>
   </div>
 </template>
 

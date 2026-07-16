@@ -11,11 +11,13 @@ export interface User {
   approved: number
   disabled?: number
   systemRole: SystemRole
+  /** 令牌版本；密码变更、禁用或撤销审批时递增，使旧令牌立即失效。 */
+  tokenVersion: number
   createdAt: string
   updatedAt: string
 }
 
-export type UserPublic = Omit<User, 'passwordHash'>
+export type UserPublic = Omit<User, 'passwordHash' | 'tokenVersion'>
 
 export interface CreateUserInput {
   username: string

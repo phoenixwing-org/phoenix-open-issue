@@ -20,7 +20,7 @@ export class IssueController {
   }
 
   async getById(req: Request, res: Response): Promise<void> {
-    const issue = await issueService.getById(routeParam(req, 'id'))
+    const issue = await issueService.getById(routeParam(req, 'id'), req.user!.userId)
     if (!issue) throw new NotFoundError('Issue')
     res.json(issue)
   }

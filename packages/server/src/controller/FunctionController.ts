@@ -1,6 +1,8 @@
 import type { Request, Response } from 'express'
 import { FunctionService } from '../service/FunctionService.js'
 import { routeParam } from '../utils/request.js'
+import { assertSystemAdminAsync } from '../utils/admin.js'
+import { getAsyncDb } from '../db/connection.js'
 
 const functionService = new FunctionService()
 
@@ -25,21 +27,25 @@ export class FunctionController {
   }
 
   async create(req: Request, res: Response): Promise<void> {
+    await assertSystemAdminAsync(getAsyncDb(), req.user!.userId)
     const item = await functionService.create(req.body)
     res.status(201).json(item)
   }
 
   async update(req: Request, res: Response): Promise<void> {
+    await assertSystemAdminAsync(getAsyncDb(), req.user!.userId)
     const item = await functionService.update(routeParam(req, 'id'), req.body)
     res.json(item)
   }
 
   async delete(req: Request, res: Response): Promise<void> {
+    await assertSystemAdminAsync(getAsyncDb(), req.user!.userId)
     await functionService.delete(routeParam(req, 'id'))
     res.status(204).send()
   }
 
   async importBatch(req: Request, res: Response): Promise<void> {
+    await assertSystemAdminAsync(getAsyncDb(), req.user!.userId)
     const { rows } = req.body
     if (!Array.isArray(rows) || rows.length === 0) {
       res.status(400).json({ error: 'rows 必须是非空数组' })

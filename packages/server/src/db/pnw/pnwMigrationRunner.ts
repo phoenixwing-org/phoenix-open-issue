@@ -20,6 +20,13 @@ export const OPEN_ISSUE_MIGRATIONS: readonly PnwMigration[] = [
         CHECK ("status" IN ('pending','done','skipped','voided'))`)
     },
   },
+  {
+    id: '20260715-user-token-version',
+    up: async (db, dialect) => {
+      if (dialect !== 'postgres') return
+      await db.exec('ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "tokenVersion" INTEGER NOT NULL DEFAULT 0')
+    },
+  },
 ]
 
 export async function pnwRunMigrations(

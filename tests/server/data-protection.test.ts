@@ -103,7 +103,7 @@ describe('数据保护规则', () => {
     db.run(`INSERT INTO issueLists (id, name, listType, ownerId) VALUES ('list-linked', '关联列表', 'custom', ?)`, adminId)
     db.run(`INSERT INTO issueListLinks (id, issueId, listId, linkedBy) VALUES ('link-linked', 'issue-1', 'list-linked', ?)`, adminId)
 
-    const grouped = await new CheckpointService().getByListId('list-linked')
+    const grouped = await new CheckpointService().getByListId('list-linked', adminId)
     expect(grouped['issue-1']).toHaveLength(1)
     expect(grouped['issue-1'][0].id).toBe('checkpoint-1')
   })
@@ -115,7 +115,7 @@ describe('数据保护规则', () => {
        VALUES ('checkpoint-2', 'issue-1', '2099-01-02', '较新的点检', 2)`,
     )
 
-    const checkpoints = await new CheckpointService().getByIssueId('issue-1')
+    const checkpoints = await new CheckpointService().getByIssueId('issue-1', adminId)
     expect(checkpoints.map(cp => cp.id)).toEqual(['checkpoint-2', 'checkpoint-1'])
   })
 

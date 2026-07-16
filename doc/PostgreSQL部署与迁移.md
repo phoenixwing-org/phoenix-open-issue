@@ -16,12 +16,12 @@ DB_POOL_MAX=10
 DB_SSL=false
 ```
 
-正式环境必须设置独立的 `JWT_SECRET`。远程数据库建议启用 TLS；`DB_SSL=true` 使用证书校验，数据库证书链必须受系统信任。
+正式环境必须设置至少 32 位的独立 `JWT_SECRET` 和至少 12 位的 `INITIAL_ADMIN_PASSWORD`，示例占位值会导致启动失败。远程数据库建议启用 TLS；`DB_SSL=true` 使用证书校验，数据库证书链必须受系统信任。
 
 ## 2. PostgreSQL 初始化
 
 1. 创建独立数据库和最小权限账号。
-2. 复制 PG 模板：`cp packages/server/.env.postgres.example packages/server/.env`，再填写 `JWT_SECRET` 和 `DATABASE_URL`。
+2. 复制 PG 模板：`cp packages/server/.env.postgres.example packages/server/.env`，再填写 `JWT_SECRET`、`INITIAL_ADMIN_PASSWORD` 和 `DATABASE_URL`。
 3. 服务自动创建 Schema、索引、admin 和基础字典。
 4. 日志出现 `Database: PostgreSQL` 后访问 `/health`。
 
@@ -38,9 +38,9 @@ DB_SSL=false
 5. 执行“数据库修正 → 全部”。
 6. 核对用户、组织、列表、Issue、点检、推送、字典和功能数量。
 
-“迁移导出”会保留非 `admin` 用户的 bcrypt 密码哈希；导入后这些用户可以继续使用原密码，只有 `admin` 会重置为 `123456`。迁移文件包含密码哈希，必须按敏感凭据保管，迁移完成后应安全删除。
+“迁移导出”会保留非 `admin` 用户的 bcrypt 密码哈希；导入后这些用户可以继续使用原密码，只有 `admin` 会重置为部署配置 `INITIAL_ADMIN_PASSWORD`。迁移文件包含密码哈希，必须按敏感凭据保管，迁移完成后应安全删除。
 
-普通“备份导出”不包含 `passwordHash`。导入这种备份时，所有用户密码会重置为 `123456`；旧版备份也按此规则处理。
+普通“备份导出”不包含 `passwordHash`。导入这种备份时，所有用户密码会重置为 `INITIAL_ADMIN_PASSWORD`；旧版备份也按此规则处理。
 
 只有系统管理员可以执行完整备份、迁移导出和导入。普通用户的“导出我的数据”只包含其可访问列表及相关 Issue、点检、链接和推送，不能作为数据库导入文件。
 

@@ -8,7 +8,7 @@ import { assertSystemAdminAsync } from '../utils/admin.js'
 import type { User, UserPublic, CreateUserInput, LoginResult, RegisterResult, SystemRole } from '@open-issue/core'
 
 function toPublic(user: User): UserPublic {
-  const { passwordHash: _, ...pub } = user
+  const { passwordHash: _, tokenVersion: __, ...pub } = user
   return pub
 }
 
@@ -59,7 +59,7 @@ export class AuthService {
       throw new UnauthorizedError('账号已被禁用，请联系管理员')
     }
 
-    const token = signToken({ userId: user.id, username: user.username })
+    const token = signToken({ userId: user.id, username: user.username, tokenVersion: user.tokenVersion ?? 0 })
     return { token, user: toPublic(user) }
   }
 
@@ -102,8 +102,10 @@ export class AuthService {
     await assertSystemAdminAsync(db, actorId)
     const user = await db.get<User>('SELECT * FROM "users" WHERE "id" = ?', [userId])
     if (!user) throw new UnauthorizedError('用户不存在')
-    await db.run('UPDATE "users" SET "approved" = ?, "updatedAt" = ? WHERE "id" = ?',
-      [approved ? 1 : 0, new Date().toISOString(), userId])
+    await db.run(
+      'UPDATE "users" SET "approved" = ?, "tokenVersion" = "tokenVersion" + ?, "updatedAt" = ? WHERE "id" = ?',
+      [approved ? 1 : 0, approved ? 0 : 1, new Date().toISOString(), userId],
+    )
     console.log(`👤 [APPROVE] user "${user.username}" → ${approved ? 'approved' : 'rejected'}`)
     return toPublic(await db.get<User>('SELECT * FROM "users" WHERE "id" = ?', [userId]) as User)
   }
@@ -154,7 +156,7 @@ export class AuthService {
     const user = await db.get<User>('SELECT * FROM "users" WHERE "id" = ?', [userId])
     if (!user) throw new UnauthorizedError('用户不存在')
     if (userId === actorId) throw new ForbiddenError('不能禁用自己')
-    await db.run('UPDATE "users" SET "disabled" = 1, "updatedAt" = ? WHERE "id" = ?',
+    await db.run('UPDATE "users" SET "disabled" = 1, "tokenVersion" = "tokenVersion" + 1, "updatedAt" = ? WHERE "id" = ?',
       [new Date().toISOString(), userId])
     console.log(`🚫 [DISABLE] user "${user.username}" disabled by "${actorId}"`)
     return toPublic(await db.get<User>('SELECT * FROM "users" WHERE "id" = ?', [userId]) as User)
@@ -185,7 +187,7 @@ export class AuthService {
     }
 
     const passwordHash = bcrypt.hashSync(newPassword, 10)
-    await db.run('UPDATE "users" SET "passwordHash" = ?, "updatedAt" = ? WHERE "id" = ?',
+    await db.run('UPDATE "users" SET "passwordHash" = ?, "tokenVersion" = "tokenVersion" + 1, "updatedAt" = ? WHERE "id" = ?',
       [passwordHash, new Date().toISOString(), userId])
     console.log(`🔑 [CHANGE_PW] user "${user.username}" changed password`)
   }
@@ -201,7 +203,7 @@ export class AuthService {
     }
 
     const passwordHash = bcrypt.hashSync(newPassword, 10)
-    await db.run('UPDATE "users" SET "passwordHash" = ?, "updatedAt" = ? WHERE "id" = ?',
+    await db.run('UPDATE "users" SET "passwordHash" = ?, "tokenVersion" = "tokenVersion" + 1, "updatedAt" = ? WHERE "id" = ?',
       [passwordHash, new Date().toISOString(), userId])
     console.log(`🔑 [ADMIN_RESET_PW] user "${user.username}" password reset by "${actorId}"`)
   }

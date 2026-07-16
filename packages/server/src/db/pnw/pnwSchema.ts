@@ -18,6 +18,7 @@ export async function pnwRunSchema(db: PnwDbAdapter): Promise<void> {
       "approved" INTEGER NOT NULL DEFAULT 0,
       "disabled" INTEGER NOT NULL DEFAULT 0,
       "systemRole" TEXT NOT NULL DEFAULT 'editor',
+      "tokenVersion" INTEGER NOT NULL DEFAULT 0,
       "createdAt" TEXT DEFAULT ${now},
       "updatedAt" TEXT DEFAULT ${now}
     );

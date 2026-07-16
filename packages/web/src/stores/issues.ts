@@ -9,17 +9,39 @@ export const useIssueStore = defineStore('issues', () => {
   const currentIssue = ref<Issue | null>(null)
   const total = ref(0)
   const loading = ref(false)
+  let fetchRequestId = 0
 
   async function fetchIssues(listId: string, params?: Record<string, any>) {
+    const requestId = ++fetchRequestId
     loading.value = true
     try {
-      const res = await api.getIssues(listId, params)
-      issues.value = res.data.items
-      total.value = res.data.total
+      // 列表页在前端完成筛选和分页；这里分批取回当前列表的全部 Issue，
+      // 避免后端默认 50 条上限让前端只能筛选到部分数据。
+      const pageSize = 500
+      const allIssues: Issue[] = []
+      let page = 1
+      let expectedTotal = 0
+
+      do {
+        const res = await api.getIssues(listId, { ...params, page, size: pageSize })
+        const pageItems = Array.isArray(res.data.items) ? res.data.items as Issue[] : []
+        expectedTotal = Number(res.data.total) || 0
+        allIssues.push(...pageItems)
+        page++
+        if (pageItems.length === 0) break
+      } while (allIssues.length < expectedTotal)
+
+      if (requestId !== fetchRequestId) return
+      issues.value = allIssues
+      total.value = expectedTotal
     } catch (e: any) {
       // 拦截器已弹错误，此处仅阻止向上抛
+      if (requestId === fetchRequestId) {
+        issues.value = []
+        total.value = 0
+      }
     } finally {
-      loading.value = false
+      if (requestId === fetchRequestId) loading.value = false
     }
   }
 

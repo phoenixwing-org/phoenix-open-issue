@@ -4,6 +4,8 @@ Base URL: `http://localhost:3400/api`
 
 认证：`Authorization: Bearer <token>`（除 `[public]` 外均需）
 
+权限：`systemRole=admin` 可跨列表管理；`systemRole=viewer` 为全局只读；`systemRole=editor` 再按列表角色授权。非成员不能通过资源 ID 读取列表、Issue、点检或推送记录。详细矩阵见 [多人权限与列表筛选加固.md](./多人权限与列表筛选加固.md)。
+
 > 路径规则：**返回集合用复数，单条操作用单数**（如 `GET /lists` vs `GET /list/:id`）
 
 ---
@@ -14,8 +16,8 @@ Base URL: `http://localhost:3400/api`
 ```json
 // Request
 { "username": "alice", "password": "123456", "displayName": "Alice" }
-// Response 201
-{ "token": "eyJ...", "user": { ... } }
+// Response 201（注册后待管理员审批，不能直接登录）
+{ "token": null, "user": { ... }, "pending": true }
 ```
 
 ### POST /auth/login `[public]`
@@ -32,7 +34,9 @@ Base URL: `http://localhost:3400/api`
 ## User
 
 ### GET /users — 所有用户
-### GET /users/pending — 待审批
+### GET /users/pending — 待审批（系统管理员）
+
+以下用户管理写操作均需系统管理员：
 
 ### PATCH /user/:userId/approve
 ### PATCH /user/:userId/org — `{ "orgUnitId": "uuid" }`
@@ -57,20 +61,22 @@ Base URL: `http://localhost:3400/api`
 ## List
 
 ### GET /lists — 我的列表
-### GET /lists/all — 全部
-### GET /lists/archived — 归档
+### GET /lists/all — 全部（系统管理员）
+### GET /lists/archived — 当前用户可访问的归档列表；系统管理员返回全部
+### GET /lists/deleted — 已软删除列表（系统管理员）
 
 ### POST /list — `{ "name": "...", "listType": "monthly" }`
 ### GET /list/:id
 ### PUT /list/:id
 ### DELETE /list/:id
 ### PATCH /list/:id/archive — `{ "archived": true }`
+### PATCH /list/:id/restore — 恢复软删除列表（系统管理员）
 
 ### GET /list/:id/members
 ### POST /list/:id/member — `{ "userId": "uuid", "role": "editor" }`
 ### DELETE /list/:id/member/:userId
 ### PATCH /list/:id/member/:userId/role — `{ "role": "admin" }`
-### PATCH /list/:id/transfer-owner — `{ "newOwnerId": "uuid" }`
+### PATCH /list/:id/transfer-owner — `{ "userId": "uuid" }`
 
 ---
 
@@ -120,6 +126,8 @@ Query: ?status=open&priority=high&search=xxx&sort=attention:desc,priority:asc&pa
 
 ## Dict
 
+读取接口允许已认证用户；以下写接口均需系统管理员。
+
 ### GET /dict
 ### GET /dict/:groupName
 ### POST /dict
@@ -131,6 +139,8 @@ Query: ?status=open&priority=high&search=xxx&sort=attention:desc,priority:asc&pa
 ---
 
 ## Seed
+
+状态查询允许已认证用户；写操作均需系统管理员。
 
 ### GET /seed/status
 ### POST /seed/test-data

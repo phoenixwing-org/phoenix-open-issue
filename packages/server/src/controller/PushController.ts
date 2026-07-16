@@ -7,7 +7,7 @@ const pushService = new PushService()
 export class PushController {
   async preview(req: Request, res: Response): Promise<void> {
     const { fromListId, toListId } = req.query
-    const result = await pushService.preview(fromListId as string, toListId as string)
+    const result = await pushService.preview(fromListId as string, toListId as string, req.user!.userId)
     res.json(result)
   }
 
@@ -17,7 +17,7 @@ export class PushController {
   }
 
   async getListPushHistory(req: Request, res: Response): Promise<void> {
-    const records = await pushService.getListPushHistory(routeParam(req, 'listId'))
+    const records = await pushService.getListPushHistory(routeParam(req, 'listId'), req.user!.userId)
     res.json(records)
   }
 
@@ -27,7 +27,7 @@ export class PushController {
   }
 
   async getIncomingPushes(req: Request, res: Response): Promise<void> {
-    const records = await pushService.getIncomingPushes(routeParam(req, 'listId'))
+    const records = await pushService.getIncomingPushes(routeParam(req, 'listId'), req.user!.userId)
     res.json(records)
   }
 

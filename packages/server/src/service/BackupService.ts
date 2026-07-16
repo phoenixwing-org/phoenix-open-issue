@@ -2,6 +2,7 @@ import { getAsyncDb } from '../db/connection.js'
 import { generateId } from '@open-issue/core'
 import bcrypt from 'bcryptjs'
 import { BadRequestError } from '../utils/errors.js'
+import { config } from '../config.js'
 
 interface BackupData {
   version: number
@@ -87,13 +88,16 @@ export class BackupService {
             const preservePassword = data.passwordPolicy === 'resetAdmin'
               && row.username !== 'admin'
               && isBcryptHash(row.passwordHash)
-            const pwHash = preservePassword ? row.passwordHash as string : bcrypt.hashSync('123456', 10)
+            const pwHash = preservePassword
+              ? row.passwordHash as string
+              : bcrypt.hashSync(config.bootstrapAdminPassword, 10)
             const result = await tx.run(
-              `INSERT INTO "users" ("id", "username", "email", "passwordHash", "displayName", "orgUnitId", "approved", "disabled", "systemRole", "createdAt", "updatedAt")
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING`,
+              `INSERT INTO "users" ("id", "username", "email", "passwordHash", "displayName", "orgUnitId", "approved", "disabled", "systemRole", "tokenVersion", "createdAt", "updatedAt")
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT DO NOTHING`,
               [row.id, row.username, row.email ?? null, pwHash, row.displayName ?? null,
                row.orgUnitId ?? null, row.approved ?? 1, row.disabled ?? 0,
                row.systemRole ?? (row.username === 'admin' ? 'admin' : 'editor'),
+               Number(row.tokenVersion ?? 0) + 1,
                row.createdAt || now, row.updatedAt || now],
             )
             count += result.changes
