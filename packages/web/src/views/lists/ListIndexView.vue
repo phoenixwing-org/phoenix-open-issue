@@ -9,6 +9,7 @@ import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
 import PageHelpButton from "@/components/PageHelpButton.vue"
 import ListFormDialog from '@/components/ListFormDialog.vue'
 import { useDictGroup } from '@/composables/useDictGroup'
+import { confirmListArchive, listLifecycleStatus } from '@/utils/listLifecycle'
 
 const store = useIssueListStore()
 const auth = useAuthStore()
@@ -49,12 +50,6 @@ const emptyDescription = computed(() => ({
   archived: '暂无已归档列表',
   deleted: '暂无已删除列表',
 })[listView.value])
-
-function lifecycleStatus(row: { archived?: number; isDeleted?: number }) {
-  if (row.isDeleted) return { label: '已删除', type: 'danger' as const }
-  if (row.archived) return { label: '已归档', type: 'info' as const }
-  return { label: '正常', type: 'success' as const }
-}
 
 watch([searchText, listTypeFilter, pageSize, listView], () => { currentPage.value = 1 })
 watch(() => filteredLists.value.length, (total) => {
@@ -144,21 +139,7 @@ async function onDelete(id: string, name: string) {
 }
 
 async function onArchive(id: string, name: string, archived: boolean) {
-  try {
-    await ElMessageBox.confirm(
-      archived
-        ? `确定归档列表「${name}」？归档后会从默认视图隐藏，可在「已归档」视图中取消归档。`
-        : `确定取消归档列表「${name}」？恢复后会回到正常列表视图。`,
-      archived ? '确认归档' : '确认取消归档',
-      {
-        confirmButtonText: archived ? '归档' : '取消归档',
-        cancelButtonText: '返回',
-        type: archived ? 'warning' : 'info',
-      },
-    )
-  } catch {
-    return
-  }
+  if (!await confirmListArchive(name, archived)) return
   await store.archiveList(id, archived)
   await loadLists()
 }
@@ -238,8 +219,8 @@ async function onRestore(id: string, name: string) {
       </el-table-column>
       <el-table-column label="状态" width="90" align="center">
         <template #default="{ row }">
-          <el-tag :type="lifecycleStatus(row).type" size="small">
-            {{ lifecycleStatus(row).label }}
+          <el-tag :type="listLifecycleStatus(row).type" size="small">
+            {{ listLifecycleStatus(row).label }}
           </el-tag>
         </template>
       </el-table-column>

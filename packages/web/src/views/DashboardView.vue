@@ -2,22 +2,35 @@
 import { computed, onMounted, ref, inject } from 'vue'
 import { useIssueListStore } from '@/stores/issueLists'
 import { useDictGroup } from '@/composables/useDictGroup'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ElMessage } from 'element-plus'
 import { getSeedStatus, addTestData, declineTestData } from '@/api/push'
 import PnwPageHeader from 'phoenix-wing/layout/PnwPageHeader.vue'
 import PageHelpButton from '@/components/PageHelpButton.vue'
 import ListFormDialog from '@/components/ListFormDialog.vue'
 import { useAuthStore } from '@/stores/auth'
 import { canPerformListAction, isSystemAdmin, isSystemViewer } from '@open-issue/core'
+import {
+  confirmListArchive,
+  filterListsByLifecycle,
+  listLifecycleStatus,
+  type ListLifecycleFilter,
+} from '@/utils/listLifecycle'
 
 const store = useIssueListStore()
 const auth = useAuthStore()
 const listTypeDict = useDictGroup('listType')
 const openTab = inject<(pageId: string, title: string, contextKey?: string) => void>('openTab')!
 const showCreate = ref(false)
-const listView = ref<'mine' | 'all' | 'archived'>('mine')
+type DashboardScope = 'mine' | 'all'
+const listScope = ref<DashboardScope>('mine')
+const lifecycleFilter = ref<ListLifecycleFilter>('active')
 const isAdmin = computed(() => isSystemAdmin(auth.user ?? undefined))
 const canCreateList = computed(() => Boolean(auth.user && !isSystemViewer(auth.user)))
+const displayedLists = computed(() => filterListsByLifecycle(store.lists, lifecycleFilter.value))
+const emptyDescription = computed(() => {
+  if (lifecycleFilter.value === 'archived') return '暂无已归档列表'
+  return canCreateList.value ? '暂无正常列表，可点击上方按钮创建' : '暂无可访问的正常列表'
+})
 
 function canArchive(list: { myRole?: any }) {
   return canPerformListAction(auth.user ?? undefined, list.myRole ?? null, 'manage-list')
@@ -48,34 +61,23 @@ async function onDeclineTestData() {
   showSeedPrompt.value = false
 }
 
-async function switchView(view: 'mine' | 'all' | 'archived') {
-  listView.value = view
-  if (view === 'all') await store.fetchAllLists()
-  else if (view === 'archived') await store.fetchArchivedLists()
-  else await store.fetchLists()
+async function loadLists() {
+  if (listScope.value === 'all' && isAdmin.value) await store.fetchAllLists(true)
+  else await store.fetchLists(true)
+}
+
+async function switchScope(scope: DashboardScope) {
+  listScope.value = scope
+  await loadLists()
 }
 
 async function onArchive(listId: string, name: string, archived: boolean) {
-  try {
-    await ElMessageBox.confirm(
-      archived
-        ? `确定归档列表「${name}」？归档后会从默认视图隐藏，可在「归档」视图中取消归档。`
-        : `确定取消归档列表「${name}」？恢复后会回到正常列表视图。`,
-      archived ? '确认归档' : '确认取消归档',
-      {
-        confirmButtonText: archived ? '归档' : '取消归档',
-        cancelButtonText: '返回',
-        type: archived ? 'warning' : 'info',
-      },
-    )
-  } catch {
-    return
-  }
+  if (!await confirmListArchive(name, archived)) return
   await store.archiveList(listId, archived)
 }
 
 onMounted(async () => {
-  await store.fetchLists()
+  await loadLists()
   if (!isAdmin.value) return
 
   // 检查是否需要询问测试数据
@@ -98,6 +100,7 @@ function goList(id: string, name: string) {
 
 async function onCreate(data: { name: string; listType: string; description?: string }) {
   await store.createList(data)
+  lifecycleFilter.value = 'active'
   showCreate.value = false
   ElMessage.success('列表创建成功')
 }
@@ -107,24 +110,31 @@ async function onCreate(data: { name: string; listType: string; description?: st
   <div class="page dashboard">
     <PnwPageHeader title="仪表盘">
       <template #actions>
-        <el-radio-group v-model="listView" size="small" @change="switchView" data-tour="dashboard-views">
-          <el-radio-button value="mine">👤 我的</el-radio-button>
-          <el-radio-button v-if="isAdmin" value="all">🌐 所有</el-radio-button>
-          <el-radio-button value="archived">📦 归档</el-radio-button>
-        </el-radio-group>
         <el-button v-if="canCreateList" type="primary" @click="showCreate = true" data-tour="dashboard-create">
           <el-icon><Plus /></el-icon> 新建列表
         </el-button>
+        <div class="dashboard-view-filters" data-tour="dashboard-views">
+          <span class="filter-label">范围</span>
+          <el-radio-group v-model="listScope" size="small" @change="switchScope">
+            <el-radio-button value="mine">我的</el-radio-button>
+            <el-radio-button v-if="isAdmin" value="all">所有</el-radio-button>
+          </el-radio-group>
+          <span class="filter-label">状态</span>
+          <el-radio-group v-model="lifecycleFilter" size="small">
+            <el-radio-button value="active">正常</el-radio-button>
+            <el-radio-button value="archived">已归档</el-radio-button>
+          </el-radio-group>
+        </div>
       </template>
       <template #help><PageHelpButton page-id="dashboard" /></template>
     </PnwPageHeader>
 
     <div v-loading="store.loading">
-      <el-empty v-if="!store.lists.length && !store.loading" description="还没有列表，点击上方按钮创建" />
+      <el-empty v-if="!displayedLists.length && !store.loading" :description="emptyDescription" />
 
       <div class="list-cards" data-tour="dashboard-cards">
         <div
-          v-for="list in store.lists" :key="list.id"
+          v-for="list in displayedLists" :key="list.id"
           class="list-card"
           @click="goList(list.id, list.name)"
         >
@@ -132,7 +142,12 @@ async function onCreate(data: { name: string; listType: string; description?: st
             {{ listTypeDict.label(list.listType) }}
           </div>
           <div class="card-body">
-            <h3>{{ list.name }}</h3>
+            <div class="card-title-row">
+              <h3>{{ list.name }}</h3>
+              <el-tag :type="listLifecycleStatus(list).type" size="small">
+                {{ listLifecycleStatus(list).label }}
+              </el-tag>
+            </div>
             <p v-if="list.description">{{ list.description }}</p>
             <div class="card-info">
               <span v-if="(list as any).ownerName">👤 {{ (list as any).ownerName }}</span>
@@ -143,10 +158,10 @@ async function onCreate(data: { name: string; listType: string; description?: st
             {{ new Date(list.updatedAt).toLocaleDateString('zh-CN') }}
             <el-button
               v-if="canArchive(list)"
-              link size="small" :type="listView === 'archived' ? 'primary' : 'info'"
-              @click.stop="onArchive(list.id, list.name, listView !== 'archived')"
-              :title="listView === 'archived' ? '取消归档' : '归档此列表'"
-            >{{ listView === 'archived' ? '取消归档' : '📦' }}</el-button>
+              link size="small" :type="list.archived ? 'primary' : 'warning'"
+              @click.stop="onArchive(list.id, list.name, !Boolean(list.archived))"
+              :title="list.archived ? '取消归档' : '归档此列表'"
+            >{{ list.archived ? '取消归档' : '归档' }}</el-button>
           </div>
         </div>
       </div>
@@ -189,6 +204,17 @@ async function onCreate(data: { name: string; listType: string; description?: st
   display: flex;
   gap: 8px;
 }
+.dashboard-view-filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.filter-label {
+  color: #909399;
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
 .page-head h2 {
   font-size: 1.3rem;
   font-weight: 650;
@@ -221,10 +247,23 @@ async function onCreate(data: { name: string; listType: string; description?: st
 .card-body {
   padding: 12px 16px 8px;
 }
+.card-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.card-title-row .el-tag {
+  flex-shrink: 0;
+}
 .card-body h3 {
+  min-width: 0;
   font-size: 1rem;
   font-weight: 600;
   margin-bottom: 4px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .card-body p {
   font-size: 0.82rem;
@@ -247,5 +286,16 @@ async function onCreate(data: { name: string; listType: string; description?: st
   padding: 8px 16px 12px;
   font-size: 0.72rem;
   color: #c0c4cc;
+}
+@media (max-width: 900px) {
+  .dashboard :deep(.pnw-head-row) {
+    grid-template-columns: 1fr auto;
+  }
+  .dashboard :deep(.pnw-head-actions) {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+  }
 }
 </style>

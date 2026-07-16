@@ -82,9 +82,12 @@ export const useIssueListStore = defineStore('issueLists', () => {
   }
 
   async function archiveList(id: string, archived: boolean) {
-    await api.archiveList(id, archived)
-    lists.value = lists.value.filter(l => l.id !== id)
+    const res = await api.archiveList(id, archived)
+    const idx = lists.value.findIndex(l => l.id === id)
+    if (idx >= 0) lists.value[idx] = { ...lists.value[idx], ...res.data }
+    if (currentList.value?.id === id) currentList.value = { ...currentList.value, ...res.data }
     ElMessage.success(archived ? '已归档' : '已取消归档')
+    return res.data as IssueList
   }
 
   async function restoreList(id: string) {
