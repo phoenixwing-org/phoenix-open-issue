@@ -1,0 +1,36 @@
+{
+  "schemaVersion": 1,
+  "owner": "Open Issue maintainers",
+  "lastVerified": "2026-07-17",
+  "appliesTo": "0.4.x",
+  "rules": [
+    {
+      "match": "^doc/(TODO|计划|开发计划|功能表计划|待办点检)\\.md$",
+      "status": "superseded",
+      "sourceOfTruth": "doc/current-roadmap.md",
+      "reason": "重叠计划与点检入口已合并为当前路线"
+    },
+    {
+      "match": "^doc/BUG日志\\.md$",
+      "status": "superseded",
+      "sourceOfTruth": "doc/已知问题.md",
+      "reason": "有效 workaround 与关闭条件已迁入当前已知问题"
+    },
+    {
+      "match": "^doc/(Issue列设计|推送工作流|IssueListLink关注系数|v0\\.4-PG双数据库适配计划|v0\\.4发布改进计划|界面巡游计划)\\.md$",
+      "status": "archived",
+      "sourceOfTruth": "doc/current-roadmap.md",
+      "reason": "完成态 v0.4 实施与验收证据"
+    },
+    {
+      "match": "^doc/(列表成员与负责人|第三方登录/实施清单)\\.md$",
+      "status": "draft",
+      "sourceOfTruth": "doc/current-roadmap.md",
+      "reason": "尚未全部晋升为稳定产品契约的方案"
+    },
+    {
+      "match": "^.*\\.md$",
+      "status": "current"
+    }
+  ]
+}

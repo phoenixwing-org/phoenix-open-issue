@@ -20,7 +20,11 @@
     "deploy": "pnpm build:deploy && pnpm start:prod",
     "seed": "pnpm -C packages/server seed",
     "test": "vitest run",
-    "test:pg": "vitest run tests/server/postgres-integration.test.ts"
+    "test:pg": "vitest run tests/server/postgres-integration.test.ts",
+    "verify:wing-dependencies": "node scripts/verify-wing-dependencies.mjs",
+    "docs:manifest": "node scripts/generate-doc-manifest.mjs",
+    "docs:check": "node scripts/generate-doc-manifest.mjs --check",
+    "verify:ci": "pnpm docs:check && pnpm verify:wing-dependencies && pnpm test && pnpm build"
   },
   "packageManager": "pnpm@9.15.9",
   "devDependencies": {

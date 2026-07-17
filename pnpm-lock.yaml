@@ -51,8 +51,8 @@ importers:
         specifier: ^8.22.0
         version: 8.22.0
       phoenix-wing:
-        specifier: 0.3.0
-        version: 0.3.0(element-plus@2.14.2(vue@3.5.39(typescript@5.7.3)))(pinia@3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3)))(vue@3.5.39(typescript@5.7.3))
+        specifier: 0.4.2
+        version: 0.4.2(element-plus@2.14.2(vue@3.5.39(typescript@5.7.3)))(pinia@3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3)))(vue@3.5.39(typescript@5.7.3))
       uuid:
         specifier: ^11.1.0
         version: 11.1.1
@@ -100,8 +100,8 @@ importers:
         specifier: ^2.10.2
         version: 2.14.2(vue@3.5.39(typescript@5.7.3))
       phoenix-wing:
-        specifier: 0.3.0
-        version: 0.3.0(element-plus@2.14.2(vue@3.5.39(typescript@5.7.3)))(pinia@3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3)))(vue@3.5.39(typescript@5.7.3))
+        specifier: 0.4.2
+        version: 0.4.2(element-plus@2.14.2(vue@3.5.39(typescript@5.7.3)))(pinia@3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3)))(vue@3.5.39(typescript@5.7.3))
       pinia:
         specifier: ^3.0.4
         version: 3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3))
@@ -573,6 +573,12 @@ packages:
   '@parcel/watcher@2.5.6':
     resolution: {integrity: sha512-tmmZ3lQxAe/k/+rNnXQRawJ4NjxO2hqiOLTHvWchtGZULp4RyFeh6aU4XdOYBFe2KE1oShQTv4AblOs2iOrNnQ==}
     engines: {node: '>= 10.0.0'}
+
+  '@phoenix-wing/code-core@0.4.2':
+    resolution: {integrity: sha512-y0/buMhbhGdwDk/rQFpDcc0sCvhSLB/w4otCIr13jBYrnidSJLz3SHrHSyS2x7DOqAsBJv2y5synkohZhFYb5A==}
+
+  '@phoenix-wing/db-node@0.4.2':
+    resolution: {integrity: sha512-Lvu4hOXJK8/zm8mWhDy6gm/USVtHs7Bn7Auytw2tsjmZPthFXD4n07EoUXDct076U1D+IGjTTiV3GQmtdpabLA==}
 
   '@rollup/rollup-android-arm-eabi@4.62.2':
     resolution: {integrity: sha512-6o7ZLZK+BeenkZCFNDXqpbjw9bD6nuWonvS/lwQJp7NoVVxm6p3qE7qQ5jGuBjiFsgvqjD8mZAU5oWxTmbOeOg==}
@@ -1483,8 +1489,8 @@ packages:
   pgpass@1.0.5:
     resolution: {integrity: sha512-FdW9r/jQZhSeohs1Z3sI1yxFQNFvMcnmfuj4WBMUTxOrAyLMaTcE1aAMBiTlbMNaXvBCQuVi0R7hd8udDSP7ug==}
 
-  phoenix-wing@0.3.0:
-    resolution: {integrity: sha512-7yd3cmy9mZTNnej8hKwyjNJyIxDuX3awzIsYOlj5lO1Tgo2tAc1dKe0PyJSxz5yFXwZUFHUmdJnb3eut/uPOVw==}
+  phoenix-wing@0.4.2:
+    resolution: {integrity: sha512-hNus3IWOu+8/OafMeCTsLmcagsAsiChjU1sGJyEw15KtUD1Z8QPT+SooAE1BpCk0kQcpSamsWjdpZt7JQ2oRzA==}
     peerDependencies:
       element-plus: ^2.0.0
       pinia: ^2.0.0 || ^3.0.0
@@ -2294,6 +2300,12 @@ snapshots:
       '@parcel/watcher-win32-ia32': 2.5.6
       '@parcel/watcher-win32-x64': 2.5.6
     optional: true
+
+  '@phoenix-wing/code-core@0.4.2': {}
+
+  '@phoenix-wing/db-node@0.4.2':
+    dependencies:
+      node-sqlite3-wasm: 0.8.59
 
   '@rollup/rollup-android-arm-eabi@4.62.2':
     optional: true
@@ -3252,7 +3264,10 @@ snapshots:
     dependencies:
       split2: 4.2.0
 
-  phoenix-wing@0.3.0(element-plus@2.14.2(vue@3.5.39(typescript@5.7.3)))(pinia@3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3)))(vue@3.5.39(typescript@5.7.3)):
+  phoenix-wing@0.4.2(element-plus@2.14.2(vue@3.5.39(typescript@5.7.3)))(pinia@3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3)))(vue@3.5.39(typescript@5.7.3)):
+    dependencies:
+      '@phoenix-wing/code-core': 0.4.2
+      '@phoenix-wing/db-node': 0.4.2
     optionalDependencies:
       element-plus: 2.14.2(vue@3.5.39(typescript@5.7.3))
       node-sqlite3-wasm: 0.8.59

@@ -68,14 +68,14 @@ pnpm dev              # 一键启动 core + server + web（首次启动自动创
 
 
 
-## 技术栈（原型）
+## 技术栈
 
 
 | 层    | 技术                           | 说明                   |
 | ---- | ---------------------------- | -------------------- |
 | 前端   | Vue 3 + Element Plus + Pinia | 同 desk-tools 风格      |
-| 后端   | Express + TypeScript         | 原型用，后续迁移 Midway.js   |
-| 数据库  | SQLite (node-sqlite3-wasm)   | 零配置原型；生产换 PostgreSQL |
+| 后端   | Express + TypeScript         | 当前生产与开发 API           |
+| 数据库  | SQLite / PostgreSQL          | adapter 隔离；SQLite 零配置，PG 用于服务部署 |
 | 核心算法 | `@open-issue/core`           | 纯 TS，可独立发布 npm       |
 | 包管理  | pnpm workspaces              | monorepo             |
 
@@ -112,7 +112,7 @@ pnpm build           # 全部构建
 pnpm seed            # CLI 重新填充演示数据（force 追加可清空）
 ```
 
-> phoenix-wing 固定使用 npm 发布的 `0.3.0`，不探测或引用相邻本地仓库。详见 [phoenix-wing 依赖配置](doc/phoenix-wing依赖配置.md)。
+> Phoenix Wing `0.4.2` 已完成八包 Registry 与 npm/pnpm 干净消费验收。本仓前后端精确消费 `0.4.2`，聚合 UI 使用统一编译出口且不再排除 Vite 预构建；不探测或引用相邻本地仓库。`0.4.0` 仍是禁止安装的历史失败版本。详见 [phoenix-wing 依赖配置](doc/phoenix-wing依赖配置.md)。
 
 
 
@@ -121,14 +121,13 @@ pnpm seed            # CLI 重新填充演示数据（force 追加可清空）
 
 | 文档                                           | 说明                   |
 | -------------------------------------------- | -------------------- |
+| [文档索引](doc/文档索引.md)                       | 当前说明、草案与历史证据的唯一导航 |
+| [当前路线](doc/current-roadmap.md)                | 当前优先级与联合治理消费者责任 |
 | [更新日志](doc/CHANGELOG.md)                     | v0.4.0 版本变更摘要        |
 | [架构设计](doc/架构设计.md)                          | 架构 + 数据流             |
 | [API参考](doc/API参考.md)                        | REST API 全部端点        |
 | [数据字典配置](doc/数据字典配置.md)                      | 下拉选项枚举值，汽车/软件预设      |
-| [Issue列设计](doc/Issue列设计.md)                  | 汽车行业对标，列扩展讨论         |
-| [推送工作流](doc/推送工作流.md)                        | 推送→确认/拒绝 完整流程        |
-| [待办点检](doc/待办点检.md)                          | 用自己系统追踪自己开发          |
-| [开发计划](doc/开发计划.md)                          | ADR 决策 + 路线图         |
+| [已知问题](doc/已知问题.md)                         | 当前 workaround 与关闭条件    |
 | [phoenix-wing 依赖配置](doc/phoenix-wing依赖配置.md) | npm 固定版本与升级规则      |
 | [Linux 测试部署](doc/Linux测试部署.md)               | 构建、配置、systemd 与升级检查 |
 | [SQLite/PG 双数据库计划](doc/v0.4-PG双数据库适配计划.md) | PnwDbAdapter、迁移与双库测试方案 |
@@ -137,14 +136,7 @@ pnpm seed            # CLI 重新填充演示数据（force 追加可清空）
 
 ## 路线图
 
-- [x] v0.1 原型：SQLite + Express + Vue 3，7 张表，基础 CRUD
-- [x] v0.2.0：Issue 列扩展、8D 字段、列表三视图/列设置、关注系数、推送审批、单元测试页等
-- [x] v0.3.0：多列表关联、功能表、数据字典、系统管理、备份修复与交互升级
-- [x] v0.4.0：Linux 发布基线、后端数据保护、迁移修复与集成测试
-- [ ] v0.5 npm 发布 `@open-issue/*`
-- [ ] v1.0 cool-admin 插件 + PostgreSQL
-
-更多待办见 [TODO](doc/TODO.md)
+已完成版本基线和当前未完成项统一见[当前路线](doc/current-roadmap.md)；旧 TODO、点检表和版本计划只保留为分类清单中的历史证据。
 
 ## 相关项目
 
