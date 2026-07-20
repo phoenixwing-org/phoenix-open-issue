@@ -5,21 +5,29 @@ import type {
   ExternalAuthProviderInfo,
   ExternalAuthStartResult,
   ExternalAuthTicketResult,
+  ExternalBindRequestAdminView,
+  ExternalBindRequestHandleResult,
+  ExternalBindRequestPublic,
+  ExternalBindRequestStatus,
   ExternalIdentityAdminView,
   ExternalIdentityPublic,
 } from '@open-issue/core'
+import bcrypt from 'bcryptjs'
 import { getAsyncDb } from '../db/connection.js'
 import { config } from '../config.js'
 import { AuthService } from './AuthService.js'
 import { BadRequestError, ConflictError, ForbiddenError, NotFoundError, UnauthorizedError } from '../utils/errors.js'
 import { assertSystemAdminAsync } from '../utils/admin.js'
 import { getActiveUserAsync } from '../utils/access.js'
+import { resolveOrgUnitIdAsync } from '../utils/pendingOrgUnit.js'
 import {
   getExternalAuthProviders,
   isExternalAuthProviderError,
   type ProviderRegistry,
 } from '../auth/providers/registry.js'
 import type { ExternalAuthProvider, ExternalIdentityProfile } from '../auth/providers/types.js'
+import type { PnwDbExecutor } from '../db/pnw/pnwDbTypes.js'
+import { LoginPolicyService } from './LoginPolicyService.js'
 
 type OAuthPurpose = 'login' | 'link'
 
@@ -52,11 +60,39 @@ interface ExternalIdentityRow extends ExternalIdentityAdminView {
   updatedAt: string
 }
 
+interface ExternalBindRequestRow {
+  id: string
+  provider: ExternalAuthProviderId
+  providerSubject: string
+  tenantKey: string | null
+  openId: string | null
+  unionId: string | null
+  providerUserId: string | null
+  displayName: string | null
+  avatarUrl: string | null
+  email: string | null
+  metadataJson: string
+  proposedUsername: string | null
+  proposedDisplayName: string | null
+  status: ExternalBindRequestStatus
+  boundUserId: string | null
+  handledByUserId: string | null
+  handledAt: string | null
+  note: string | null
+  profileTokenHash: string | null
+  profileTokenExpiresAt: string | null
+  lastSeenAt: string
+  createdAt: string
+  updatedAt: string
+}
+
 export interface ExternalAuthCallbackResult {
-  purpose: OAuthPurpose
+  purpose: 'login' | 'link' | 'bind_pending'
   provider: ExternalAuthProviderId
   returnTo: string
   ticket?: string
+  bindRequestId?: string
+  profileToken?: string
 }
 
 export interface ExternalAuthRuntimeOptions {
@@ -78,6 +114,7 @@ export class ExternalAuthFlowError extends Error {
 
 export class ExternalAuthService {
   private readonly authService = new AuthService()
+  private readonly loginPolicy = new LoginPolicyService()
 
   constructor(
     private readonly registry: ProviderRegistry = getExternalAuthProviders(),
@@ -90,12 +127,21 @@ export class ExternalAuthService {
       : []
   }
 
+  /** 公开列表：尊重管理员「第三方登录」开关。 */
+  async listProvidersForLogin(): Promise<ExternalAuthProviderInfo[]> {
+    const policy = await this.loginPolicy.getPolicy()
+    if (!policy.externalEnabled) return []
+    return this.listProviders()
+  }
+
   async startLogin(providerId: string, returnTo?: string): Promise<ExternalAuthStartResult> {
+    await this.loginPolicy.assertExternalLoginAllowed()
     return this.start(providerId, 'login', null, returnTo)
   }
 
-  async startLink(providerId: string, userId: string, returnTo?: string): Promise<ExternalAuthStartResult> {
-    return this.start(providerId, 'link', userId, returnTo || '/settings?tab=login-methods')
+  /** 自助绑定已关闭；仅管理员可通过待审查队列完成绑定。 */
+  async startLink(_providerId: string, _userId: string, _returnTo?: string): Promise<ExternalAuthStartResult> {
+    throw new ForbiddenError('自助绑定已关闭，请使用飞书登录提交待审查，由管理员完成绑定')
   }
 
   async completeCallback(
@@ -130,15 +176,20 @@ export class ExternalAuthService {
     }
 
     if (attempt.purpose === 'link') {
-      if (!attempt.userId) throw new ExternalAuthFlowError('invalid_link_attempt', '绑定请求缺少本地用户', attempt.returnTo)
-      await this.linkIdentity(attempt.userId, profile)
-      console.info(`🔗 [EXTERNAL_AUTH] linked provider=${profile.provider} user=${attempt.userId}`)
-      return { purpose: 'link', provider: provider.id, returnTo: attempt.returnTo }
+      throw new ExternalAuthFlowError('self_link_disabled', '自助绑定已关闭，请联系管理员', attempt.returnTo)
     }
 
     const identity = await this.findActiveIdentity(profile.provider, profile.providerSubject)
     if (!identity) {
-      throw new ExternalAuthFlowError('identity_not_bound', '该飞书账号尚未绑定本系统用户', attempt.returnTo)
+      const pending = await this.upsertBindRequest(profile)
+      console.info(`📋 [EXTERNAL_AUTH] bind pending provider=${profile.provider} request=${pending.id}`)
+      return {
+        purpose: 'bind_pending',
+        provider: provider.id,
+        returnTo: attempt.returnTo,
+        bindRequestId: pending.id,
+        profileToken: pending.profileToken,
+      }
     }
     try {
       await getActiveUserAsync(getAsyncDb(), identity.userId)
@@ -186,6 +237,212 @@ export class ExternalAuthService {
     )
     console.info(`✅ [EXTERNAL_AUTH] login provider=${row.provider} user=${row.userId}`)
     return { ...login, returnTo: row.returnTo }
+  }
+
+  async getPublicBindRequestByToken(profileToken: string): Promise<ExternalBindRequestPublic> {
+    const row = await this.requirePendingByProfileToken(profileToken)
+    return toPublicBindRequest(row)
+  }
+
+  async updateBindRequestProfile(
+    profileToken: string,
+    input: { proposedUsername?: string; proposedDisplayName?: string },
+  ): Promise<ExternalBindRequestPublic> {
+    const row = await this.requirePendingByProfileToken(profileToken)
+    const proposedUsername = normalizeOptionalText(input.proposedUsername, 64)
+    const proposedDisplayName = normalizeOptionalText(input.proposedDisplayName, 64)
+    if (proposedUsername === undefined && proposedDisplayName === undefined) {
+      throw new BadRequestError('请至少填写用户名或姓名')
+    }
+    if (proposedUsername !== undefined && proposedUsername !== null) {
+      assertValidUsername(proposedUsername)
+    }
+    const now = new Date().toISOString()
+    await getAsyncDb().run(
+      `UPDATE "externalBindRequests" SET
+         "proposedUsername" = COALESCE(?, "proposedUsername"),
+         "proposedDisplayName" = COALESCE(?, "proposedDisplayName"),
+         "updatedAt" = ?
+       WHERE "id" = ? AND "status" = 'pending'`,
+      [
+        proposedUsername === undefined ? null : proposedUsername,
+        proposedDisplayName === undefined ? null : proposedDisplayName,
+        now,
+        row.id,
+      ],
+    )
+    const updated = await getAsyncDb().get<ExternalBindRequestRow>(
+      `SELECT * FROM "externalBindRequests" WHERE "id" = ?`,
+      [row.id],
+    )
+    return toPublicBindRequest(updated!)
+  }
+
+  async listBindRequests(
+    actorId: string,
+    filters: { status?: string; provider?: string } = {},
+  ): Promise<ExternalBindRequestAdminView[]> {
+    const db = getAsyncDb()
+    await assertSystemAdminAsync(db, actorId)
+    const clauses: string[] = []
+    const params: unknown[] = []
+    if (filters.status) {
+      clauses.push('"status" = ?')
+      params.push(filters.status)
+    }
+    if (filters.provider) {
+      clauses.push('"provider" = ?')
+      params.push(filters.provider)
+    }
+    const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : ''
+    const rows = await db.all<ExternalBindRequestRow>(
+      `SELECT * FROM "externalBindRequests" ${where}
+       ORDER BY CASE "status" WHEN 'pending' THEN 0 ELSE 1 END, "updatedAt" DESC`,
+      params,
+    )
+    return rows.map(toAdminBindRequest)
+  }
+
+  async updateBindRequestAdmin(
+    requestId: string,
+    actorId: string,
+    input: { proposedUsername?: string; proposedDisplayName?: string; note?: string },
+  ): Promise<ExternalBindRequestAdminView> {
+    const db = getAsyncDb()
+    await assertSystemAdminAsync(db, actorId)
+    const row = await this.requireBindRequest(requestId)
+    if (row.status !== 'pending') throw new BadRequestError('仅待审查记录可修改')
+    const proposedUsername = normalizeOptionalText(input.proposedUsername, 64)
+    const proposedDisplayName = normalizeOptionalText(input.proposedDisplayName, 64)
+    const note = normalizeOptionalText(input.note, 500)
+    if (proposedUsername !== undefined && proposedUsername !== null) assertValidUsername(proposedUsername)
+    const now = new Date().toISOString()
+    await db.run(
+      `UPDATE "externalBindRequests" SET
+         "proposedUsername" = COALESCE(?, "proposedUsername"),
+         "proposedDisplayName" = COALESCE(?, "proposedDisplayName"),
+         "note" = COALESCE(?, "note"),
+         "updatedAt" = ?
+       WHERE "id" = ?`,
+      [
+        proposedUsername === undefined ? null : proposedUsername,
+        proposedDisplayName === undefined ? null : proposedDisplayName,
+        note === undefined ? null : note,
+        now,
+        requestId,
+      ],
+    )
+    return toAdminBindRequest(await this.requireBindRequest(requestId))
+  }
+
+  async bindRequestToUser(
+    requestId: string,
+    userId: string,
+    actorId: string,
+  ): Promise<ExternalBindRequestHandleResult> {
+    const db = getAsyncDb()
+    await assertSystemAdminAsync(db, actorId)
+    const request = await this.requireBindRequest(requestId)
+    if (request.status !== 'pending') throw new BadRequestError('该申请已处理')
+    await getActiveUserAsync(db, userId)
+    await db.transaction(async tx => {
+      await this.linkIdentityForAdmin(tx, userId, request, actorId)
+      await this.markBindRequestHandled(tx, request.id, userId, actorId, 'bound', null)
+    })
+    console.info(`🔗 [EXTERNAL_AUTH] admin bound request=${requestId} user=${userId} actor=${actorId}`)
+    const user = await this.authService.getUserById(userId)
+    return { request: toAdminBindRequest(await this.requireBindRequest(requestId)), user }
+  }
+
+  async createUserAndBindRequest(
+    requestId: string,
+    actorId: string,
+    input: {
+      username: string
+      password: string
+      displayName?: string
+      email?: string
+      orgUnitId?: string | null
+    },
+  ): Promise<ExternalBindRequestHandleResult> {
+    const db = getAsyncDb()
+    await assertSystemAdminAsync(db, actorId)
+    const request = await this.requireBindRequest(requestId)
+    if (request.status !== 'pending') throw new BadRequestError('该申请已处理')
+
+    const username = input.username.trim()
+    assertValidUsername(username)
+    if (!input.password || input.password.length < 6) throw new BadRequestError('密码至少 6 位')
+
+    const existing = await db.get<{ id: string }>('SELECT "id" FROM "users" WHERE "username" = ?', [username])
+    if (existing) throw new ConflictError('用户名已存在')
+
+    const displayName = (input.displayName?.trim()
+      || request.proposedDisplayName
+      || request.displayName
+      || username)
+    const email = input.email?.trim() || request.email || null
+    const orgId = await resolveOrgUnitIdAsync(db, input.orgUnitId ?? undefined)
+    const userId = generateId()
+    const passwordHash = bcrypt.hashSync(input.password, 10)
+    const now = new Date().toISOString()
+
+    try {
+      await db.transaction(async tx => {
+        await tx.run(
+          `INSERT INTO "users" ("id", "username", "email", "passwordHash", "displayName", "orgUnitId", "approved", "systemRole", "createdAt", "updatedAt")
+           VALUES (?, ?, ?, ?, ?, ?, 1, 'editor', ?, ?)`,
+          [userId, username, email, passwordHash, displayName, orgId, now, now],
+        )
+        await this.linkIdentityForAdmin(tx, userId, request, actorId)
+        await this.markBindRequestHandled(tx, request.id, userId, actorId, 'bound', null)
+      })
+    } catch (error) {
+      const conflict = await db.get<{ id: string }>('SELECT "id" FROM "users" WHERE "username" = ?', [username])
+      if (conflict) throw new ConflictError('用户名已存在，请刷新后重试')
+      throw error
+    }
+
+    console.info(`👤 [EXTERNAL_AUTH] admin create-and-bind request=${requestId} user=${userId} actor=${actorId}`)
+    const user = await this.authService.getUserById(userId)
+    return { request: toAdminBindRequest(await this.requireBindRequest(requestId)), user }
+  }
+
+  async rejectBindRequest(
+    requestId: string,
+    actorId: string,
+    note?: string,
+  ): Promise<ExternalBindRequestAdminView> {
+    const db = getAsyncDb()
+    await assertSystemAdminAsync(db, actorId)
+    const request = await this.requireBindRequest(requestId)
+    if (request.status !== 'pending') throw new BadRequestError('该申请已处理')
+    await this.markBindRequestHandled(
+      db,
+      request.id,
+      null,
+      actorId,
+      'rejected',
+      normalizeOptionalText(note, 500) ?? null,
+    )
+    console.info(`🚫 [EXTERNAL_AUTH] admin rejected request=${requestId} actor=${actorId}`)
+    return toAdminBindRequest(await this.requireBindRequest(requestId))
+  }
+
+  async isUsernameAvailable(username: string, actorId: string): Promise<{ available: boolean }> {
+    await assertSystemAdminAsync(getAsyncDb(), actorId)
+    const trimmed = username.trim()
+    if (!trimmed) throw new BadRequestError('用户名不能为空')
+    try {
+      assertValidUsername(trimmed)
+    } catch {
+      return { available: false }
+    }
+    const existing = await getAsyncDb().get<{ id: string }>(
+      'SELECT "id" FROM "users" WHERE "username" = ?',
+      [trimmed],
+    )
+    return { available: !existing }
   }
 
   async listMyIdentities(userId: string): Promise<ExternalIdentityPublic[]> {
@@ -238,8 +495,8 @@ export class ExternalAuthService {
     returnTo?: string,
   ): Promise<ExternalAuthStartResult> {
     const provider = this.requireProvider(providerId)
-    if (purpose === 'link' && !userId) throw new UnauthorizedError('请先登录后再绑定飞书')
-    const normalizedReturnTo = normalizeReturnTo(returnTo, purpose === 'link' ? '/settings?tab=login-methods' : '/dashboard')
+    if (purpose === 'link') throw new ForbiddenError('自助绑定已关闭，请联系管理员')
+    const normalizedReturnTo = normalizeReturnTo(returnTo, '/dashboard')
     const state = randomBytes(32).toString('base64url')
     const now = new Date()
     const expiresAt = new Date(now.getTime() + this.runtime.stateTtlSeconds * 1000).toISOString()
@@ -283,51 +540,144 @@ export class ExternalAuthService {
     return attempt
   }
 
-  private async linkIdentity(userId: string, profile: ExternalIdentityProfile): Promise<void> {
+  private async upsertBindRequest(
+    profile: ExternalIdentityProfile,
+  ): Promise<{ id: string; profileToken: string }> {
     const db = getAsyncDb()
-    await getActiveUserAsync(db, userId)
-    const existing = await db.get<ExternalIdentityRow>(
-      `SELECT * FROM "externalIdentities" WHERE "provider" = ? AND "providerSubject" = ?`,
+    const now = new Date()
+    const nowIso = now.toISOString()
+    const profileToken = randomBytes(32).toString('base64url')
+    const profileTokenHash = hashSecret(profileToken)
+    const profileTokenExpiresAt = new Date(now.getTime() + this.runtime.ticketTtlSeconds * 1000 * 30).toISOString()
+    const proposedDisplayName = profile.displayName
+    const metadataJson = JSON.stringify(profile.metadata)
+
+    const pending = await db.get<ExternalBindRequestRow>(
+      `SELECT * FROM "externalBindRequests"
+       WHERE "provider" = ? AND "providerSubject" = ? AND "status" = 'pending'`,
       [profile.provider, profile.providerSubject],
     )
-    if (existing && existing.userId !== userId) {
-      throw new ExternalAuthFlowError('identity_already_bound', '该飞书账号已绑定其他本系统用户', '/settings?tab=login-methods')
+
+    if (pending) {
+      await db.run(
+        `UPDATE "externalBindRequests" SET
+           "tenantKey" = ?, "openId" = ?, "unionId" = ?, "providerUserId" = ?,
+           "displayName" = ?, "avatarUrl" = ?, "email" = ?, "metadataJson" = ?,
+           "proposedDisplayName" = COALESCE("proposedDisplayName", ?),
+           "profileTokenHash" = ?, "profileTokenExpiresAt" = ?,
+           "lastSeenAt" = ?, "updatedAt" = ?
+         WHERE "id" = ?`,
+        [
+          profile.tenantKey, profile.openId, profile.unionId, profile.providerUserId,
+          profile.displayName, profile.avatarUrl, profile.email, metadataJson,
+          proposedDisplayName,
+          profileTokenHash, profileTokenExpiresAt,
+          nowIso, nowIso, pending.id,
+        ],
+      )
+      return { id: pending.id, profileToken }
+    }
+
+    const id = generateId()
+    await db.run(
+      `INSERT INTO "externalBindRequests"
+       ("id", "provider", "providerSubject", "tenantKey", "openId", "unionId", "providerUserId",
+        "displayName", "avatarUrl", "email", "metadataJson", "proposedUsername", "proposedDisplayName",
+        "status", "profileTokenHash", "profileTokenExpiresAt", "lastSeenAt", "createdAt", "updatedAt")
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL, ?, 'pending', ?, ?, ?, ?, ?)`,
+      [
+        id, profile.provider, profile.providerSubject, profile.tenantKey, profile.openId,
+        profile.unionId, profile.providerUserId, profile.displayName, profile.avatarUrl,
+        profile.email, metadataJson, proposedDisplayName, profileTokenHash,
+        profileTokenExpiresAt, nowIso, nowIso, nowIso,
+      ],
+    )
+    return { id, profileToken }
+  }
+
+  private async linkIdentityForAdmin(
+    tx: PnwDbExecutor,
+    userId: string,
+    request: ExternalBindRequestRow,
+    actorId: string,
+  ): Promise<void> {
+    const existing = await tx.get<ExternalIdentityRow>(
+      `SELECT * FROM "externalIdentities" WHERE "provider" = ? AND "providerSubject" = ?`,
+      [request.provider, request.providerSubject],
+    )
+    if (existing && existing.userId !== userId && existing.status === 'active') {
+      throw new ConflictError('该飞书账号已绑定其他本系统用户')
     }
     const now = new Date().toISOString()
     if (existing) {
-      await db.run(
+      await tx.run(
         `UPDATE "externalIdentities" SET
-           "tenantKey" = ?, "openId" = ?, "unionId" = ?, "providerUserId" = ?,
+           "userId" = ?, "tenantKey" = ?, "openId" = ?, "unionId" = ?, "providerUserId" = ?,
            "displayName" = ?, "avatarUrl" = ?, "email" = ?, "metadataJson" = ?,
-           "status" = 'active', "linkedByUserId" = ?, "linkedAt" = ?, "lastSyncedAt" = ?,
-           "revokedAt" = NULL, "updatedAt" = ?
+           "status" = 'active', "linkSource" = 'admin', "linkedByUserId" = ?, "linkedAt" = ?,
+           "lastSyncedAt" = ?, "revokedAt" = NULL, "updatedAt" = ?
          WHERE "id" = ?`,
-        [profile.tenantKey, profile.openId, profile.unionId, profile.providerUserId,
-         profile.displayName, profile.avatarUrl, profile.email, JSON.stringify(profile.metadata),
-         userId, now, now, now, existing.id],
+        [
+          userId, request.tenantKey, request.openId, request.unionId, request.providerUserId,
+          request.displayName, request.avatarUrl, request.email, request.metadataJson,
+          actorId, now, now, now, existing.id,
+        ],
       )
       return
     }
-    try {
-      await db.run(
-        `INSERT INTO "externalIdentities"
-         ("id", "userId", "provider", "providerSubject", "tenantKey", "openId", "unionId",
-          "providerUserId", "displayName", "avatarUrl", "email", "metadataJson", "status",
-          "linkSource", "linkedByUserId", "linkedAt", "lastSyncedAt", "createdAt", "updatedAt")
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', 'self', ?, ?, ?, ?, ?)`,
-        [generateId(), userId, profile.provider, profile.providerSubject, profile.tenantKey,
-         profile.openId, profile.unionId, profile.providerUserId, profile.displayName,
-         profile.avatarUrl, profile.email, JSON.stringify(profile.metadata), userId,
-         now, now, now, now],
-      )
-    } catch (error) {
-      const conflictingIdentity = await db.get<{ id: string }>(
-        `SELECT "id" FROM "externalIdentities" WHERE "provider" = ? AND "providerSubject" = ?`,
-        [profile.provider, profile.providerSubject],
-      )
-      if (conflictingIdentity) throw new ConflictError('该飞书账号已被绑定，请刷新后重试')
-      throw error
+    await tx.run(
+      `INSERT INTO "externalIdentities"
+       ("id", "userId", "provider", "providerSubject", "tenantKey", "openId", "unionId",
+        "providerUserId", "displayName", "avatarUrl", "email", "metadataJson", "status",
+        "linkSource", "linkedByUserId", "linkedAt", "lastSyncedAt", "createdAt", "updatedAt")
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', 'admin', ?, ?, ?, ?, ?)`,
+      [
+        generateId(), userId, request.provider, request.providerSubject, request.tenantKey,
+        request.openId, request.unionId, request.providerUserId, request.displayName,
+        request.avatarUrl, request.email, request.metadataJson, actorId, now, now, now, now,
+      ],
+    )
+  }
+
+  private async markBindRequestHandled(
+    db: PnwDbExecutor,
+    requestId: string,
+    boundUserId: string | null,
+    actorId: string,
+    status: 'bound' | 'rejected',
+    note: string | null,
+  ): Promise<void> {
+    const now = new Date().toISOString()
+    await db.run(
+      `UPDATE "externalBindRequests" SET
+         "status" = ?, "boundUserId" = ?, "handledByUserId" = ?, "handledAt" = ?,
+         "note" = COALESCE(?, "note"), "profileTokenHash" = NULL, "profileTokenExpiresAt" = NULL,
+         "updatedAt" = ?
+       WHERE "id" = ? AND "status" = 'pending'`,
+      [status, boundUserId, actorId, now, note, now, requestId],
+    )
+  }
+
+  private async requireBindRequest(requestId: string): Promise<ExternalBindRequestRow> {
+    const row = await getAsyncDb().get<ExternalBindRequestRow>(
+      `SELECT * FROM "externalBindRequests" WHERE "id" = ?`,
+      [requestId],
+    )
+    if (!row) throw new NotFoundError('第三方绑定申请')
+    return row
+  }
+
+  private async requirePendingByProfileToken(profileToken: string): Promise<ExternalBindRequestRow> {
+    if (!profileToken || profileToken.length < 32) throw new UnauthorizedError('补填凭证无效或已过期')
+    const now = new Date().toISOString()
+    const row = await getAsyncDb().get<ExternalBindRequestRow>(
+      `SELECT * FROM "externalBindRequests" WHERE "profileTokenHash" = ?`,
+      [hashSecret(profileToken)],
+    )
+    if (!row || row.status !== 'pending' || !row.profileTokenExpiresAt || row.profileTokenExpiresAt <= now) {
+      throw new UnauthorizedError('补填凭证无效或已过期')
     }
+    return row
   }
 
   private findActiveIdentity(provider: ExternalAuthProviderId, providerSubject: string): Promise<ExternalIdentityRow | undefined> {
@@ -404,5 +754,54 @@ function toPublicIdentity(row: ExternalIdentityRow): ExternalIdentityPublic {
     status: row.status,
     linkedAt: row.linkedAt,
     lastLoginAt: row.lastLoginAt,
+  }
+}
+
+function toPublicBindRequest(row: ExternalBindRequestRow): ExternalBindRequestPublic {
+  return {
+    id: row.id,
+    provider: row.provider,
+    displayName: row.displayName,
+    email: row.email,
+    avatarUrl: row.avatarUrl,
+    proposedUsername: row.proposedUsername,
+    proposedDisplayName: row.proposedDisplayName,
+    status: row.status,
+    createdAt: row.createdAt,
+    lastSeenAt: row.lastSeenAt,
+  }
+}
+
+function toAdminBindRequest(row: ExternalBindRequestRow): ExternalBindRequestAdminView {
+  return {
+    ...toPublicBindRequest(row),
+    providerSubject: row.providerSubject,
+    tenantKey: row.tenantKey,
+    openId: row.openId,
+    unionId: row.unionId,
+    providerUserId: row.providerUserId,
+    boundUserId: row.boundUserId,
+    handledByUserId: row.handledByUserId,
+    handledAt: row.handledAt,
+    note: row.note,
+    updatedAt: row.updatedAt,
+  }
+}
+
+/** undefined = 未传；null = 清空；string = 新值 */
+function normalizeOptionalText(value: unknown, maxLen: number): string | null | undefined {
+  if (value === undefined) return undefined
+  if (value === null) return null
+  if (typeof value !== 'string') throw new BadRequestError('字段格式不正确')
+  const trimmed = value.trim()
+  if (!trimmed) return null
+  if (trimmed.length > maxLen) throw new BadRequestError(`内容过长（最多 ${maxLen} 字）`)
+  return trimmed
+}
+
+function assertValidUsername(username: string): void {
+  if (username.length < 2 || username.length > 64) throw new BadRequestError('用户名长度为 2–64 个字符')
+  if (!/^[a-zA-Z0-9_\u4e00-\u9fa5.-]+$/.test(username)) {
+    throw new BadRequestError('用户名仅允许字母、数字、下划线、中文、点号和短横线')
   }
 }

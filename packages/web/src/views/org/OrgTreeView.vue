@@ -20,10 +20,16 @@ import {
   adminResetPassword,
   getUserExternalIdentities,
   unlinkUserExternalIdentity,
+  listExternalBindRequests,
+  updateExternalBindRequest,
+  bindExternalBindRequest,
+  createAndBindExternalBindRequest,
+  rejectExternalBindRequest,
+  checkUsernameAvailable,
 } from '@/api/auth'
 import { ElMessage } from 'element-plus'
 import { pnwPromptChoice } from 'phoenix-wing'
-import type { ExternalIdentityAdminView, SystemRole } from '@open-issue/core'
+import type { ExternalBindRequestAdminView, ExternalIdentityAdminView, SystemRole } from '@open-issue/core'
 import { isSystemAdmin } from '@open-issue/core'
 import { useAuthStore } from '@/stores/auth'
 
@@ -76,9 +82,128 @@ onMounted(async () => {
   await store.fetchTree()
   selectedUnit.value = allRootSelection()
   await loadAllUsers()
+  if (isAdmin.value) await loadBindRequests()
   await nextTick()
   treeRef.value?.setCurrentKey(ALL_ROOT_ID)
 })
+
+const bindRequests = ref<ExternalBindRequestAdminView[]>([])
+const bindRequestsLoading = ref(false)
+const showHandleBind = ref(false)
+const handleBindRow = ref<ExternalBindRequestAdminView | null>(null)
+const handleMode = ref<'bind' | 'create'>('bind')
+const handleBindUserId = ref('')
+const handleUsername = ref('')
+const handleDisplayName = ref('')
+const handlePassword = ref('')
+const handleNote = ref('')
+const usernameAvailable = ref<boolean | null>(null)
+const handleSubmitting = ref(false)
+
+async function loadBindRequests() {
+  if (!isAdmin.value) return
+  bindRequestsLoading.value = true
+  try {
+    const res = await listExternalBindRequests({ status: 'pending' })
+    bindRequests.value = res.data
+  } finally {
+    bindRequestsLoading.value = false
+  }
+}
+
+const approvedUsersForBind = ref<any[]>([])
+
+function openHandleBind(row: ExternalBindRequestAdminView) {
+  handleBindRow.value = row
+  handleMode.value = 'bind'
+  handleBindUserId.value = ''
+  handleUsername.value = row.proposedUsername || ''
+  handleDisplayName.value = row.proposedDisplayName || row.displayName || ''
+  handlePassword.value = ''
+  handleNote.value = row.note || ''
+  usernameAvailable.value = null
+  showHandleBind.value = true
+  void getAllUsers({ includeDisabled: 'true' }).then(res => {
+    approvedUsersForBind.value = res.data.filter((u: any) => u.approved && !u.disabled)
+  })
+}
+
+async function onCheckUsername() {
+  const name = handleUsername.value.trim()
+  if (!name) {
+    usernameAvailable.value = null
+    return
+  }
+  try {
+    const res = await checkUsernameAvailable(name)
+    usernameAvailable.value = res.data.available
+  } catch {
+    usernameAvailable.value = false
+  }
+}
+
+async function onSaveBindDraft() {
+  if (!handleBindRow.value) return
+  await updateExternalBindRequest(handleBindRow.value.id, {
+    proposedUsername: handleUsername.value.trim() || undefined,
+    proposedDisplayName: handleDisplayName.value.trim() || undefined,
+    note: handleNote.value.trim() || undefined,
+  })
+  ElMessage.success('已保存草稿')
+  await loadBindRequests()
+}
+
+async function onSubmitHandleBind() {
+  if (!handleBindRow.value) return
+  handleSubmitting.value = true
+  try {
+    if (handleMode.value === 'bind') {
+      if (!handleBindUserId.value) {
+        ElMessage.error('请选择要绑定的本地用户')
+        return
+      }
+      await bindExternalBindRequest(handleBindRow.value.id, handleBindUserId.value)
+      ElMessage.success('已绑定到现有账号')
+    } else {
+      const username = handleUsername.value.trim()
+      if (!username || handlePassword.value.length < 6) {
+        ElMessage.error('请填写用户名，且密码至少 6 位')
+        return
+      }
+      const check = await checkUsernameAvailable(username)
+      if (!check.data.available) {
+        usernameAvailable.value = false
+        ElMessage.error('用户名已存在')
+        return
+      }
+      await createAndBindExternalBindRequest(handleBindRow.value.id, {
+        username,
+        password: handlePassword.value,
+        displayName: handleDisplayName.value.trim() || undefined,
+      })
+      ElMessage.success('已新建账号并绑定')
+    }
+    showHandleBind.value = false
+    await Promise.all([loadBindRequests(), reloadUsers()])
+  } finally {
+    handleSubmitting.value = false
+  }
+}
+
+async function onRejectBind(row: ExternalBindRequestAdminView) {
+  const result = await pnwPromptChoice({
+    title: '拒绝绑定申请',
+    message: `拒绝飞书「${row.displayName || row.openId || row.id}」的绑定申请？`,
+    choices: [
+      { id: 'reject', label: '拒绝', variant: 'danger' },
+      { id: 'cancel', label: '取消' },
+    ],
+  })
+  if (result.choiceId !== 'reject') return
+  await rejectExternalBindRequest(row.id)
+  ElMessage.success('已拒绝')
+  await loadBindRequests()
+}
 
 async function loadAllUsers() {
   if (isAdmin.value) {
@@ -312,6 +437,45 @@ function systemRoleLabel(role: string | undefined) {
 
     <p v-if="!isAdmin" class="panel-hint" style="margin-bottom:12px">仅系统管理员可编辑组织节点、审批用户及管理成员。</p>
 
+    <div
+      v-if="isAdmin"
+      v-loading="bindRequestsLoading"
+      class="bind-requests-panel"
+      data-tour="org-bind-requests"
+    >
+      <div class="bind-requests-header">
+        <h4 style="margin:0">第三方登录待审查 ({{ bindRequests.length }})</h4>
+        <el-button link type="primary" size="small" @click="loadBindRequests">刷新</el-button>
+      </div>
+      <el-table v-if="bindRequests.length" :data="bindRequests" size="small" stripe empty-text="暂无待审查">
+        <el-table-column label="提供方" width="80">
+          <template #default="{ row }">{{ row.provider === 'feishu' ? '飞书' : row.provider }}</template>
+        </el-table-column>
+        <el-table-column label="飞书姓名" min-width="120">
+          <template #default="{ row }">{{ row.displayName || '—' }}</template>
+        </el-table-column>
+        <el-table-column label="拟用用户名" min-width="120">
+          <template #default="{ row }">{{ row.proposedUsername || '—' }}</template>
+        </el-table-column>
+        <el-table-column label="拟用姓名" min-width="120">
+          <template #default="{ row }">{{ row.proposedDisplayName || '—' }}</template>
+        </el-table-column>
+        <el-table-column label="邮箱" min-width="160" show-overflow-tooltip>
+          <template #default="{ row }">{{ row.email || '—' }}</template>
+        </el-table-column>
+        <el-table-column label="最近登录尝试" width="160">
+          <template #default="{ row }">{{ new Date(row.lastSeenAt).toLocaleString('zh-CN', { hour12: false }) }}</template>
+        </el-table-column>
+        <el-table-column label="操作" width="160" fixed="right">
+          <template #default="{ row }">
+            <el-button link type="primary" size="small" @click="openHandleBind(row)">处理</el-button>
+            <el-button link type="danger" size="small" @click="onRejectBind(row)">拒绝</el-button>
+          </template>
+        </el-table-column>
+      </el-table>
+      <p v-else class="panel-hint" style="margin:8px 0 0">暂无待审查的飞书绑定申请。用户在登录页使用飞书登录后会出现在此。</p>
+    </div>
+
     <div class="org-layout">
       <div class="org-tree-panel" data-tour="org-tree">
         <el-tree
@@ -542,12 +706,65 @@ function systemRoleLabel(role: string | undefined) {
         <el-button type="primary" @click="onSaveUser">保存</el-button>
       </template>
     </el-dialog>
+
+    <el-dialog v-model="showHandleBind" title="处理飞书绑定申请" width="480px">
+      <template v-if="handleBindRow">
+        <el-alert
+          :title="`飞书 · ${handleBindRow.displayName || handleBindRow.openId || '未知用户'}`"
+          type="info"
+          :closable="false"
+          show-icon
+          style="margin-bottom:12px"
+        >
+          <p style="margin:4px 0 0">邮箱 {{ handleBindRow.email || '—' }} · 租户 {{ handleBindRow.tenantKey || '未知' }}</p>
+        </el-alert>
+        <el-form label-position="top" size="small">
+          <el-form-item label="拟用用户名">
+            <el-input v-model="handleUsername" maxlength="64" @blur="onCheckUsername" />
+            <p v-if="usernameAvailable === true" class="text-muted" style="color:#67c23a">用户名可用</p>
+            <p v-else-if="usernameAvailable === false" class="text-muted" style="color:#f56c6c">用户名不可用或已存在</p>
+          </el-form-item>
+          <el-form-item label="拟用姓名">
+            <el-input v-model="handleDisplayName" maxlength="64" />
+          </el-form-item>
+          <el-form-item label="备注">
+            <el-input v-model="handleNote" type="textarea" :rows="2" maxlength="500" />
+          </el-form-item>
+          <el-form-item label="处理方式">
+            <el-radio-group v-model="handleMode">
+              <el-radio value="bind">绑定已有账号</el-radio>
+              <el-radio value="create">新建账号并绑定</el-radio>
+            </el-radio-group>
+          </el-form-item>
+          <el-form-item v-if="handleMode === 'bind'" label="选择本地用户">
+            <el-select v-model="handleBindUserId" filterable placeholder="选择已批准用户" style="width:100%">
+              <el-option
+                v-for="u in approvedUsersForBind"
+                :key="u.id"
+                :label="`${u.displayName || u.username} (${u.username})`"
+                :value="u.id"
+              />
+            </el-select>
+          </el-form-item>
+          <el-form-item v-else label="初始密码">
+            <el-input v-model="handlePassword" type="password" show-password placeholder="至少 6 位" autocomplete="new-password" />
+          </el-form-item>
+        </el-form>
+      </template>
+      <template #footer>
+        <el-button @click="onSaveBindDraft">仅保存草稿</el-button>
+        <el-button @click="showHandleBind = false">取消</el-button>
+        <el-button type="primary" :loading="handleSubmitting" @click="onSubmitHandleBind">确认处理</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <style scoped>
 .page-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .page-head h2 { font-size: 1.3rem; font-weight: 650; }
+.bind-requests-panel { background: #fff; border-radius: 8px; border: 1px solid #ebeef5; padding: 12px 16px; margin-bottom: 16px; }
+.bind-requests-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
 .org-layout { display: flex; gap: 24px; }
 .org-tree-panel { width: 280px; flex-shrink: 0; background: #fff; border-radius: 8px; border: 1px solid #ebeef5; padding: 12px; }
 .tree-node-all { font-weight: 600; }

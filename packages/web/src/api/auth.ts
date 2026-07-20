@@ -55,6 +55,14 @@ export function getExternalAuthProviders() {
   return request.get('/auth/providers')
 }
 
+export function getLoginPolicy() {
+  return request.get('/auth/login-policy')
+}
+
+export function updateLoginPolicy(data: { localEnabled: boolean; externalEnabled: boolean }) {
+  return request.put('/admin/login-policy', data)
+}
+
 export function startExternalLogin(provider: ExternalAuthProviderId, returnTo?: string) {
   return request.get(`/auth/oauth/${provider}/start`, { params: { returnTo } })
 }
@@ -81,4 +89,52 @@ export function getUserExternalIdentities(userId: string) {
 
 export function unlinkUserExternalIdentity(userId: string, identityId: string) {
   return request.delete(`/user/${userId}/external-identity/${identityId}`)
+}
+
+export function getBindRequestProfile(profileToken: string) {
+  return request.get('/auth/oauth/bind-request', { params: { profileToken } })
+}
+
+export function updateBindRequestProfile(data: {
+  profileToken: string
+  proposedUsername?: string
+  proposedDisplayName?: string
+}) {
+  return request.post('/auth/oauth/bind-request/profile', data)
+}
+
+export function listExternalBindRequests(params?: { status?: string; provider?: string }) {
+  return request.get('/admin/external-bind-requests', { params })
+}
+
+export function updateExternalBindRequest(
+  requestId: string,
+  data: { proposedUsername?: string; proposedDisplayName?: string; note?: string },
+) {
+  return request.patch(`/admin/external-bind-request/${requestId}`, data)
+}
+
+export function bindExternalBindRequest(requestId: string, userId: string) {
+  return request.post(`/admin/external-bind-request/${requestId}/bind`, { userId })
+}
+
+export function createAndBindExternalBindRequest(
+  requestId: string,
+  data: {
+    username: string
+    password: string
+    displayName?: string
+    email?: string
+    orgUnitId?: string | null
+  },
+) {
+  return request.post(`/admin/external-bind-request/${requestId}/create-and-bind`, data)
+}
+
+export function rejectExternalBindRequest(requestId: string, note?: string) {
+  return request.post(`/admin/external-bind-request/${requestId}/reject`, { note })
+}
+
+export function checkUsernameAvailable(username: string) {
+  return request.get('/users/username-available', { params: { username } })
 }

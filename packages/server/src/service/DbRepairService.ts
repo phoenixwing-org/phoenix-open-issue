@@ -1,11 +1,21 @@
 import { generateId, normalizeDictTags } from '@open-issue/core'
 import { getAsyncDb, getDb } from '../db/connection.js'
 import { migrateIssueListLinkAttention } from '../db/migrations.js'
+import { externalAuthSchemaSql } from '../db/externalAuthSchema.js'
 import { pnwRunSchema } from '../db/pnw/pnwSchema.js'
+import { pnwRunMigrations } from '../db/pnw/pnwMigrationRunner.js'
 import type { PnwDbAdapter } from '../db/pnw/pnwDbTypes.js'
 import { DictService } from './DictService.js'
 
-export type RepairTaskId = 'schema' | 'checkpoints' | 'links' | 'dict' | 'users' | 'issueNo' | 'linkAttention' | 'all'
+export type RepairTaskId =
+  | 'schema'
+  | 'checkpoints'
+  | 'links'
+  | 'dict'
+  | 'users'
+  | 'issueNo'
+  | 'linkAttention'
+  | 'all'
 
 export interface RepairTaskResult {
   task: RepairTaskId
@@ -14,11 +24,67 @@ export interface RepairTaskResult {
   fixed: number
 }
 
+const EXTERNAL_AUTH_TABLES = [
+  'externalIdentities',
+  'oauthLoginAttempts',
+  'oauthLoginTickets',
+  'externalBindRequests',
+] as const
+
+const EXTERNAL_AUTH_INDEXES = [
+  'idx_external_identities_provider_subject',
+  'idx_external_identities_user',
+  'idx_external_identities_tenant',
+  'idx_oauth_attempts_state_hash',
+  'idx_oauth_attempts_expiry',
+  'idx_oauth_tickets_ticket_hash',
+  'idx_oauth_tickets_expiry',
+  'idx_external_bind_requests_provider_subject',
+  'idx_external_bind_requests_status',
+  'idx_external_bind_requests_profile_token',
+] as const
+
 export class DbRepairService {
+  /**
+   * 表结构补全（幂等）：建表/加列、跑迁移，并校验第三方登录相关表
+   *（含 externalBindRequests 待审查表）。可重复执行。
+   */
   async repairSchema(): Promise<RepairTaskResult> {
     const db = getAsyncDb()
+    const before = await snapshotExternalAuth(db)
     await ensureSchema(db)
-    return result('schema', '表结构已检查', [`${db.dialect} Schema 已初始化并验证`], 0)
+    const applied = await pnwRunMigrations(db)
+    // 再执行一遍第三方登录 DDL，覆盖「旧迁移已应用但缺新表」的情况
+    await db.exec(externalAuthSchemaSql(db.dialect))
+    const after = await snapshotExternalAuth(db)
+
+    const createdTables = EXTERNAL_AUTH_TABLES.filter(name => !before.tables.has(name) && after.tables.has(name))
+    const missingTables = EXTERNAL_AUTH_TABLES.filter(name => !after.tables.has(name))
+    const createdIndexes = EXTERNAL_AUTH_INDEXES.filter(name => !before.indexes.has(name) && after.indexes.has(name))
+    const missingIndexes = EXTERNAL_AUTH_INDEXES.filter(name => !after.indexes.has(name))
+    const fixed = applied.length + createdTables.length + createdIndexes.length
+
+    const details = [
+      `${db.dialect} Schema 已检查（幂等，可重复执行）`,
+      applied.length ? `新应用迁移：${applied.join(', ')}` : '无待应用迁移',
+      createdTables.length
+        ? `新建第三方登录表：${createdTables.join(', ')}`
+        : '第三方登录表已存在（externalIdentities / oauth* / externalBindRequests）',
+      createdIndexes.length ? `新建索引：${createdIndexes.join(', ')}` : '第三方登录索引已就绪',
+      ...EXTERNAL_AUTH_TABLES.map(name => (after.tables.has(name) ? `✓ ${name}` : `✗ ${name} 缺失`)),
+    ]
+    if (missingTables.length) details.push(`仍缺失表：${missingTables.join(', ')}`)
+    if (missingIndexes.length) details.push(`仍缺失索引：${missingIndexes.join(', ')}`)
+
+    if (missingTables.length || missingIndexes.length) {
+      return result('schema', '表结构点检未完全通过', details, fixed)
+    }
+    return result(
+      'schema',
+      fixed ? `表结构已补全（${fixed} 项）` : '表结构已是最新',
+      details,
+      fixed,
+    )
   }
 
   async repairCheckpoints(): Promise<RepairTaskResult> {
@@ -204,7 +270,27 @@ async function count(db: ReturnType<typeof getAsyncDb>, sql: string): Promise<nu
 }
 
 async function ensureSchema(db: PnwDbAdapter): Promise<void> {
-  if (db.dialect === 'postgres') await pnwRunSchema(db)
+  if (db.dialect === 'postgres') {
+    await pnwRunSchema(db)
+  } else {
+    // SQLite：重新执行幂等建表/加列，确保升级后新表被补齐
+    const { runSchema } = await import('../db/schema.js')
+    runSchema(getDb())
+  }
+  await db.exec(externalAuthSchemaSql(db.dialect))
+  await pnwRunMigrations(db)
+}
+
+async function snapshotExternalAuth(db: PnwDbAdapter): Promise<{ tables: Set<string>; indexes: Set<string> }> {
+  const tables = new Set<string>()
+  const indexes = new Set<string>()
+  for (const name of EXTERNAL_AUTH_TABLES) {
+    if (await db.tableExists(name)) tables.add(name)
+  }
+  for (const name of EXTERNAL_AUTH_INDEXES) {
+    if (await db.indexExists(name)) indexes.add(name)
+  }
+  return { tables, indexes }
 }
 
 function result(task: RepairTaskId, message: string, details: string[], fixed: number): RepairTaskResult {

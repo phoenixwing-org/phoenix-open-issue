@@ -23,6 +23,7 @@ describe('pnwRunSchema', () => {
     expect(await db.tableExists('externalIdentities')).toBe(true)
     expect(await db.tableExists('oauthLoginAttempts')).toBe(true)
     expect(await db.tableExists('oauthLoginTickets')).toBe(true)
+    expect(await db.tableExists('externalBindRequests')).toBe(true)
     expect(await db.columnNames('oauthLoginTickets')).toContain('returnTo')
     expect(await db.indexExists('idx_external_identities_provider_subject')).toBe(true)
   })

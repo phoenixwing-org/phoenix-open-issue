@@ -8,8 +8,9 @@ import {
   changePassword,
   getExternalAuthProviders,
   getMyExternalIdentities,
-  startExternalLink,
   unlinkMyExternalIdentity,
+  getLoginPolicy,
+  updateLoginPolicy,
 } from '@/api/auth'
 import { exportDb, importDb, runDbRepair, type RepairTaskId, type RepairTaskResult } from '@/api/backup'
 import { importFunctions } from '@/api/functions'
@@ -17,7 +18,7 @@ import { mapXlsxRow, parseDictTags } from '@open-issue/core'
 import * as XLSX from 'xlsx'
 import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
 import PageHelpButton from "@/components/PageHelpButton.vue"
-import type { DictItem, ExternalAuthProviderId, ExternalAuthProviderInfo, ExternalIdentityPublic } from '@open-issue/core'
+import type { DictItem, ExternalAuthProviderInfo, ExternalIdentityPublic, LoginPolicy } from '@open-issue/core'
 import { useDictStore, DICT_GROUPS } from '@/stores/dict'
 import { useAuthStore } from '@/stores/auth'
 
@@ -312,33 +313,51 @@ async function onChangePassword() {
 const externalProviders = ref<ExternalAuthProviderInfo[]>([])
 const externalIdentities = ref<ExternalIdentityPublic[]>([])
 const loginMethodsLoading = ref(false)
-const bindingProvider = ref<ExternalAuthProviderId | ''>('')
+const loginPolicy = ref<LoginPolicy | null>(null)
+const policyLocal = ref(true)
+const policyExternal = ref(true)
+const policySaving = ref(false)
 
 async function loadLoginMethods() {
   loginMethodsLoading.value = true
   try {
-    const [providersRes, identitiesRes] = await Promise.all([
+    const [providersRes, identitiesRes, policyRes] = await Promise.all([
       getExternalAuthProviders(),
       getMyExternalIdentities(),
+      getLoginPolicy(),
     ])
     externalProviders.value = providersRes.data
     externalIdentities.value = identitiesRes.data
+    loginPolicy.value = policyRes.data
+    policyLocal.value = policyRes.data.localEnabled
+    policyExternal.value = policyRes.data.externalEnabled
   } finally {
     loginMethodsLoading.value = false
   }
 }
 
-function hasActiveIdentity(provider: ExternalAuthProviderId): boolean {
-  return externalIdentities.value.some(identity => identity.provider === provider && identity.status === 'active')
-}
-
-async function onBindExternal(provider: ExternalAuthProviderId) {
-  bindingProvider.value = provider
+async function onSaveLoginPolicy() {
+  if (!policyLocal.value && !policyExternal.value) {
+    ElMessage.error('至少保留一种登录方式')
+    return
+  }
+  policySaving.value = true
   try {
-    const res = await startExternalLink(provider)
-    window.location.assign(res.data.authorizationUrl)
+    const res = await updateLoginPolicy({
+      localEnabled: policyLocal.value,
+      externalEnabled: policyExternal.value,
+    })
+    loginPolicy.value = res.data
+    policyLocal.value = res.data.localEnabled
+    policyExternal.value = res.data.externalEnabled
+    ElMessage.success('登录方式已更新')
+    // 刷新公开提供方列表观感（管理员自己看绑定区）
+    const providersRes = await getExternalAuthProviders()
+    externalProviders.value = providersRes.data
   } catch {
-    bindingProvider.value = ''
+    /* interceptor */
+  } finally {
+    policySaving.value = false
   }
 }
 
@@ -346,7 +365,7 @@ async function onUnlinkExternal(identity: ExternalIdentityPublic) {
   const label = identity.displayName || identity.email || '当前飞书账号'
   const result = await pnwPromptChoice({
     title: '解除飞书绑定',
-    message: `确定解除「${label}」？解除后将不能再使用该飞书账号登录，但本地账号密码仍可正常使用。`,
+    message: `确定解除「${label}」？解除后将不能再使用该飞书账号登录，但本地账号密码仍可正常使用。再次登录飞书会进入待审查，需管理员重新绑定。`,
     choices: [
       { id: 'unlink', label: '解除绑定', variant: 'danger' },
       { id: 'cancel', label: '取消' },
@@ -425,49 +444,49 @@ const REPAIR_TASKS: RepairTaskDef[] = [
   {
     id: 'schema',
     title: '表结构补全',
-    description: '创建缺失的数据表，追加 users / issueLists / checkpoints / issueListLinks 等表的缺失列，并执行 listType、systemRole 等数据迁移。',
+    description: '幂等：创建缺失表/列（含第三方登录 externalIdentities、oauth 事务表、externalBindRequests 待审查表），执行迁移。可重复点击；「全部执行」会先跑此项。',
     buttonType: 'primary',
   },
   {
     id: 'checkpoints',
     title: '点检数据修正',
-    description: '补全 checkpoints 表缺失列（status、sortOrder、createdAt、updatedAt 等），并为空值记录回填默认值。',
+    description: '幂等：补全 checkpoints 缺失列与空值默认值。',
     buttonType: 'success',
   },
   {
     id: 'links',
     title: 'Issue 链接修正',
-    description: '为没有 issueListLinks 记录的 Issue 补建链接；清理重复的链接记录。',
+    description: '幂等：为缺失的 issueListLinks 补建链接，清理重复记录。',
     buttonType: 'success',
   },
   {
     id: 'dict',
     title: '数据字典补全',
-    description: '补全 dict 缺失列、规范 tags、去重并建立 (groupName,value) 唯一索引。旧库有重复时不阻塞启动，请登录后在此修正；不新增字典行。',
+    description: '幂等：规范 tags、去重并建立唯一索引。',
     buttonType: 'success',
   },
   {
     id: 'users',
     title: '用户权限补全',
-    description: '旧库缺 systemRole 列时：admin 账号设为管理员，其余用户默认编辑权限。',
+    description: '幂等：旧库缺 systemRole 时补全 admin/editor。',
     buttonType: 'success',
   },
   {
     id: 'linkAttention',
     title: '链接关注系数迁移',
-    description: '将旧库 issueListLinks.voided* 迁移为 attentionLevel，并删除 voided / voidedAt / voidedBy 三列。新库无需执行。',
+    description: '幂等：将旧库 voided* 迁移为 attentionLevel。新库无需执行。',
     buttonType: 'success',
   },
   {
     id: 'issueNo',
     title: 'Issue 编号去重',
-    description: '检测重复的 issueNo（如多个 ISS-2026-0001），按创建时间顺序重编为 ISS-2026-0001、0002、0003…，同一年份内全局连续编号。',
+    description: '幂等检测；仅在有重复编号时重编。无重复时再次执行无改动。',
     buttonType: 'success',
   },
   {
     id: 'all',
     title: '全部执行',
-    description: '按顺序执行以上所有修正任务。升级后建议先执行一次。',
+    description: '按顺序执行以上所有修正（均为幂等，可多次执行）。升级后建议先执行一次。',
     buttonType: 'warning',
   },
 ]
@@ -683,13 +702,36 @@ async function onFuncImportConfirm() {
       <!-- ═══ 登录方式 ═══ -->
       <el-tab-pane label="🔐 登录方式" name="login-methods">
         <div v-loading="loginMethodsLoading" class="login-methods" data-tour="settings-login-methods">
+          <div v-if="isSystemAdmin" class="login-policy-admin">
+            <h4 style="margin:0 0 8px">全站登录方式（仅管理员）</h4>
+            <p class="security-hint" style="margin-top:0">可同时勾选。关闭后登录页对应入口隐藏，接口也会拒绝。至少保留一种。</p>
+            <div class="login-policy-checks">
+              <el-checkbox v-model="policyLocal">本地账号密码</el-checkbox>
+              <el-checkbox v-model="policyExternal">
+                第三方登录
+                <span v-if="loginPolicy && !loginPolicy.externalConfigured" class="text-muted">（服务端尚未配置飞书等提供方）</span>
+              </el-checkbox>
+            </div>
+            <el-button
+              type="primary"
+              size="small"
+              style="margin-top:10px"
+              :loading="policySaving"
+              :disabled="!policyLocal && !policyExternal"
+              @click="onSaveLoginPolicy"
+            >保存</el-button>
+            <el-divider />
+          </div>
+
           <div class="login-method local-method">
             <div class="login-method-icon">🔑</div>
             <div class="login-method-body">
               <strong>本地账号密码</strong>
-              <p>账号：{{ authStore.user?.username }}。这是当前账号的基础登录方式。</p>
+              <p>账号：{{ authStore.user?.username }}。全站状态：{{ loginPolicy?.localEnabled !== false ? '允许' : '已关闭' }}。</p>
             </div>
-            <el-tag type="success">已启用</el-tag>
+            <el-tag :type="loginPolicy?.localEnabled !== false ? 'success' : 'info'">
+              {{ loginPolicy?.localEnabled !== false ? '已启用' : '已关闭' }}
+            </el-tag>
           </div>
 
           <div
@@ -714,24 +756,28 @@ async function onFuncImportConfirm() {
             >解除绑定</el-button>
           </div>
 
-          <div v-for="provider in externalProviders" :key="provider.id" class="provider-action">
-            <el-button
-              v-if="!hasActiveIdentity(provider.id)"
-              type="primary"
-              :loading="bindingProvider === provider.id"
-              @click="onBindExternal(provider.id)"
-            >🪶 绑定{{ provider.name }}账号</el-button>
-            <span v-else class="provider-hint">{{ provider.name }}已绑定，可在登录页直接使用。</span>
-          </div>
-
           <el-alert
-            v-if="!externalProviders.length && !externalIdentities.length"
-            title="管理员尚未启用第三方登录；本地账号密码不受影响。"
+            v-if="loginPolicy && !loginPolicy.externalEnabled"
+            title="管理员已关闭第三方登录。已绑定身份仍保留，重新开启后可继续使用。"
+            type="warning"
+            show-icon
+            :closable="false"
+          />
+          <el-alert
+            v-else-if="externalProviders.length && !externalIdentities.some(i => i.status === 'active')"
+            title="尚未绑定飞书。请在登录页使用飞书登录提交待审查，由管理员完成绑定。"
             type="info"
             show-icon
             :closable="false"
           />
-          <p class="security-hint">第三方身份只用于确认登录用户，组织、角色和列表权限仍由本系统管理。</p>
+          <el-alert
+            v-else-if="!externalProviders.length && !externalIdentities.length"
+            title="当前无可用第三方登录入口（未配置或已关闭）；本地账号密码按上方策略执行。"
+            type="info"
+            show-icon
+            :closable="false"
+          />
+          <p class="security-hint">第三方身份只用于确认登录用户，组织、角色和列表权限仍由本系统管理。绑定仅能由管理员完成。</p>
         </div>
       </el-tab-pane>
 
@@ -859,6 +905,9 @@ async function onFuncImportConfirm() {
 .repair-result ul { margin: 6px 0 0; padding-left: 18px; color: #606266; }
 .repair-result li { margin-bottom: 2px; }
 .login-methods { display: flex; flex-direction: column; gap: 12px; max-width: 760px; min-height: 120px; }
+.login-policy-admin { padding: 12px 14px; border: 1px solid #ebeef5; border-radius: 8px; background: #fafafa; }
+.login-policy-checks { display: flex; flex-direction: column; gap: 6px; }
+.text-muted { color: #909399; font-size: 12px; margin-left: 6px; }
 .login-method { display: flex; align-items: center; gap: 12px; padding: 14px 16px; border: 1px solid #e4e7ed; border-radius: 9px; background: #fff; }
 .local-method { background: #fafcff; }
 .login-method-icon { width: 42px; height: 42px; display: grid; place-items: center; flex: 0 0 42px; border-radius: 10px; background: #eef4ff; font-size: 22px; }

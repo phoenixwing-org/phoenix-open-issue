@@ -5,6 +5,7 @@ import { signToken } from '../utils/jwt.js'
 import { ConflictError, UnauthorizedError, ForbiddenError, BadRequestError } from '../utils/errors.js'
 import { resolveOrgUnitIdAsync } from '../utils/pendingOrgUnit.js'
 import { assertSystemAdminAsync } from '../utils/admin.js'
+import { LoginPolicyService } from './LoginPolicyService.js'
 import type { User, UserPublic, CreateUserInput, LoginResult, RegisterResult, SystemRole } from '@open-issue/core'
 
 function toPublic(user: User): UserPublic {
@@ -13,7 +14,10 @@ function toPublic(user: User): UserPublic {
 }
 
 export class AuthService {
+  private readonly loginPolicy = new LoginPolicyService()
+
   async register(input: CreateUserInput): Promise<RegisterResult> {
+    await this.loginPolicy.assertLocalLoginAllowed()
     const db = getAsyncDb()
     const existing = await db.get('SELECT "id" FROM "users" WHERE "username" = ?', [input.username])
     if (existing) {
@@ -40,6 +44,7 @@ export class AuthService {
   }
 
   async login(username: string, password: string): Promise<LoginResult> {
+    await this.loginPolicy.assertLocalLoginAllowed()
     const db = getAsyncDb()
     const user = await db.get<User>('SELECT * FROM "users" WHERE "username" = ?', [username])
     if (!user) {

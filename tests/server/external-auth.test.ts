@@ -90,8 +90,86 @@ describe.sequential('第三方登录服务', () => {
     await expect(service.startLogin('feishu', '/unknown-admin-page')).rejects.toThrow('不在允许范围')
   })
 
-  it('绑定时只保存 state 哈希，且同一 state 不能重放', async () => {
-    const started = await service.startLink('feishu', adminId)
+  it('自助绑定已关闭', async () => {
+    await expect(service.startLink('feishu', adminId)).rejects.toThrow('自助绑定')
+  })
+
+  it('未绑定登录写入待审查且不按邮箱自动关联', async () => {
+    fakeProvider.currentProfile = {
+      ...profile,
+      providerSubject: 'tenant-a:open-unknown',
+      openId: 'open-unknown',
+      email: 'admin@example.invalid',
+      displayName: 'admin',
+    }
+    const started = await service.startLogin('feishu')
+    const state = new URL(started.authorizationUrl).searchParams.get('state')!
+    const callback = await service.completeCallback('feishu', { state, code: 'unknown-code' })
+    expect(callback).toMatchObject({
+      purpose: 'bind_pending',
+      provider: 'feishu',
+      bindRequestId: expect.any(String),
+      profileToken: expect.any(String),
+    })
+    expect(callback.profileToken!.length).toBeGreaterThanOrEqual(32)
+
+    const pending = db.get(
+      "SELECT * FROM externalBindRequests WHERE providerSubject = ? AND status = 'pending'",
+      ['tenant-a:open-unknown'],
+    ) as Record<string, unknown>
+    expect(pending).toMatchObject({
+      displayName: 'admin',
+      email: 'admin@example.invalid',
+      proposedDisplayName: 'admin',
+    })
+    expect(JSON.stringify(pending)).not.toContain('temporary-provider-token')
+
+    const publicView = await service.getPublicBindRequestByToken(callback.profileToken!)
+    expect(publicView.proposedDisplayName).toBe('admin')
+
+    await service.updateBindRequestProfile(callback.profileToken!, {
+      proposedUsername: 'newbie',
+      proposedDisplayName: '新人',
+    })
+    const updated = db.get(
+      'SELECT proposedUsername, proposedDisplayName FROM externalBindRequests WHERE id = ?',
+      [callback.bindRequestId!],
+    ) as { proposedUsername: string; proposedDisplayName: string }
+    expect(updated).toEqual({ proposedUsername: 'newbie', proposedDisplayName: '新人' })
+
+    fakeProvider.currentProfile = profile
+  })
+
+  it('管理员可将待审查绑定到已有账号，之后可登录', async () => {
+    const pending = db.get(
+      "SELECT id FROM externalBindRequests WHERE providerSubject = ? AND status = 'pending'",
+      ['tenant-a:open-unknown'],
+    ) as { id: string }
+    const result = await service.bindRequestToUser(pending.id, adminId, adminId)
+    expect(result.user.id).toBe(adminId)
+    expect(result.request.status).toBe('bound')
+
+    fakeProvider.currentProfile = {
+      ...profile,
+      providerSubject: 'tenant-a:open-unknown',
+      openId: 'open-unknown',
+    }
+    const started = await service.startLogin('feishu', '/dashboard')
+    const state = new URL(started.authorizationUrl).searchParams.get('state')!
+    const callback = await service.completeCallback('feishu', { state, code: 'bound-login' })
+    expect(callback.ticket).toBeTruthy()
+    const login = await service.exchangeTicket(callback.ticket!)
+    expect(login.user.id).toBe(adminId)
+    fakeProvider.currentProfile = profile
+  })
+
+  it('登录 state 哈希存储且不能重放；已绑定身份票据只能使用一次', async () => {
+    fakeProvider.currentProfile = {
+      ...profile,
+      providerSubject: 'tenant-a:open-unknown',
+      openId: 'open-unknown',
+    }
+    const started = await service.startLogin('feishu', '/issue/test-id?from=feishu')
     const state = new URL(started.authorizationUrl).searchParams.get('state')!
     expect(state.length).toBeGreaterThanOrEqual(32)
 
@@ -99,22 +177,17 @@ describe.sequential('第三方登录服务', () => {
     expect(attempt.stateHash).toMatch(/^[a-f0-9]{64}$/)
     expect(attempt.stateHash).not.toBe(state)
 
-    await expect(service.completeCallback('feishu', { state, code: 'one-time-code' })).resolves.toMatchObject({
-      purpose: 'link',
-      provider: 'feishu',
-    })
+    const callback = await service.completeCallback('feishu', { state, code: 'one-time-code' })
+    expect(callback.purpose).toBe('login')
     await expect(service.completeCallback('feishu', { state, code: 'replayed-code' })).rejects.toMatchObject({
       code: 'invalid_state',
     })
 
-    const identity = db.get('SELECT * FROM externalIdentities WHERE userId = ?', adminId) as Record<string, unknown>
-    expect(identity).toMatchObject({
-      provider: 'feishu',
-      providerSubject: 'tenant-a:open-a',
-      status: 'active',
-    })
-    expect(JSON.stringify(identity)).not.toContain('temporary-provider-token')
-    expect(JSON.stringify(identity)).not.toContain('one-time-code')
+    const result = await service.exchangeTicket(callback.ticket!)
+    expect(result.user).toMatchObject({ id: adminId, username: 'admin' })
+    expect(result.returnTo).toBe('/issue/test-id?from=feishu')
+    await expect(service.exchangeTicket(callback.ticket!)).rejects.toThrow('无效或已过期')
+    fakeProvider.currentProfile = profile
   })
 
   it('用户取消授权时消费 state 并返回可识别错误', async () => {
@@ -128,32 +201,25 @@ describe.sequential('第三方登录服务', () => {
     })
   })
 
-  it('已绑定身份可换取本项目会话，登录票据只能使用一次', async () => {
-    const started = await service.startLogin('feishu', '/issue/test-id?from=feishu')
-    const state = new URL(started.authorizationUrl).searchParams.get('state')!
-    const callback = await service.completeCallback('feishu', { state, code: 'login-code' })
-    expect(callback.ticket).toBeTruthy()
-
-    const result = await service.exchangeTicket(callback.ticket!)
-    expect(result.user).toMatchObject({ id: adminId, username: 'admin' })
-    expect(result.token).toEqual(expect.any(String))
-    expect(result.returnTo).toBe('/issue/test-id?from=feishu')
-
-    await expect(service.exchangeTicket(callback.ticket!)).rejects.toThrow('无效或已过期')
-  })
-
-  it('完整备份包含长期身份绑定，但不包含 OAuth 临时凭证', async () => {
+  it('完整备份包含长期身份与待审查，但不包含 OAuth 临时凭证', async () => {
     const { BackupService } = await import('../../packages/server/src/service/BackupService.js')
     const backupService = new BackupService()
     const backup = await backupService.export('resetAll')
-    expect(backup.tables.externalIdentities).toEqual([
-      expect.objectContaining({ userId: adminId, provider: 'feishu', status: 'active' }),
-    ])
+    expect(backup.tables.externalIdentities).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ userId: adminId, provider: 'feishu', status: 'active' }),
+      ]),
+    )
+    expect(backup.tables.externalBindRequests).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ providerSubject: 'tenant-a:open-unknown', status: 'bound' }),
+      ]),
+    )
     expect(backup.tables).not.toHaveProperty('oauthLoginAttempts')
     expect(backup.tables).not.toHaveProperty('oauthLoginTickets')
 
     const activeIdentity = db.get(
-      "SELECT id FROM externalIdentities WHERE userId = ? AND status = 'active'",
+      "SELECT id FROM externalIdentities WHERE userId = ? AND status = 'active' LIMIT 1",
       [adminId],
     ) as { id: string }
     db.run(
@@ -178,6 +244,11 @@ describe.sequential('第三方登录服务', () => {
     await expect(expiredStateService.completeCallback('feishu', { state: expiredState, code: 'late' }))
       .rejects.toMatchObject({ code: 'invalid_state' })
 
+    fakeProvider.currentProfile = {
+      ...profile,
+      providerSubject: 'tenant-a:open-unknown',
+      openId: 'open-unknown',
+    }
     const expiredTicketService = new ExternalAuthService(
       registry,
       { enabled: true, stateTtlSeconds: 600, ticketTtlSeconds: -1 },
@@ -186,25 +257,15 @@ describe.sequential('第三方登录服务', () => {
     const ticketState = new URL(ticketStart.authorizationUrl).searchParams.get('state')!
     const callback = await expiredTicketService.completeCallback('feishu', { state: ticketState, code: 'code' })
     await expect(expiredTicketService.exchangeTicket(callback.ticket!)).rejects.toThrow('无效或已过期')
-  })
-
-  it('未绑定身份不会按邮箱或姓名自动关联', async () => {
-    fakeProvider.currentProfile = {
-      ...profile,
-      providerSubject: 'tenant-a:open-unknown',
-      openId: 'open-unknown',
-      email: 'admin@example.invalid',
-      displayName: 'admin',
-    }
-    const started = await service.startLogin('feishu')
-    const state = new URL(started.authorizationUrl).searchParams.get('state')!
-    await expect(service.completeCallback('feishu', { state, code: 'unknown-code' })).rejects.toMatchObject({
-      code: 'identity_not_bound',
-    })
     fakeProvider.currentProfile = profile
   })
 
   it('本地账号被禁用后，已绑定飞书身份也不能签发登录票据', async () => {
+    fakeProvider.currentProfile = {
+      ...profile,
+      providerSubject: 'tenant-a:open-unknown',
+      openId: 'open-unknown',
+    }
     db.run('UPDATE users SET disabled = 1 WHERE id = ?', [adminId])
     try {
       const started = await service.startLogin('feishu')
@@ -214,24 +275,70 @@ describe.sequential('第三方登录服务', () => {
       })
     } finally {
       db.run('UPDATE users SET disabled = 0 WHERE id = ?', [adminId])
+      fakeProvider.currentProfile = profile
     }
   })
 
-  it('解除绑定后该飞书身份不能继续登录，并保留撤销记录', async () => {
+  it('解除绑定后再次登录进入待审查；管理员可新建账号并绑定', async () => {
+    fakeProvider.currentProfile = {
+      ...profile,
+      providerSubject: 'tenant-a:open-unknown',
+      openId: 'open-unknown',
+    }
     const identities = await service.listMyIdentities(adminId)
-    const active = identities.find(identity => identity.status === 'active')!
-    const beforeUnlink = await service.startLogin('feishu')
-    const beforeUnlinkState = new URL(beforeUnlink.authorizationUrl).searchParams.get('state')!
-    const beforeUnlinkCallback = await service.completeCallback('feishu', { state: beforeUnlinkState, code: 'before-unlink' })
+    const active = identities.find(identity => identity.status === 'active' && identity.displayName !== '飞书测试用户')
+      || identities.find(identity => identity.status === 'active')!
     await service.unlinkIdentity(active.id, adminId)
-    await expect(service.exchangeTicket(beforeUnlinkCallback.ticket!)).rejects.toThrow('无效或已过期')
 
     const started = await service.startLogin('feishu')
     const state = new URL(started.authorizationUrl).searchParams.get('state')!
-    await expect(service.completeCallback('feishu', { state, code: 'after-unlink' })).rejects.toMatchObject({
-      code: 'identity_not_bound',
+    const pendingCallback = await service.completeCallback('feishu', { state, code: 'after-unlink' })
+    expect(pendingCallback.purpose).toBe('bind_pending')
+
+    await expect(service.isUsernameAvailable('feishu_new_user', adminId)).resolves.toEqual({ available: true })
+    const created = await service.createUserAndBindRequest(pendingCallback.bindRequestId!, adminId, {
+      username: 'feishu_new_user',
+      password: 'secret12',
+      displayName: '飞书新人',
     })
-    expect((await service.listMyIdentities(adminId))[0].status).toBe('revoked')
+    expect(created.user).toMatchObject({ username: 'feishu_new_user', approved: 1, displayName: '飞书新人' })
+    expect(created.request.status).toBe('bound')
+
+    await expect(service.createUserAndBindRequest(pendingCallback.bindRequestId!, adminId, {
+      username: 'another',
+      password: 'secret12',
+    })).rejects.toThrow('已处理')
+
+    const loginStart = await service.startLogin('feishu')
+    const loginState = new URL(loginStart.authorizationUrl).searchParams.get('state')!
+    const loginCallback = await service.completeCallback('feishu', { state: loginState, code: 'new-user-login' })
+    const login = await service.exchangeTicket(loginCallback.ticket!)
+    expect(login.user.username).toBe('feishu_new_user')
+
+    fakeProvider.currentProfile = profile
+  })
+
+  it('新建绑定撞名时返回冲突', async () => {
+    fakeProvider.currentProfile = {
+      ...profile,
+      providerSubject: 'tenant-a:open-conflict',
+      openId: 'open-conflict',
+      displayName: '冲突用户',
+    }
+    const started = await service.startLogin('feishu')
+    const state = new URL(started.authorizationUrl).searchParams.get('state')!
+    const pending = await service.completeCallback('feishu', { state, code: 'conflict-code' })
+    await expect(service.createUserAndBindRequest(pending.bindRequestId!, adminId, {
+      username: 'admin',
+      password: 'secret12',
+    })).rejects.toThrow('用户名已存在')
+    await service.rejectBindRequest(pending.bindRequestId!, adminId, '测试拒绝')
+    const rejected = db.get(
+      'SELECT status, note FROM externalBindRequests WHERE id = ?',
+      [pending.bindRequestId!],
+    ) as { status: string; note: string }
+    expect(rejected).toEqual({ status: 'rejected', note: '测试拒绝' })
+    fakeProvider.currentProfile = profile
   })
 })
 

@@ -16,7 +16,7 @@ type BackupPasswordPolicy = 'resetAll' | 'resetAdmin'
 type BackupExportScope = 'full' | 'accessible'
 
 const TABLE_NAMES = [
-  'users', 'externalIdentities', 'orgUnits', 'issueLists', 'issueListMembers',
+  'users', 'externalIdentities', 'externalBindRequests', 'orgUnits', 'issueLists', 'issueListMembers',
   'issues', 'issueListLinks', 'checkpoints', 'pushRecords', 'dict', 'poiFunctions',
 ]
 const TRANSIENT_TABLE_NAMES = ['oauthLoginTickets', 'oauthLoginAttempts']

@@ -13,45 +13,60 @@
       "path": ".claude/rules/no-better-sqlite3.md",
       "status": "current",
       "owner": "Open Issue maintainers",
-      "appliesTo": "0.4.x",
-      "lastVerified": "2026-07-17"
+      "appliesTo": "0.5.x",
+      "lastVerified": "2026-07-20"
     },
     {
       "path": "doc/代码规范.md",
       "status": "current",
       "owner": "Open Issue maintainers",
-      "appliesTo": "0.4.x",
-      "lastVerified": "2026-07-17"
+      "appliesTo": "0.5.x",
+      "lastVerified": "2026-07-20"
     },
     {
       "path": "doc/待办点检.md",
       "status": "superseded",
       "owner": "Open Issue maintainers",
-      "appliesTo": "0.4.x",
-      "lastVerified": "2026-07-17",
+      "appliesTo": "0.5.x",
+      "lastVerified": "2026-07-20",
       "sourceOfTruth": "doc/current-roadmap.md",
       "reason": "重叠计划与点检入口已合并为当前路线"
+    },
+    {
+      "path": "doc/第三方登录/飞书登录点检用例.md",
+      "status": "current",
+      "owner": "Open Issue maintainers",
+      "appliesTo": "0.5.x",
+      "lastVerified": "2026-07-20"
     },
     {
       "path": "doc/第三方登录/飞书OAuth设计.md",
       "status": "current",
       "owner": "Open Issue maintainers",
-      "appliesTo": "0.4.x",
-      "lastVerified": "2026-07-17"
+      "appliesTo": "0.5.x",
+      "lastVerified": "2026-07-20"
+    },
+    {
+      "path": "doc/第三方登录/管理员绑定与待审查计划.md",
+      "status": "current",
+      "owner": "Open Issue maintainers",
+      "appliesTo": "0.5.x",
+      "lastVerified": "2026-07-20",
+      "reason": "飞书二期管理员绑定+待审查已落地；本文为设计与验收归档"
     },
     {
       "path": "doc/第三方登录/配置示例.md",
       "status": "current",
       "owner": "Open Issue maintainers",
-      "appliesTo": "0.4.x",
-      "lastVerified": "2026-07-17"
+      "appliesTo": "0.5.x",
+      "lastVerified": "2026-07-20"
     },
     {
       "path": "doc/第三方登录/实施清单.md",
       "status": "draft",
       "owner": "Open Issue maintainers",
-      "appliesTo": "0.4.x",
-      "lastVerified": "2026-07-17",
+      "appliesTo": "0.5.x",
+      "lastVerified": "2026-07-20",
       "sourceOfTruth": "doc/current-roadmap.md",
       "reason": "尚未全部晋升为稳定产品契约的方案"
     },
@@ -59,22 +74,22 @@
       "path": "doc/第三方登录/README.md",
       "status": "current",
       "owner": "Open Issue maintainers",
-      "appliesTo": "0.4.x",
-      "lastVerified": "2026-07-17"
+      "appliesTo": "0.5.x",
+      "lastVerified": "2026-07-20"
     },
     {
       "path": "doc/多人权限与列表筛选加固.md",
       "status": "current",
       "owner": "Open Issue maintainers",
-      "appliesTo": "0.4.x",
-      "lastVerified": "2026-07-17"
+      "appliesTo": "0.5.x",
+      "lastVerified": "2026-07-20"
     },
     {
       "path": "doc/功能表计划.md",
       "status": "superseded",
       "owner": "Open Issue maintainers",
-      "appliesTo": "0.4.x",
-      "lastVerified": "2026-07-17",
+      "appliesTo": "0.5.x",
+      "lastVerified": "2026-07-20",
       "sourceOfTruth": "doc/current-roadmap.md",
       "reason": "重叠计划与点检入口已合并为当前路线"
     },
@@ -82,15 +97,15 @@
       "path": "doc/规则与约定.md",
       "status": "current",
       "owner": "Open Issue maintainers",
-      "appliesTo": "0.4.x",
-      "lastVerified": "2026-07-17"
+      "appliesTo": "0.5.x",
+      "lastVerified": "2026-07-20"
     },
     {
       "path": "doc/计划.md",
       "status": "superseded",
       "owner": "Open Issue maintainers",
-      "appliesTo": "0.4.x",
-      "lastVerified": "2026-07-17",
+      "appliesTo": "0.5.x",
+      "lastVerified": "2026-07-20",
       "sourceOfTruth": "doc/current-roadmap.md",
       "reason": "重叠计划与点检入口已合并为当前路线"
     },
@@ -98,15 +113,15 @@
       "path": "doc/架构设计.md",
       "status": "current",
       "owner": "Open Issue maintainers",
-      "appliesTo": "0.4.x",
-      "lastVerified": "2026-07-17"
+      "appliesTo": "0.5.x",
+      "lastVerified": "2026-07-20"
     },
     {
       "path": "doc/界面巡游计划.md",
       "status": "archived",
       "owner": "Open Issue maintainers",
       "appliesTo": "historical",
-      "lastVerified": "2026-07-17",
+      "lastVerified": "2026-07-20",
       "sourceOfTruth": "doc/current-roadmap.md",
       "reason": "完成态 v0.4 实施与验收证据"
     },
@@ -114,8 +129,8 @@
       "path": "doc/开发计划.md",
       "status": "superseded",
       "owner": "Open Issue maintainers",
-      "appliesTo": "0.4.x",
-      "lastVerified": "2026-07-17",
+      "appliesTo": "0.5.x",
+      "lastVerified": "2026-07-20",
       "sourceOfTruth": "doc/current-roadmap.md",
       "reason": "重叠计划与点检入口已合并为当前路线"
     },
@@ -123,8 +138,8 @@
       "path": "doc/列表成员与负责人.md",
       "status": "draft",
       "owner": "Open Issue maintainers",
-      "appliesTo": "0.4.x",
-      "lastVerified": "2026-07-17",
+      "appliesTo": "0.5.x",
+      "lastVerified": "2026-07-20",
       "sourceOfTruth": "doc/current-roadmap.md",
       "reason": "尚未全部晋升为稳定产品契约的方案"
     },
@@ -132,29 +147,29 @@
       "path": "doc/使用手册.md",
       "status": "current",
       "owner": "Open Issue maintainers",
-      "appliesTo": "0.4.x",
-      "lastVerified": "2026-07-17"
+      "appliesTo": "0.5.x",
+      "lastVerified": "2026-07-20"
     },
     {
       "path": "doc/数据保护规则.md",
       "status": "current",
       "owner": "Open Issue maintainers",
-      "appliesTo": "0.4.x",
-      "lastVerified": "2026-07-17"
+      "appliesTo": "0.5.x",
+      "lastVerified": "2026-07-20"
     },
     {
       "path": "doc/数据字典配置.md",
       "status": "current",
       "owner": "Open Issue maintainers",
-      "appliesTo": "0.4.x",
-      "lastVerified": "2026-07-17"
+      "appliesTo": "0.5.x",
+      "lastVerified": "2026-07-20"
     },
     {
       "path": "doc/推送工作流.md",
       "status": "archived",
       "owner": "Open Issue maintainers",
       "appliesTo": "historical",
-      "lastVerified": "2026-07-17",
+      "lastVerified": "2026-07-20",
       "sourceOfTruth": "doc/current-roadmap.md",
       "reason": "完成态 v0.4 实施与验收证据"
     },
@@ -162,29 +177,29 @@
       "path": "doc/文档索引.md",
       "status": "current",
       "owner": "Open Issue maintainers",
-      "appliesTo": "0.4.x",
-      "lastVerified": "2026-07-17"
+      "appliesTo": "0.5.x",
+      "lastVerified": "2026-07-20"
     },
     {
       "path": "doc/已知问题.md",
       "status": "current",
       "owner": "Open Issue maintainers",
-      "appliesTo": "0.4.x",
-      "lastVerified": "2026-07-17"
+      "appliesTo": "0.5.x",
+      "lastVerified": "2026-07-20"
     },
     {
       "path": "doc/API参考.md",
       "status": "current",
       "owner": "Open Issue maintainers",
-      "appliesTo": "0.4.x",
-      "lastVerified": "2026-07-17"
+      "appliesTo": "0.5.x",
+      "lastVerified": "2026-07-20"
     },
     {
       "path": "doc/BUG日志.md",
       "status": "superseded",
       "owner": "Open Issue maintainers",
-      "appliesTo": "0.4.x",
-      "lastVerified": "2026-07-17",
+      "appliesTo": "0.5.x",
+      "lastVerified": "2026-07-20",
       "sourceOfTruth": "doc/已知问题.md",
       "reason": "有效 workaround 与关闭条件已迁入当前已知问题"
     },
@@ -192,22 +207,22 @@
       "path": "doc/CHANGELOG.md",
       "status": "current",
       "owner": "Open Issue maintainers",
-      "appliesTo": "0.4.x",
-      "lastVerified": "2026-07-17"
+      "appliesTo": "0.5.x",
+      "lastVerified": "2026-07-20"
     },
     {
       "path": "doc/current-roadmap.md",
       "status": "current",
       "owner": "Open Issue maintainers",
-      "appliesTo": "0.4.x",
-      "lastVerified": "2026-07-17"
+      "appliesTo": "0.5.x",
+      "lastVerified": "2026-07-20"
     },
     {
       "path": "doc/Issue列设计.md",
       "status": "archived",
       "owner": "Open Issue maintainers",
       "appliesTo": "historical",
-      "lastVerified": "2026-07-17",
+      "lastVerified": "2026-07-20",
       "sourceOfTruth": "doc/current-roadmap.md",
       "reason": "完成态 v0.4 实施与验收证据"
     },
@@ -216,7 +231,7 @@
       "status": "archived",
       "owner": "Open Issue maintainers",
       "appliesTo": "historical",
-      "lastVerified": "2026-07-17",
+      "lastVerified": "2026-07-20",
       "sourceOfTruth": "doc/current-roadmap.md",
       "reason": "完成态 v0.4 实施与验收证据"
     },
@@ -224,29 +239,29 @@
       "path": "doc/Linux测试部署.md",
       "status": "current",
       "owner": "Open Issue maintainers",
-      "appliesTo": "0.4.x",
-      "lastVerified": "2026-07-17"
+      "appliesTo": "0.5.x",
+      "lastVerified": "2026-07-20"
     },
     {
       "path": "doc/phoenix-wing依赖配置.md",
       "status": "current",
       "owner": "Open Issue maintainers",
-      "appliesTo": "0.4.x",
-      "lastVerified": "2026-07-17"
+      "appliesTo": "0.5.x",
+      "lastVerified": "2026-07-20"
     },
     {
       "path": "doc/PostgreSQL部署与迁移.md",
       "status": "current",
       "owner": "Open Issue maintainers",
-      "appliesTo": "0.4.x",
-      "lastVerified": "2026-07-17"
+      "appliesTo": "0.5.x",
+      "lastVerified": "2026-07-20"
     },
     {
       "path": "doc/TODO.md",
       "status": "superseded",
       "owner": "Open Issue maintainers",
-      "appliesTo": "0.4.x",
-      "lastVerified": "2026-07-17",
+      "appliesTo": "0.5.x",
+      "lastVerified": "2026-07-20",
       "sourceOfTruth": "doc/current-roadmap.md",
       "reason": "重叠计划与点检入口已合并为当前路线"
     },
@@ -255,7 +270,7 @@
       "status": "archived",
       "owner": "Open Issue maintainers",
       "appliesTo": "historical",
-      "lastVerified": "2026-07-17",
+      "lastVerified": "2026-07-20",
       "sourceOfTruth": "doc/current-roadmap.md",
       "reason": "完成态 v0.4 实施与验收证据"
     },
@@ -264,7 +279,7 @@
       "status": "archived",
       "owner": "Open Issue maintainers",
       "appliesTo": "historical",
-      "lastVerified": "2026-07-17",
+      "lastVerified": "2026-07-20",
       "sourceOfTruth": "doc/current-roadmap.md",
       "reason": "完成态 v0.4 实施与验收证据"
     },
@@ -272,15 +287,15 @@
       "path": "README.md",
       "status": "current",
       "owner": "Open Issue maintainers",
-      "appliesTo": "0.4.x",
-      "lastVerified": "2026-07-17"
+      "appliesTo": "0.5.x",
+      "lastVerified": "2026-07-20"
     },
     {
       "path": "scripts/migrate-rebuild-db.md",
       "status": "current",
       "owner": "Open Issue maintainers",
-      "appliesTo": "0.4.x",
-      "lastVerified": "2026-07-17"
+      "appliesTo": "0.5.x",
+      "lastVerified": "2026-07-20"
     }
   ]
 }

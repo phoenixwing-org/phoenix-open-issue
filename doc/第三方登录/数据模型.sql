@@ -80,6 +80,41 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_oauth_tickets_ticket_hash
 CREATE INDEX IF NOT EXISTS idx_oauth_tickets_expiry
   ON "oauthLoginTickets"("expiresAt", "usedAt");
 
+-- 未绑定第三方身份的待审查队列（多提供方共用，按 provider 区分）。
+CREATE TABLE IF NOT EXISTS "externalBindRequests" (
+  "id" TEXT PRIMARY KEY,
+  "provider" TEXT NOT NULL,
+  "providerSubject" TEXT NOT NULL,
+  "tenantKey" TEXT,
+  "openId" TEXT,
+  "unionId" TEXT,
+  "providerUserId" TEXT,
+  "displayName" TEXT,
+  "avatarUrl" TEXT,
+  "email" TEXT,
+  "metadataJson" TEXT NOT NULL DEFAULT '{}',
+  "proposedUsername" TEXT,
+  "proposedDisplayName" TEXT,
+  "status" TEXT NOT NULL DEFAULT 'pending',
+  "boundUserId" TEXT,
+  "handledByUserId" TEXT,
+  "handledAt" TEXT,
+  "note" TEXT,
+  "profileTokenHash" TEXT,
+  "profileTokenExpiresAt" TEXT,
+  "lastSeenAt" TEXT NOT NULL,
+  "createdAt" TEXT NOT NULL,
+  "updatedAt" TEXT NOT NULL,
+  CHECK ("status" IN ('pending', 'bound', 'rejected', 'expired'))
+);
+
+CREATE INDEX IF NOT EXISTS idx_external_bind_requests_provider_subject
+  ON "externalBindRequests"("provider", "providerSubject");
+CREATE INDEX IF NOT EXISTS idx_external_bind_requests_status
+  ON "externalBindRequests"("status", "updatedAt");
+CREATE UNIQUE INDEX IF NOT EXISTS idx_external_bind_requests_profile_token
+  ON "externalBindRequests"("profileTokenHash");
+
 -- 登录型 MVP 不创建令牌持久化表。
 -- 如果将来确需代表用户调用飞书 API，应新增独立 externalAuthTokens 表：
 -- 1. access/refresh token 必须使用专用密钥加密；

@@ -69,5 +69,38 @@ export function externalAuthSchemaSql(dialect: PnwDbDialect): string {
       ON "oauthLoginTickets"("ticketHash");
     CREATE INDEX IF NOT EXISTS "idx_oauth_tickets_expiry"
       ON "oauthLoginTickets"("expiresAt", "usedAt");
+
+    CREATE TABLE IF NOT EXISTS "externalBindRequests" (
+      "id" TEXT PRIMARY KEY,
+      "provider" TEXT NOT NULL,
+      "providerSubject" TEXT NOT NULL,
+      "tenantKey" TEXT,
+      "openId" TEXT,
+      "unionId" TEXT,
+      "providerUserId" TEXT,
+      "displayName" TEXT,
+      "avatarUrl" TEXT,
+      "email" TEXT,
+      "metadataJson" TEXT NOT NULL DEFAULT '{}',
+      "proposedUsername" TEXT,
+      "proposedDisplayName" TEXT,
+      "status" TEXT NOT NULL DEFAULT 'pending' CHECK("status" IN ('pending','bound','rejected','expired')),
+      "boundUserId" TEXT,
+      "handledByUserId" TEXT,
+      "handledAt" TEXT,
+      "note" TEXT,
+      "profileTokenHash" TEXT,
+      "profileTokenExpiresAt" TEXT,
+      "lastSeenAt" TEXT NOT NULL DEFAULT ${now},
+      "createdAt" TEXT NOT NULL DEFAULT ${now},
+      "updatedAt" TEXT NOT NULL DEFAULT ${now}
+    );
+
+    CREATE INDEX IF NOT EXISTS "idx_external_bind_requests_provider_subject"
+      ON "externalBindRequests"("provider", "providerSubject");
+    CREATE INDEX IF NOT EXISTS "idx_external_bind_requests_status"
+      ON "externalBindRequests"("status", "updatedAt");
+    CREATE UNIQUE INDEX IF NOT EXISTS "idx_external_bind_requests_profile_token"
+      ON "externalBindRequests"("profileTokenHash");
   `
 }

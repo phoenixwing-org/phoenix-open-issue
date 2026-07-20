@@ -34,6 +34,13 @@ export const OPEN_ISSUE_MIGRATIONS: readonly PnwMigration[] = [
       await db.exec(externalAuthSchemaSql(dialect))
     },
   },
+  {
+    // 20260716 已应用的库不会重跑旧迁移；此处幂等补建 externalBindRequests 等增量表。
+    id: '20260720-external-bind-requests',
+    up: async (db, dialect) => {
+      await db.exec(externalAuthSchemaSql(dialect))
+    },
+  },
 ]
 
 export async function pnwRunMigrations(

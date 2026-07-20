@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "owner": "Open Issue maintainers",
-  "lastVerified": "2026-07-17",
-  "appliesTo": "0.4.x",
+  "lastVerified": "2026-07-20",
+  "appliesTo": "0.5.x",
   "rules": [
     {
       "match": "^doc/(TODO|计划|开发计划|功能表计划|待办点检)\\.md$",
@@ -27,6 +27,11 @@
       "status": "draft",
       "sourceOfTruth": "doc/current-roadmap.md",
       "reason": "尚未全部晋升为稳定产品契约的方案"
+    },
+    {
+      "match": "^doc/第三方登录/管理员绑定与待审查计划\\.md$",
+      "status": "current",
+      "reason": "飞书二期管理员绑定+待审查已落地；本文为设计与验收归档"
     },
     {
       "match": "^.*\\.md$",
