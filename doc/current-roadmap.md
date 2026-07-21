@@ -14,7 +14,7 @@ Owner：Open Issue maintainers
 - **当前包版本 `0.5.0`**：含飞书 OAuth 二期（管理员绑定 + 待审查）、登录方式设定，以及 post-0.4 积压能力；见 [CHANGELOG](CHANGELOG.md)。
 - 前端和服务端精确消费 Registry `phoenix-wing@0.4.2`，不依赖相邻源码；已删除 `optimizeDeps.exclude`，singleton 与 Ribbon v1 fixture 回归、依赖来源、自动测试和三段构建已进入 `verify:ci`。
 - `@open-issue/core` 保持纯 TypeScript，前后端共享类型和算法但不引入 Vue、Express 或数据库驱动。
-- 飞书 OAuth 二期设计归档：`doc/第三方登录/`；表结构点检纳入设置「表结构补全」。真实飞书 E2E 待测。
+- 飞书 OAuth 二期设计归档：`doc/第三方登录/`；表结构点检纳入设置「表结构补全」。真实飞书点检已通过（2026-07-21）。
 
 ## 当前优先级
 
