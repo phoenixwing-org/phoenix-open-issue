@@ -112,7 +112,7 @@ pnpm build           # 全部构建
 pnpm seed            # CLI 重新填充演示数据（force 追加可清空）
 ```
 
-> Phoenix Wing `0.4.2` 已完成八包 Registry 与 npm/pnpm 干净消费验收。本仓前后端精确消费 `0.4.2`，聚合 UI 使用统一编译出口且不再排除 Vite 预构建；不探测或引用相邻本地仓库。`0.4.0` 仍是禁止安装的历史失败版本。详见 [phoenix-wing 依赖配置](doc/phoenix-wing依赖配置.md)。
+> 本仓前后端精确消费 npm Registry `phoenix-wing@0.5.1`，聚合 UI 使用统一编译出口且不排除 Vite 预构建；不探测或引用相邻本地仓库。消费者版本由本仓 manifest、lockfile 与验证门禁负责，不依赖 Wing 维护版本矩阵。详见 [phoenix-wing 依赖配置](doc/phoenix-wing依赖配置.md)。
 
 
 

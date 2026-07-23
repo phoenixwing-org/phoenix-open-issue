@@ -35,6 +35,13 @@
 - [x] 补充 pnwPromptInput 到 phoenix-wing（文本输入对话框）
 - [x] 补充 pnwAlert 到 phoenix-wing（简单消息弹窗）
 
+## 🔜 Wing 共享编辑抽屉
+
+- [ ] 作为第二个真实消费者参与 Wing `PnwEditorDrawerHost` 契约验证；最终名称与公开 API 以 Wing 主计划为准
+- [ ] 优先用 `IssueFormDialog` 的新建/编辑流程提供消费 fixture，保留 Open Issue 自己的 DTO、API、权限和领域校验
+- [ ] Wing 契约稳定前不在本仓复制通用抽屉 Host，也不为接入而重写现有业务表单
+- [ ] 接入验收覆盖 dirty 关闭确认、异步保存、工作台多 Tab 状态隔离、独立路由回退、Esc 与焦点恢复
+
 ## 🔧 phoenix-wing 适配反馈
 
 - [x] pnwPromptInput — PushHistoryView, ListDetailView 需要文本输入

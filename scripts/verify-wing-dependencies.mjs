@@ -15,7 +15,7 @@ const dependencySections = [
   "optionalDependencies",
   "peerDependencies",
 ];
-const expectedWingVersion = "0.4.2";
+const expectedWingVersion = "0.5.1";
 const wingDependencies = new Map();
 
 for (const relative of manifestFiles) {
