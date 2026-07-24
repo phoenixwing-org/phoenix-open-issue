@@ -140,8 +140,8 @@ pnpm seed            # CLI 重新填充演示数据（force 追加可清空）
 
 ## 相关项目
 
-- [phoenix-desk-tools](https://gitee.com/PhoenixWing321/phoenix-desk-tools) — Phoenix 桌面辅助工具（布局参考）
-- [phoenix-wing](https://gitee.com/PhoenixWing321/phoenix-wing) — Phoenix npm 插件
+- [phoenix-desk-tools](https://gitee.com/phoenixwing/phoenix-desk-tools) — Phoenix 桌面辅助工具（布局参考）
+- [phoenix-wing](https://gitee.com/phoenixwing/phoenix-wing) — Phoenix npm 插件
 
 ## 许可证
 

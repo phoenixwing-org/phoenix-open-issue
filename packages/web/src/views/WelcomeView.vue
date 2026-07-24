@@ -93,8 +93,8 @@ async function startTour() {
 
     <template #links>
       <div class="footer-links">
-        <a href="https://gitee.com/PhoenixWing321/phoenix-open-issue" target="_blank">Gitee</a>
-        <a href="https://gitee.com/PhoenixWing321/phoenix-wing" target="_blank">phoenix-wing</a>
+        <a href="https://gitee.com/phoenixwing/phoenix-open-issue" target="_blank">Gitee</a>
+        <a href="https://gitee.com/phoenixwing/phoenix-wing" target="_blank">phoenix-wing</a>
       </div>
     </template>
   </PnwWelcomeShell>
