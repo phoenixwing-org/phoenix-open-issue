@@ -1,6 +1,10 @@
 import { defineConfig } from 'vitest/config'
+import { openIssueLocalWingAliases } from './scripts/open-issue-wing-mode.mjs'
 
 export default defineConfig({
+  resolve: {
+    alias: openIssueLocalWingAliases(),
+  },
   test: {
     server: {
       deps: {

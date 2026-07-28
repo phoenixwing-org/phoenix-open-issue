@@ -15,6 +15,7 @@
 ## 未发布
 
 - phoenix-wing 前后端精确升级至 npm Registry `0.5.1`，同步更新消费者契约门禁并完成完整测试与构建验证。
+- `single` 派生验证分支使用未发布 Wing `0.5.2`：以一棵导航树接入 `PnwWorkbenchShell`，将 Router/Tab/session 收敛到产品 adapter；旧 Footer 日志按钮由 Wing Footer 的 Bottom 开关替代，页面/版本信息通过 consumer slot 保留，Ribbon/Tree 共用工作台显示设置；并增加不污染依赖图的 `*:local-wing` 命令。该项不是 Registry 升级或 Admin 插件迁移。
 
 ## v0.4.0（2026-07-11）
 

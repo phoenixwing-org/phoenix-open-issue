@@ -1,331 +1,207 @@
 <script setup lang="ts">
-import AppToolbar from './AppToolbar.vue'
-import RibbonShell from './ribbon/RibbonShell.vue'
-import StatusBar from './StatusBar.vue'
-import PnwShellLogPanel from 'phoenix-wing/layout/PnwShellLogPanel.vue'
-import PnwChoiceDialogHost from 'phoenix-wing/components/PnwChoiceDialogHost.vue'
-import PnwAsyncProgressOverlay from 'phoenix-wing/components/PnwAsyncProgressOverlay.vue'
-import PnwAppModalOverlay from 'phoenix-wing/components/PnwAppModalOverlay.vue'
-import WelcomeView from '@/views/WelcomeView.vue'
-import { useDictStore } from '@/stores/dict'
-import { ref, computed, provide, watch, onMounted } from 'vue'
-import { usePnwDocumentTitle, pnwCreateWorkbench } from 'phoenix-wing'
+import { reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import pkg from '../../package.json'
+import {
+  PnwAppModalOverlay,
+  PnwAsyncProgressOverlay,
+  PnwChoiceDialogHost,
+  PnwPhoenixWingMark,
+  PnwShellLogPanel,
+  PnwWorkbenchShell,
+  usePnwDocumentTitle,
+} from 'phoenix-wing'
+import WelcomeView from '@/views/WelcomeView.vue'
+import { useAuthStore } from '@/stores/auth'
+import { useWorkbenchStore } from '@/stores/workbench'
+import { useOpenIssueWorkbench } from '@/composables/useOpenIssueWorkbench'
 
-const ribbonCollapsed = ref(false)
-const activeRibbonTab = ref('issue')
-const configOpen = ref(false)
-const showWelcome = ref(false)
-const logExpanded = ref(false)
-const logText = ref('')
-const route = useRoute()
 const router = useRouter()
-const dict = useDictStore()
+const route = useRoute()
+const auth = useAuthStore()
+const workbenchStore = useWorkbenchStore()
+const openIssueWorkbenchController = useOpenIssueWorkbench()
+const openIssueWorkbench = reactive(openIssueWorkbenchController)
+const showWelcome = ref(false)
+const logText = ref('')
 
-function normalizePageId(pageId: string): string {
-  if (pageId === 'push-history') return 'pushHistory'
-  return pageId
-}
-
-const PAGE_LABELS: Record<string, string> = {
-  dashboard: '仪表盘',
-  lists: '列表管理',
-  listDetail: '列表详情',
-  org: '组织架构',
-  pushHistory: '推送历史',
-  functions: '功能表',
-  settings: '设置',
-  testRunner: '单元测试',
-  issueDetail: 'Issue',
-  welcome: '欢迎',
-}
-
-function pageTitle(pageId: string): string {
-  const base = normalizePageId(pageId).split(':')[0]
-  return PAGE_LABELS[base] ?? pageId
-}
-
-// Workbench engine
-const wb = pnwCreateWorkbench({
-  pagePolicy: (pageId) => {
-    const base = normalizePageId(pageId).split(':')[0]
-    const SINGLETON = new Set(['dashboard', 'lists', 'org', 'pushHistory', 'functions', 'settings', 'testRunner'])
-    const maxTabs = SINGLETON.has(base) ? 1 : 30
-    return { maxTabs, tabEnabled: true }
-  },
-  navLabel: (pageId) => pageTitle(pageId),
+usePnwDocumentTitle({
+  workspaceShort: ref('Open Issue'),
+  workspacePath: ref(''),
+  pageLabel: openIssueWorkbenchController.pageLabel,
 })
 
-const pageLabel = computed(() => pageTitle(normalizePageId(String(route.name || ''))))
-
-// 标签 → 完整路径映射（保留路由参数）
-const tabPathMap = new Map<string, string>()
-
-const STATIC_PAGE_PATHS: Record<string, string> = {
-  dashboard: '/dashboard',
-  lists: '/lists',
-  org: '/org',
-  pushHistory: '/push-history',
-  settings: '/settings',
-  functions: '/functions',
-  testRunner: '/test-runner',
+function logout() {
+  auth.logout()
+  router.push('/login')
 }
-
-function pathFromPageId(pageId: string, contextKey?: string): string {
-  const normalized = normalizePageId(pageId)
-  if (normalized.startsWith('listDetail:')) {
-    return `/list/${contextKey || normalized.split(':')[1]}`
-  }
-  if (normalized.startsWith('issueDetail:')) {
-    return `/issue/${contextKey || normalized.split(':')[1]}`
-  }
-  const base = normalized.split(':')[0]
-  return STATIC_PAGE_PATHS[base] ?? `/${base}`
-}
-
-function resolveTabPath(tabId: string): string | undefined {
-  const mapped = tabPathMap.get(tabId)
-  if (mapped) return mapped
-  const tab = wb.tabs.value.find(t => t.id === tabId)
-  if (!tab) return undefined
-  return pathFromPageId(tab.pageId, tab.contextKey)
-}
-
-function ensureTabPath(tabId: string, pageId: string, contextKey?: string, path?: string) {
-  tabPathMap.set(tabId, path ?? pathFromPageId(pageId, contextKey))
-}
-
-usePnwDocumentTitle({ workspaceShort: ref('Open Issue'), workspacePath: ref(''), pageLabel })
-
-function onRibbonOpen(pageId: string) {
-  const normalized = normalizePageId(pageId)
-  wb.openTab({ pageId: normalized, title: pageTitle(normalized) })
-  router.push(pathFromPageId(normalized))
-}
-
-function onSelectWbTab(tabId: string) {
-  wb.activateTab(tabId)
-  const path = resolveTabPath(tabId)
-  if (path) router.push(path)
-}
-
-async function onCloseWbTab(tabId: string) {
-  tabPathMap.delete(tabId)
-  await wb.closeTab(tabId)
-  const last = wb.tabs.value[wb.tabs.value.length - 1]
-  if (last) {
-    const path = resolveTabPath(last.id)
-    if (path) router.push(path)
-  } else {
-    router.push('/dashboard')
-  }
-}
-
-async function onCloseAllWbTabs() {
-  tabPathMap.clear()
-  await wb.closeAllTabs()
-  router.push('/dashboard')
-}
-
-// expose for child pages
-provide('openTab', (pageId: string, title: string, contextKey?: string) => {
-  const normalized = normalizePageId(pageId)
-  wb.openTab({ pageId: normalized, title, contextKey })
-  // URL: listDetail:<id> → /list/<id>, issueDetail:<id> → /issue/<id>
-  if (normalized.startsWith('listDetail:')) {
-    router.push(`/list/${contextKey || normalized.split(':')[1]}`)
-  } else if (normalized.startsWith('issueDetail:')) {
-    router.push(`/issue/${contextKey || normalized.split(':')[1]}`)
-  } else {
-    router.push(pathFromPageId(normalized, contextKey))
-  }
-})
-
-// 让子页面更新当前标签标题
-function updateTabTitle(pageId: string, title: string) {
-  const normalized = normalizePageId(pageId)
-  const tab = wb.tabs.value.find(t => t.pageId === normalized)
-  if (tab) {
-    tab.title = title
-    saveTabs()
-  }
-}
-provide('updateTabTitle', updateTabTitle)
-
-function appendLog(msg: string) { logText.value += `[${new Date().toLocaleTimeString()}] ${msg}\n` }
-
-// 路由 ↔ 工作台标签同步
-watch(() => route.fullPath, (path) => {
-  const name = route.name
-  if (!name || name === 'welcome') return
-
-  // 带参数的路由：name:param → 每个实体独立标签
-  let pageId = normalizePageId(name as string)
-  let title = pageLabel.value
-  if (name === 'issueDetail' && route.params.id) {
-    pageId = `issueDetail:${route.params.id}`
-    title = PAGE_LABELS.issueDetail
-  } else if (name === 'listDetail' && route.params.id) {
-    pageId = `listDetail:${route.params.id}`
-    title = PAGE_LABELS.listDetail
-  }
-
-  const existing = wb.tabs.value.find(t => t.pageId === pageId)
-  if (existing) {
-    wb.activateTab(existing.id)
-    ensureTabPath(existing.id, pageId, existing.contextKey, path)
-  } else {
-    wb.openTab({ pageId, title })
-    const newTab = wb.tabs.value[wb.tabs.value.length - 1]
-    if (newTab) ensureTabPath(newTab.id, pageId, newTab.contextKey, path)
-  }
-}, { immediate: true })
-
-// ── Tab 持久化：刷新页面保留已打开标签 ──
-const SESSION_KEY = 'open-issue-tabs'
-
-// 启动时恢复
-function restoreTabs() {
-  try {
-    const raw = localStorage.getItem(SESSION_KEY)
-    if (!raw) return
-    const saved = JSON.parse(raw) as {
-      tabs: { id?: string; pageId: string; title: string; contextKey?: string }[]
-      activeTabId?: string
-      activePageId?: string
-      paths?: Record<string, string>
-    }
-    if (!saved.tabs?.length) return
-
-    const pathByPageId = new Map<string, string>()
-    let activePageId = saved.activePageId
-    if (!activePageId && saved.activeTabId) {
-      activePageId = saved.tabs.find(t => t.id === saved.activeTabId)?.pageId
-    }
-
-    for (const t of saved.tabs) {
-      const pageId = normalizePageId(t.pageId)
-      if (saved.paths?.[t.pageId]) {
-        pathByPageId.set(pageId, saved.paths[t.pageId])
-      } else if (saved.paths?.[pageId]) {
-        pathByPageId.set(pageId, saved.paths[pageId])
-      } else if (t.id && saved.paths?.[t.id]) {
-        pathByPageId.set(pageId, saved.paths[t.id])
-      }
-      t.pageId = pageId
-      if (!t.title) t.title = pageTitle(pageId)
-    }
-
-    if (activePageId) activePageId = normalizePageId(activePageId)
-
-    for (const t of saved.tabs) {
-      if (!wb.tabs.value.some(x => x.pageId === t.pageId)) {
-        wb.openTab({ pageId: t.pageId, title: t.title, contextKey: t.contextKey })
-      }
-    }
-
-    for (const t of saved.tabs) {
-      const tab = wb.tabs.value.find(x => x.pageId === t.pageId)
-      if (tab && t.title) tab.title = t.title
-    }
-
-    for (const tab of wb.tabs.value) {
-      ensureTabPath(
-        tab.id,
-        tab.pageId,
-        tab.contextKey,
-        pathByPageId.get(tab.pageId) ?? pathFromPageId(tab.pageId, tab.contextKey),
-      )
-    }
-
-    if (activePageId) {
-      const activeTab = wb.tabs.value.find(t => t.pageId === activePageId)
-      if (activeTab) {
-        wb.activateTab(activeTab.id)
-        const activePath = resolveTabPath(activeTab.id)
-        if (activePath && route.fullPath !== activePath) {
-          router.replace(activePath)
-        }
-      }
-    }
-  } catch { /* ignore */ }
-}
-
-function saveTabs() {
-  const paths: Record<string, string> = {}
-  for (const tab of wb.tabs.value) {
-    const path = tabPathMap.get(tab.id)
-    if (path) paths[tab.pageId] = path
-  }
-  const activeTab = wb.tabs.value.find(t => t.id === wb.activeTabId.value)
-  localStorage.setItem(SESSION_KEY, JSON.stringify({
-    tabs: wb.tabs.value.map(t => ({ pageId: t.pageId, title: t.title, contextKey: t.contextKey })),
-    activePageId: activeTab?.pageId ?? null,
-    paths,
-  }))
-}
-
-// 标签变化时自动保存
-watch(() => wb.tabs.value.length, saveTabs)
-watch(wb.activeTabId, saveTabs)
-
-// 页面关闭前保存
-window.addEventListener('beforeunload', saveTabs)
-
-// 首次挂载时恢复（在 route watcher 之后，避免覆盖）
-onMounted(() => {
-  dict.ensureLoaded()
-  if (localStorage.getItem(SESSION_KEY)) restoreTabs()
-})
 </script>
 
 <template>
-  <div class="shell">
-    <AppToolbar
-      :ribbon-collapsed="ribbonCollapsed"
-      :active-ribbon-tab="activeRibbonTab"
-      :wb-tabs="wb.tabBarTabs.value"
-      :active-wb-tab="wb.activeTabId.value"
-      @update:ribbon-collapsed="ribbonCollapsed = $event"
-      @update:active-ribbon-tab="activeRibbonTab = $event"
-      @open-config="configOpen = true"
-      @open-welcome="showWelcome = true"
-      @select-wb-tab="onSelectWbTab"
-      @close-wb-tab="onCloseWbTab"
-      @close-all-wb-tabs="onCloseAllWbTabs"
-    />
-    <div data-tour="ribbon-area">
-      <RibbonShell :collapsed="ribbonCollapsed" :active-tab="activeRibbonTab" @open="onRibbonOpen" />
-    </div>
-    <div class="shell-body">
-      <main class="shell-main" data-tour="shell-main">
-        <router-view v-slot="{ Component }">
-          <transition name="fade" mode="out-in">
-            <keep-alive :max="10">
-              <component :is="Component" :key="$route.fullPath" />
-            </keep-alive>
-          </transition>
-        </router-view>
-      </main>
-    </div>
-    <PnwShellLogPanel v-if="logExpanded" :log-text="logText" @clear="logText = ''" @close="logExpanded = false" />
-    <div data-tour="shell-status">
-      <StatusBar :label="pageLabel" @toggle-log="logExpanded = !logExpanded" />
+  <div class="open-issue-shell">
+    <div class="open-issue-workbench">
+      <PnwWorkbenchShell
+        :nodes="openIssueWorkbench.navigation.nodes"
+        :presentation="workbenchStore.presentation"
+        :active-node-id="openIssueWorkbench.navigation.activeNodeId"
+        :expanded-node-ids="workbenchStore.expandedNodeIds"
+        :tree-collapsed="workbenchStore.treeCollapsed"
+        :ribbon-appearance="workbenchStore.ribbonAppearance"
+        :color-scheme="workbenchStore.colorScheme"
+        :layout-state="workbenchStore.layoutState"
+        :contributions="{ bottom: true }"
+        :tabs="openIssueWorkbench.tabs.items"
+        :active-tab-id="openIssueWorkbench.tabs.activeId"
+        :can-close-all-tabs="openIssueWorkbench.tabs.items.length > 1"
+        :show-ribbon-appearance-menu="true"
+        brand-title="Open Issue List"
+        brand-subtitle="Phoenix Wing / local 0.5.2"
+        activity-aria-label="Open Issue 导航"
+        tree-header-label="Open Issue 工具"
+        @activate="openIssueWorkbench.actions.activateNode"
+        @select-module="openIssueWorkbench.actions.selectModule"
+        @select-tab="openIssueWorkbench.actions.selectTab"
+        @close-tab="openIssueWorkbench.actions.closeTab"
+        @close-all-tabs="openIssueWorkbench.actions.closeAllTabs"
+        @update:expanded-node-ids="workbenchStore.expandedNodeIds = $event"
+        @update:presentation="workbenchStore.presentation = $event"
+        @update:tree-collapsed="workbenchStore.treeCollapsed = $event"
+        @update:ribbon-appearance="workbenchStore.ribbonAppearance = $event"
+        @update:layout-state="workbenchStore.layoutState = $event"
+      >
+        <template #brand>
+          <button class="open-issue-brand" type="button" @click="showWelcome = true">
+            <PnwPhoenixWingMark class="open-issue-brand-mark" decorative />
+            <span>
+              <strong>Open Issue List</strong>
+              <small>PHOENIX WING / LOCAL 0.5.2</small>
+            </span>
+          </button>
+        </template>
+
+        <template #header-actions>
+          <span v-if="auth.user" class="open-issue-user">
+            {{ auth.user.displayName || auth.user.username }}
+          </span>
+          <el-button text size="small" type="danger" @click="logout">退出</el-button>
+        </template>
+
+        <div class="open-issue-editor" data-tour="shell-main">
+          <router-view v-slot="{ Component }">
+            <transition name="fade" mode="out-in">
+              <keep-alive :max="10">
+                <component :is="Component" :key="route.fullPath" />
+              </keep-alive>
+            </transition>
+          </router-view>
+        </div>
+
+        <template #bottom>
+          <PnwShellLogPanel
+            class="open-issue-bottom-log"
+            :log-text="logText"
+            empty-text="（暂无运行日志）"
+            @clear="logText = ''"
+            @close="workbenchStore.closeBottom()"
+          />
+        </template>
+
+        <template #footer>
+          <span class="open-issue-footer-page">【{{ openIssueWorkbench.pageLabel }}】</span>
+          <span aria-hidden="true">·</span>
+          <span>Open Issue List v{{ pkg.version }}</span>
+        </template>
+      </PnwWorkbenchShell>
     </div>
     <PnwChoiceDialogHost />
     <PnwAsyncProgressOverlay />
-    <PnwAppModalOverlay :open="configOpen" aria-label="设置" @close="configOpen = false">
-      <div style="padding:24px"><h2>设置</h2><p>配置面板（待实现）</p></div>
-    </PnwAppModalOverlay>
-    <PnwAppModalOverlay :open="showWelcome" aria-label="欢迎" panel-class="welcome-modal" @close="showWelcome = false">
+    <PnwAppModalOverlay
+      :open="showWelcome"
+      aria-label="欢迎"
+      panel-class="welcome-modal"
+      @close="showWelcome = false"
+    >
       <WelcomeView @close="showWelcome = false" />
     </PnwAppModalOverlay>
   </div>
 </template>
 
 <style scoped>
-.shell { height:100%; display:flex; flex-direction:column; overflow:hidden; background:#f5f7fa; }
-.shell-body { flex:1; display:flex; min-height:0; }
-.shell-main { flex:1; min-width:0; overflow:auto; padding:24px; background:#f5f7fa; }
-.welcome-modal .pnw-modal-panel { width: min(1000px, 96vw); max-height: min(92vh, 900px); }
+.open-issue-shell {
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.open-issue-workbench {
+  flex: 1;
+  min-height: 0;
+}
+
+.open-issue-editor {
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  padding: 24px;
+  box-sizing: border-box;
+}
+
+.open-issue-bottom-log {
+  --border: var(--pnw-workbench-border, #dbe3ed);
+  --muted: var(--pnw-workbench-muted, #64748b);
+  --panel-head-bg: var(--pnw-workbench-bg, #f8fafc);
+  --sidebar-bg: var(--pnw-workbench-surface, #fff);
+  --text: var(--pnw-workbench-text, #0f172a);
+  border-top: 0;
+}
+
+.open-issue-footer-page {
+  color: var(--pnw-control-active-text, #409eff);
+  font-weight: 600;
+}
+
+.open-issue-brand {
+  min-width: 188px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 12px 0 8px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.open-issue-brand:hover {
+  background: var(--pnw-workbench-hover-bg, rgba(59, 130, 246, 0.09));
+}
+
+.open-issue-brand-mark {
+  --pnw-phoenix-wing-mark-size: 32px;
+}
+
+.open-issue-brand span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+}
+
+.open-issue-brand strong,
+.open-issue-brand small {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.open-issue-brand strong { font-size: 13px; }
+.open-issue-brand small { color: var(--pnw-workbench-muted, #64748b); font-size: 9px; letter-spacing: .06em; }
+.open-issue-user { color: var(--pnw-workbench-muted, #64748b); font-size: 12px; white-space: nowrap; }
+
+@container pnw-workbench (max-width: 700px) {
+  .open-issue-brand { min-width: 38px; padding-right: 4px; }
+  .open-issue-brand span { display: none; }
+}
 </style>

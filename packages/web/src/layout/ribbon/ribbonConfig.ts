@@ -2,6 +2,17 @@ import type { PnwRibbonTabDef } from 'phoenix-wing'
 import { pnwRegisterRibbonIcons } from 'phoenix-wing'
 import { HomeFilled, Setting, List, Share, Odometer, TrendCharts, Collection, Cpu } from '@element-plus/icons-vue'
 
+const OPEN_ISSUE_RIBBON_ICONS = {
+  dashboard: Odometer,
+  lists: List,
+  pushHistory: TrendCharts,
+  org: Share,
+  functions: Collection,
+  testRunner: Cpu,
+  settings: Setting,
+  welcome: HomeFilled,
+} as const
+
 export const RIBBON_TABS: PnwRibbonTabDef[] = [
   {
     id: 'issue',
@@ -37,14 +48,9 @@ export const RIBBON_TABS: PnwRibbonTabDef[] = [
 ]
 
 export function setupRibbonIcons() {
-  pnwRegisterRibbonIcons({
-    dashboard: Odometer,
-    lists: List,
-    pushHistory: TrendCharts,
-    org: Share,
-    functions: Collection,
-    testRunner: Cpu,
-    settings: Setting,
-    welcome: HomeFilled,
-  })
+  pnwRegisterRibbonIcons(OPEN_ISSUE_RIBBON_ICONS)
+}
+
+export function openIssueRibbonIconFor(pageId: string) {
+  return OPEN_ISSUE_RIBBON_ICONS[pageId as keyof typeof OPEN_ISSUE_RIBBON_ICONS]
 }

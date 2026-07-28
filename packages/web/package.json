@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vue-tsc -b && vite build",
+    "build:local-wing": "node ../../scripts/build-local-wing-web.mjs",
     "preview": "vite preview",
     "test": "vitest run"
   },

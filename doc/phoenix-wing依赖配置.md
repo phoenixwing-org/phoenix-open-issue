@@ -39,3 +39,18 @@ Wing 发布新版本后不自动跟随升级。每次升级由 Open Issue 独立
 4. 在更新日志中记录 Wing 版本和必要的兼容性调整。
 
 如需验证尚未发布的 Wing 代码，应在 Wing 项目自身完成测试；确需跨项目临时联调时，也不应把本地链接或 Vite alias 提交到 Open Issue。
+
+## `single` 派生分支的本地 0.5.2 验证
+
+`codex/single-pnw-workbench` 是独立于 Admin 插件迁移线的本地验证分支。Wing `0.5.2` 不发布，Open Issue 的两个 manifest 与 lockfile 继续保持 Registry `0.5.1`。本分支只通过受控命令在当前进程切换来源：
+
+```bash
+pnpm wing:check-local
+pnpm dev:local-wing
+pnpm build:local-wing
+pnpm verify:local-wing
+```
+
+这些命令必须找到标准并列目录 `../phoenix-wing`，先构建 Wing，再把 Vite、Vitest 与本地 Web typecheck 指向 Wing `dist`；日志明确输出 `[Wing][LOCAL]`、路径和候选版本。普通 `pnpm dev`、`pnpm build` 与 `pnpm verify:ci` 仍是 Registry 基线，不能用来证明尚未发布的工作台 API。
+
+本地模式不是 `pnpm link`：不得写入 `link:`、`file:`、`workspace:`、override 或 node_modules。验证完成后应检查 `package.json`、`pnpm-lock.yaml` 和 `node_modules` 未发生来源污染。本地通过只证明源码候选可被真实消费者加载，不代表 Registry 发布完成。
