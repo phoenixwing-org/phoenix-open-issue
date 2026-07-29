@@ -9,8 +9,15 @@
 html, body, #app {
   height: 100%;
   font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
-  background: #f5f7fa;
-  color: #303133;
+  background: var(--el-bg-color-page, #f5f7fa);
+  color: var(--el-text-color-primary, #303133);
+  color-scheme: light;
+}
+
+html.dark,
+html.dark body,
+html.dark #app {
+  color-scheme: dark;
 }
 
 /* Ribbon layout vars */

@@ -21,9 +21,14 @@ import PageHelpButton from "@/components/PageHelpButton.vue"
 import type { DictItem, ExternalAuthProviderInfo, ExternalIdentityPublic, LoginPolicy } from '@open-issue/core'
 import { useDictStore, DICT_GROUPS } from '@/stores/dict'
 import { useAuthStore } from '@/stores/auth'
+import { useWorkbenchStore } from '@/stores/workbench'
+import PoiSettingsPrimary from '@/components/workbench/PoiSettingsPrimary.vue'
+import PoiSettingsRepairBottom from '@/components/workbench/PoiSettingsRepairBottom.vue'
+import { usePoiViewContribution } from '@/layout/workbench/poiViewContributions'
 
 const dictStore = useDictStore()
 const authStore = useAuthStore()
+const workbenchStore = useWorkbenchStore()
 const route = useRoute()
 const isSystemAdmin = computed(() => authStore.user?.systemRole === 'admin')
 
@@ -505,6 +510,7 @@ async function onRepairTask(taskId: RepairTaskId) {
     } else {
       repairResults.value = data.results
     }
+    workbenchStore.openBottom()
     ElMessage.success(data.message + (data.totalFixed ? `（共修正 ${data.totalFixed} 项）` : ''))
   } catch {
     // error handled by interceptor
@@ -513,9 +519,29 @@ async function onRepairTask(taskId: RepairTaskId) {
   }
 }
 
-function repairResultFor(taskId: RepairTaskId): RepairTaskResult | undefined {
-  return repairResults.value.find(r => r.task === taskId)
-}
+usePoiViewContribution(() => route.fullPath, {
+  primary: {
+    component: PoiSettingsPrimary,
+    props: computed(() => ({
+      activeSection: activeTab.value,
+      onSelect: (sectionId: string) => {
+        activeTab.value = sectionId
+      },
+    })),
+  },
+  bottom: {
+    component: PoiSettingsRepairBottom,
+    props: computed(() => ({
+      results: repairResults.value,
+    })),
+    tabs: [
+      {
+        id: 'database-repair-output',
+        label: '数据库修正结果',
+      },
+    ],
+  },
+})
 
 // ═══════════════════ 功能导入 ═══════════════════
 const showFuncImport = ref(false)
@@ -852,12 +878,6 @@ async function onFuncImportConfirm() {
               </el-button>
             </div>
             <p class="repair-desc">{{ task.description }}</p>
-            <div v-if="repairResultFor(task.id)" class="repair-result">
-              <el-tag type="success" size="small">{{ repairResultFor(task.id)!.message }}</el-tag>
-              <ul v-if="repairResultFor(task.id)!.details.length">
-                <li v-for="(line, i) in repairResultFor(task.id)!.details" :key="i">{{ line }}</li>
-              </ul>
-            </div>
           </div>
         </div>
       </el-tab-pane>
@@ -901,9 +921,7 @@ async function onFuncImportConfirm() {
 .repair-item { padding: 14px 16px; border: 1px solid #ebeef5; border-radius: 8px; background: #fafafa; }
 .repair-item-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 6px; }
 .repair-desc { margin: 0 0 8px; font-size: 0.82rem; color: #909399; line-height: 1.5; }
-.repair-result { margin-top: 8px; font-size: 0.82rem; }
-.repair-result ul { margin: 6px 0 0; padding-left: 18px; color: #606266; }
-.repair-result li { margin-bottom: 2px; }
+.page :deep(.el-tabs__header) { display: none; }
 .login-methods { display: flex; flex-direction: column; gap: 12px; max-width: 760px; min-height: 120px; }
 .login-policy-admin { padding: 12px 14px; border: 1px solid #ebeef5; border-radius: 8px; background: #fafafa; }
 .login-policy-checks { display: flex; flex-direction: column; gap: 6px; }

@@ -66,8 +66,12 @@ export function useOpenIssueWorkbench() {
     navLabel: pageTitle,
   })
 
-  const pageLabel = computed(() => pageTitle(normalizePageId(String(route.name || ''))))
+  const empty = computed(() => workbench.tabBarTabs.value.length === 0)
+  const pageLabel = computed(() => empty.value
+    ? '未打开任何 View'
+    : pageTitle(normalizePageId(String(route.name || ''))))
   const activeNodeId = computed(() => {
+    if (empty.value) return ''
     const name = normalizePageId(String(route.name || ''))
     if (name === 'listDetail' || name === 'issueDetail') return 'lists'
     return name
@@ -108,20 +112,17 @@ export function useOpenIssueWorkbench() {
 
   async function closeTab(tabId: string) {
     const closingIndex = workbench.tabs.value.findIndex(tab => tab.id === tabId)
-    tabPathMap.delete(tabId)
     if (!await workbench.closeTab(tabId)) return
+    tabPathMap.delete(tabId)
     const next = workbench.tabs.value[closingIndex]
       ?? workbench.tabs.value[closingIndex - 1]
       ?? workbench.tabs.value[0]
     const path = next ? resolveTabPath(next.id) : undefined
     if (path) await router.push(path)
-    else await router.push('/dashboard')
   }
 
   async function closeAllTabs() {
-    tabPathMap.clear()
-    await workbench.closeAllTabs()
-    await router.push('/dashboard')
+    if (await workbench.closeAllTabs()) tabPathMap.clear()
   }
 
   function saveTabs() {
@@ -215,6 +216,7 @@ export function useOpenIssueWorkbench() {
     tabs: {
       items: workbench.tabBarTabs,
       activeId: workbench.activeTabId,
+      empty,
     },
     pageLabel,
     actions: {

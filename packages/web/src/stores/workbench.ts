@@ -1,46 +1,73 @@
 import { defineStore } from 'pinia'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 import {
-  PNW_DEFAULT_RIBBON_APPEARANCE,
-  PNW_DEFAULT_WORKBENCH_LAYOUT_STATE,
-  type PnwActivityBarPresentation,
-  type PnwColorScheme,
-  type PnwRibbonAppearance,
-  type PnwWorkbenchLayoutState,
+  pnwNormalizeWorkbenchDisplayPreferences,
+  type PnwWorkbenchDisplayPreferences,
 } from 'phoenix-wing'
 
-const STORAGE_KEY = 'open-issue-workbench-preferences-v1'
+const STORAGE_KEY = 'open-issue-workbench-preferences-v2'
+const LEGACY_STORAGE_KEY = 'open-issue-workbench-preferences-v1'
 
 interface OpenIssueWorkbenchPreferences {
-  presentation?: PnwActivityBarPresentation
+  version: 2
+  displayPreferences: PnwWorkbenchDisplayPreferences
   expandedNodeIds?: readonly string[]
-  treeCollapsed?: boolean
-  ribbonAppearance?: PnwRibbonAppearance
-  colorScheme?: PnwColorScheme
-  layoutState?: PnwWorkbenchLayoutState
 }
 
-function readPreferences(): OpenIssueWorkbenchPreferences {
+function parseStoredPreferences(key: string): unknown {
   try {
-    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') as OpenIssueWorkbenchPreferences
+    return JSON.parse(localStorage.getItem(key) || 'null')
   } catch {
-    return {}
+    return null
+  }
+}
+
+function readPreferences() {
+  const current = parseStoredPreferences(STORAGE_KEY) as Partial<OpenIssueWorkbenchPreferences> | null
+  if (current?.version === 2) {
+    return {
+      displayPreferences: pnwNormalizeWorkbenchDisplayPreferences(current.displayPreferences),
+      expandedNodeIds: current.expandedNodeIds,
+    }
+  }
+
+  const legacy = parseStoredPreferences(LEGACY_STORAGE_KEY) as Record<string, unknown> | null
+  return {
+    displayPreferences: pnwNormalizeWorkbenchDisplayPreferences(legacy),
+    expandedNodeIds: legacy?.expandedNodeIds as readonly string[] | undefined,
   }
 }
 
 export const useWorkbenchStore = defineStore('workbench', () => {
   const stored = readPreferences()
-  const presentation = ref<PnwActivityBarPresentation>(stored.presentation === 'tree' ? 'tree' : 'ribbon')
+  const displayPreferences = ref(stored.displayPreferences)
   const expandedNodeIds = ref<readonly string[]>(stored.expandedNodeIds ?? [
     'issue',
     'issue-nav',
     'system',
     'system-nav',
   ])
-  const treeCollapsed = ref(Boolean(stored.treeCollapsed))
-  const ribbonAppearance = ref<PnwRibbonAppearance>(stored.ribbonAppearance ?? PNW_DEFAULT_RIBBON_APPEARANCE)
-  const colorScheme = ref<PnwColorScheme>(stored.colorScheme ?? 'system')
-  const layoutState = ref<PnwWorkbenchLayoutState>(stored.layoutState ?? PNW_DEFAULT_WORKBENCH_LAYOUT_STATE)
+
+  function preference<K extends keyof PnwWorkbenchDisplayPreferences>(key: K) {
+    return computed({
+      get: () => displayPreferences.value[key],
+      set: (value: PnwWorkbenchDisplayPreferences[K]) => {
+        displayPreferences.value = pnwNormalizeWorkbenchDisplayPreferences({
+          ...displayPreferences.value,
+          [key]: value,
+        })
+      },
+    })
+  }
+
+  const presentation = preference('presentation')
+  const ribbonAppearance = preference('ribbonAppearance')
+  const treeCollapsed = preference('treeCollapsed')
+  const treeAppearance = preference('treeAppearance')
+  const tabBarPlacement = preference('tabBarPlacement')
+  const colorScheme = preference('colorScheme')
+  const layoutState = preference('layoutState')
+  const settingsPositions = preference('settingsPositions')
 
   function closeBottom() {
     layoutState.value = {
@@ -52,18 +79,25 @@ export const useWorkbenchStore = defineStore('workbench', () => {
     }
   }
 
+  function openBottom() {
+    layoutState.value = {
+      ...layoutState.value,
+      visibility: {
+        ...layoutState.value.visibility,
+        bottom: true,
+      },
+    }
+  }
+
   function persist() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
-      presentation: presentation.value,
+      version: 2,
+      displayPreferences: displayPreferences.value,
       expandedNodeIds: expandedNodeIds.value,
-      treeCollapsed: treeCollapsed.value,
-      ribbonAppearance: ribbonAppearance.value,
-      colorScheme: colorScheme.value,
-      layoutState: layoutState.value,
     } satisfies OpenIssueWorkbenchPreferences))
   }
 
-  watch([presentation, expandedNodeIds, treeCollapsed, ribbonAppearance, colorScheme, layoutState], persist, {
+  watch([displayPreferences, expandedNodeIds], persist, {
     deep: true,
   })
 
@@ -71,9 +105,13 @@ export const useWorkbenchStore = defineStore('workbench', () => {
     presentation,
     expandedNodeIds,
     treeCollapsed,
+    treeAppearance,
+    tabBarPlacement,
     ribbonAppearance,
     colorScheme,
     layoutState,
+    settingsPositions,
     closeBottom,
+    openBottom,
   }
 })

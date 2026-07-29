@@ -54,6 +54,8 @@ try {
       ...process.env,
       PHOENIX_WING_MODE: 'local',
       PHOENIX_WING_ROOT: wing.root,
+      VITE_PHOENIX_WING_SOURCE: 'LOCAL',
+      VITE_PHOENIX_WING_VERSION: wing.version,
       OPEN_ISSUE_LOCAL_WING_TSCONFIG: tsconfigPath,
     },
   })

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import pkg from '../../package.json'
 import {
@@ -7,23 +7,40 @@ import {
   PnwAsyncProgressOverlay,
   PnwChoiceDialogHost,
   PnwPhoenixWingMark,
-  PnwShellLogPanel,
   PnwWorkbenchShell,
+  PNW_VERSION,
   usePnwDocumentTitle,
 } from 'phoenix-wing'
 import WelcomeView from '@/views/WelcomeView.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useWorkbenchStore } from '@/stores/workbench'
 import { useOpenIssueWorkbench } from '@/composables/useOpenIssueWorkbench'
+import {
+  createPoiViewContributionRegistry,
+  providePoiViewContributionRegistry,
+  usePoiRegisteredViewContribution,
+} from '@/layout/workbench/poiViewContributions'
+import { usePoiColorScheme } from '@/layout/workbench/usePoiColorScheme'
 
 const router = useRouter()
 const route = useRoute()
 const auth = useAuthStore()
 const workbenchStore = useWorkbenchStore()
+usePoiColorScheme(() => workbenchStore.colorScheme)
+const poiViewContributionRegistry = createPoiViewContributionRegistry()
+providePoiViewContributionRegistry(poiViewContributionRegistry)
 const openIssueWorkbenchController = useOpenIssueWorkbench()
 const openIssueWorkbench = reactive(openIssueWorkbenchController)
 const showWelcome = ref(false)
-const logText = ref('')
+const wingSource = import.meta.env.VITE_PHOENIX_WING_SOURCE === 'LOCAL' ? 'LOCAL' : 'REGISTRY'
+const wingBrandSubtitle = `Phoenix Wing / ${wingSource} ${PNW_VERSION}`
+const activeViewId = computed(() =>
+  openIssueWorkbenchController.tabs.empty.value ? null : route.fullPath,
+)
+const viewBlocks = usePoiRegisteredViewContribution(
+  poiViewContributionRegistry,
+  activeViewId,
+)
 
 usePnwDocumentTitle({
   workspaceShort: ref('Open Issue'),
@@ -47,15 +64,19 @@ function logout() {
         :expanded-node-ids="workbenchStore.expandedNodeIds"
         :tree-collapsed="workbenchStore.treeCollapsed"
         :ribbon-appearance="workbenchStore.ribbonAppearance"
+        :tree-appearance="workbenchStore.treeAppearance"
+        :tab-bar-placement="workbenchStore.tabBarPlacement"
         :color-scheme="workbenchStore.colorScheme"
         :layout-state="workbenchStore.layoutState"
-        :contributions="{ bottom: true }"
+        :display-settings-positions="workbenchStore.settingsPositions"
+        :view-blocks="viewBlocks"
         :tabs="openIssueWorkbench.tabs.items"
         :active-tab-id="openIssueWorkbench.tabs.activeId"
+        :show-empty-view="openIssueWorkbench.tabs.empty"
         :can-close-all-tabs="openIssueWorkbench.tabs.items.length > 1"
         :show-ribbon-appearance-menu="true"
         brand-title="Open Issue List"
-        brand-subtitle="Phoenix Wing / local 0.5.2"
+        :brand-subtitle="wingBrandSubtitle"
         activity-aria-label="Open Issue 导航"
         tree-header-label="Open Issue 工具"
         @activate="openIssueWorkbench.actions.activateNode"
@@ -67,14 +88,17 @@ function logout() {
         @update:presentation="workbenchStore.presentation = $event"
         @update:tree-collapsed="workbenchStore.treeCollapsed = $event"
         @update:ribbon-appearance="workbenchStore.ribbonAppearance = $event"
+        @update:tree-appearance="workbenchStore.treeAppearance = $event"
+        @update:tab-bar-placement="workbenchStore.tabBarPlacement = $event"
         @update:layout-state="workbenchStore.layoutState = $event"
+        @update:display-settings-positions="workbenchStore.settingsPositions = $event"
       >
         <template #brand>
           <button class="open-issue-brand" type="button" @click="showWelcome = true">
             <PnwPhoenixWingMark class="open-issue-brand-mark" decorative />
             <span>
               <strong>Open Issue List</strong>
-              <small>PHOENIX WING / LOCAL 0.5.2</small>
+              <small>{{ wingBrandSubtitle }}</small>
             </span>
           </button>
         </template>
@@ -95,16 +119,6 @@ function logout() {
             </transition>
           </router-view>
         </div>
-
-        <template #bottom>
-          <PnwShellLogPanel
-            class="open-issue-bottom-log"
-            :log-text="logText"
-            empty-text="（暂无运行日志）"
-            @clear="logText = ''"
-            @close="workbenchStore.closeBottom()"
-          />
-        </template>
 
         <template #footer>
           <span class="open-issue-footer-page">【{{ openIssueWorkbench.pageLabel }}】</span>
@@ -146,15 +160,6 @@ function logout() {
   overflow: auto;
   padding: 24px;
   box-sizing: border-box;
-}
-
-.open-issue-bottom-log {
-  --border: var(--pnw-workbench-border, #dbe3ed);
-  --muted: var(--pnw-workbench-muted, #64748b);
-  --panel-head-bg: var(--pnw-workbench-bg, #f8fafc);
-  --sidebar-bg: var(--pnw-workbench-surface, #fff);
-  --text: var(--pnw-workbench-text, #0f172a);
-  border-top: 0;
 }
 
 .open-issue-footer-page {

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest'
+import webManifest from '../package.json'
 import ribbonFixture from 'phoenix-wing/fixtures/ribbon-contribution-v1.json'
 import {
   PNW_VERSION,
@@ -17,9 +18,13 @@ afterEach(() => {
   if (rootDialogOpen.value) pnwResolveChoice(null)
 })
 
-describe('Wing 0.5.1 Registry 契约', () => {
+const expectedWingVersion = import.meta.env.VITE_PHOENIX_WING_VERSION
+  ?? webManifest.dependencies['phoenix-wing']
+const wingSource = import.meta.env.VITE_PHOENIX_WING_SOURCE === 'LOCAL' ? 'LOCAL' : 'Registry'
+
+describe(`Wing ${wingSource} 契约`, () => {
   it('根入口与组件内部 composable 子路径共享同一 singleton', async () => {
-    expect(PNW_VERSION).toBe('0.5.1')
+    expect(PNW_VERSION).toBe(expectedWingVersion)
     expect(rootDialogOpen).toBe(subpathDialogOpen)
     expect(rootDialogRequest).toBe(subpathDialogRequest)
 

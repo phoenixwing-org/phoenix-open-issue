@@ -2,28 +2,23 @@
 import { onMounted, ref, computed, inject } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useIssueStore } from '@/stores/issues'
-import { useSettingsStore } from '@/stores/settings'
-import { getCheckpoints, createCheckpoint, updateCheckpoint } from '@/api/checkpoints'
 import { getAllUsers } from '@/api/auth'
 import { ElMessage } from 'element-plus'
 import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
 import PageHelpButton from "@/components/PageHelpButton.vue"
-import CheckpointFormDialog from '@/components/CheckpointFormDialog.vue'
-import CheckpointStatusTag from '@/components/CheckpointStatusTag.vue'
 import IssueFormDialog from '@/components/IssueFormDialog.vue'
 import PushDialog from '@/views/push/PushDialog.vue'
 import { useDictStore } from '@/stores/dict'
+import PoiIssueCheckpointsSecondary from '@/components/workbench/PoiIssueCheckpointsSecondary.vue'
+import { usePoiViewContribution } from '@/layout/workbench/poiViewContributions'
 
 const dict = useDictStore()
-import type { Checkpoint, CheckpointStatus } from '@open-issue/core'
-import { isOverdue } from '@open-issue/core'
 
 const props = defineProps<{ issueId?: string }>()
 const emit = defineEmits<{ close: []; 'checkpoint-created': [] }>()
 const route = useRoute()
 const router = useRouter()
 const issueStore = useIssueStore()
-const settings = useSettingsStore()
 const issueId = props.issueId || (route.params.id as string)
 const openTab = inject<(pageId: string, title: string, contextKey?: string) => void>('openTab', () => {})
 const updateTabTitle = inject<(pageId: string, title: string) => void>('updateTabTitle', () => {})
@@ -37,12 +32,9 @@ function openAsPage() {
   openTab(`issueDetail:${issueId}`, title, issueId)
 }
 
-const checkpoints = ref<Checkpoint[]>([])
-const allUsers = ref<any[]>([])
-const showCpForm = ref(false)
-const editCheckpoint = ref<Checkpoint | null>(null)
 const showPush = ref(false)
 const showEdit = ref(false)
+const allUsers = ref<any[]>([])
 const canModify = computed(() => Boolean((issueStore.currentIssue as any)?._canModify))
 const canPush = computed(() => Boolean((issueStore.currentIssue as any)?._canPush))
 
@@ -51,20 +43,30 @@ const statusTag: Record<string, string | undefined> = { open: 'info', in_progres
 const priorityTag: Record<string, string | undefined> = { low: 'info', medium: 'warning', high: 'danger', critical: undefined }
 const priorityLabel: Record<string, string> = { low: '低', medium: '中', high: '高', critical: '紧急' }
 const severityTag: Record<string, string | undefined> = { fatal: 'danger', major: 'warning', minor: 'info', trivial: undefined }
-const cpStatusLabel: Record<string, string> = { pending: '待处理', done: '已完成', skipped: '已跳过', voided: '已作废' }
-const cpStatusColor: Record<string, string> = { pending: '#909399', done: '#67c23a', skipped: '#e6a23c', voided: '#f56c6c' }
+const checkpointContributionProps = computed(() => ({
+  issueId,
+  issueTitle: issueStore.currentIssue?.title,
+  issueNo: issueStore.currentIssue?.issueNo,
+  canModify: canModify.value,
+  onCheckpointCreated: () => emit('checkpoint-created'),
+}))
 
-const sortedCheckpoints = computed(() => {
-  const direction = settings.checkpointTimelineOrder === 'desc' ? -1 : 1
-  return [...checkpoints.value].sort((a, b) => {
-    const date = a.checkpointDate.localeCompare(b.checkpointDate)
-    if (date !== 0) return date * direction
-    return (a.sortOrder - b.sortOrder) * direction
-  })
-})
+usePoiViewContribution(
+  () => isModal.value ? null : route.fullPath,
+  {
+    secondary: {
+      component: PoiIssueCheckpointsSecondary,
+      props: checkpointContributionProps,
+    },
+  },
+)
 
 onMounted(async () => {
-  await issueStore.fetchIssue(issueId)
+  const [, usersResponse] = await Promise.all([
+    issueStore.fetchIssue(issueId),
+    getAllUsers({ includeDisabled: true }),
+  ])
+  allUsers.value = usersResponse.data
   // 更新标签标题
   if (!isModal.value && issueStore.currentIssue) {
     const label = issueStore.currentIssue.title.length > 16
@@ -72,100 +74,14 @@ onMounted(async () => {
       : issueStore.currentIssue.title
     updateTabTitle(`issueDetail:${issueId}`, `📋 ${label}`)
   }
-  await loadCheckpoints()
-  const res = await getAllUsers({ includeDisabled: true })
-  allUsers.value = res.data
 })
 
-// 表单下拉选择时排除已禁用用户
-const activeUsers = computed(() => allUsers.value.filter((u: any) => !u.disabled))
-
-async function loadCheckpoints() {
-  const res = await getCheckpoints(issueId)
-  checkpoints.value = res.data
-}
+const activeUsers = computed(() => allUsers.value.filter((user: any) => !user.disabled))
 
 function getUserName(id: string | null): string {
   if (!id) return '-'
-  const u = allUsers.value.find((u: any) => u.id === id)
-  return u?.displayName || u?.username || id.slice(0, 8)
-}
-
-function getCheckpointClass(cp: Checkpoint) {
-  const { overdue } = isOverdue(cp.checkpointDate, cp.status)
-  return overdue ? 'checkpoint-overdue' : ''
-}
-
-async function onCreateCp(data: any) {
-  await createCheckpoint(issueId, data)
-  showCpForm.value = false
-  ElMessage.success('点检项已添加')
-  await loadCheckpoints()
-  emit('checkpoint-created')
-}
-
-function openEditCheckpoint(cp: Checkpoint) {
-  if (!canModify.value) return
-  editCheckpoint.value = cp
-}
-
-async function onEditCheckpoint(data: {
-  checkpointDate: string
-  description: string
-  responsibleUserId?: string
-  status?: CheckpointStatus
-}) {
-  if (!editCheckpoint.value) return
-  await updateCheckpoint(editCheckpoint.value.id, data)
-  editCheckpoint.value = null
-  ElMessage.success('点检已更新')
-  await loadCheckpoints()
-  emit('checkpoint-created')
-}
-
-async function onChangeCheckpointStatus(cp: Checkpoint, status: CheckpointStatus) {
-  if (!canModify.value) return
-  if (cp.status === status) return
-  await updateCheckpoint(cp.id, { status })
-  ElMessage.success(`点检已更新为${cpStatusLabel[status]}`)
-  await loadCheckpoints()
-  emit('checkpoint-created')
-}
-
-function checkpointOverdue(cp: Checkpoint) {
-  return isOverdue(cp.checkpointDate, cp.status).overdue
-}
-
-function escapeCell(value: string) {
-  return value.replace(/\|/g, '\\|').replace(/\r?\n/g, '<br>')
-}
-
-async function copyTimelineTable() {
-  const issue = issueStore.currentIssue
-  if (!issue) return
-  const rows = sortedCheckpoints.value.map(cp =>
-    `| ${cp.checkpointDate} | ${cpStatusLabel[cp.status]} | ${escapeCell(cp.description)} | ${escapeCell(getUserName(cp.responsibleUserId))} |`,
-  )
-  const text = [
-    `## ${issue.issueNo} ${issue.title}`,
-    '',
-    '| 日期 | 状态 | 内容 | 负责人 |',
-    '| --- | --- | --- | --- |',
-    ...rows,
-  ].join('\n')
-  try {
-    await navigator.clipboard.writeText(text)
-  } catch {
-    const textarea = document.createElement('textarea')
-    textarea.value = text
-    textarea.style.position = 'fixed'
-    textarea.style.opacity = '0'
-    document.body.appendChild(textarea)
-    textarea.select()
-    document.execCommand('copy')
-    textarea.remove()
-  }
-  ElMessage.success(`已复制 ${rows.length} 条时间线`)
+  const user = allUsers.value.find((item: any) => item.id === id)
+  return user?.displayName || user?.username || id.slice(0, 8)
 }
 
 function formatDate(d: string | null): string {
@@ -196,18 +112,6 @@ function goBack() {
           <el-button v-if="issueStore.currentIssue && canModify" size="small" type="primary" plain @click="showEdit = true">
             <el-icon><Edit /></el-icon> 编辑
           </el-button>
-          <el-tooltip v-if="issueStore.currentIssue && canModify" content="添加点检" placement="bottom">
-            <el-button
-              size="small"
-              type="success"
-              plain
-              circle
-              aria-label="添加点检"
-              @click="showCpForm = true"
-            >
-              <el-icon><Plus /></el-icon>
-            </el-button>
-          </el-tooltip>
           <el-tooltip v-if="issueStore.currentIssue && canPush" content="推送到其他列表" placement="bottom">
             <el-button
               size="small"
@@ -234,7 +138,11 @@ function goBack() {
       </template>
     </PnwPageHeader>
 
-    <div v-if="issueStore.currentIssue" class="issue-workspace">
+    <div
+      v-if="issueStore.currentIssue"
+      class="issue-workspace"
+      :class="{ 'issue-workspace--modal': isModal }"
+    >
       <div class="issue-detail">
       <div class="detail-meta" data-tour="issue-meta">
         <span class="issue-no">{{ issueStore.currentIssue.issueNo }}</span>
@@ -324,81 +232,16 @@ function goBack() {
       </div>
       </div>
 
-      <!-- 点检时间线 -->
-      <aside class="checkpoints-section" data-tour="issue-checkpoints">
-      <div class="section-head">
-        <h3>点检时间线</h3>
-        <div class="timeline-tools">
-          <el-radio-group v-model="settings.checkpointTimelineDisplay" size="small" aria-label="时间线显示形式">
-            <el-radio-button value="cards">卡片</el-radio-button>
-            <el-radio-button value="table">表格</el-radio-button>
-          </el-radio-group>
-          <el-tooltip :content="settings.checkpointTimelineOrder === 'desc' ? '当前：最新优先' : '当前：最早优先'" placement="top">
-            <el-button
-              size="small"
-              circle
-              aria-label="切换时间线排序"
-              @click="settings.checkpointTimelineOrder = settings.checkpointTimelineOrder === 'desc' ? 'asc' : 'desc'"
-            ><el-icon><Sort /></el-icon></el-button>
-          </el-tooltip>
-          <el-tooltip content="复制时间线表格" placement="top">
-            <el-button size="small" circle aria-label="复制时间线表格" @click="copyTimelineTable"><el-icon><DocumentCopy /></el-icon></el-button>
-          </el-tooltip>
-        </div>
-      </div>
-
-      <el-empty v-if="!checkpoints.length" description="暂无点检项" />
-
-      <el-timeline v-else-if="settings.checkpointTimelineDisplay === 'cards'">
-        <el-timeline-item
-          v-for="cp in sortedCheckpoints" :key="cp.id"
-          :timestamp="cp.checkpointDate"
-          :color="cpStatusColor[cp.status]"
-          placement="top"
-        >
-          <div :class="['cp-card', getCheckpointClass(cp), { 'cp-editable': canModify }]" :title="canModify ? '点击编辑点检' : ''" @click="openEditCheckpoint(cp)">
-            <div class="cp-header">
-              <CheckpointStatusTag :status="cp.status" :overdue="checkpointOverdue(cp)" :disabled="!canModify" @change="onChangeCheckpointStatus(cp, $event)" />
-              <span class="cp-responsible">负责人: {{ getUserName(cp.responsibleUserId) }}</span>
-            </div>
-            <p class="cp-desc">{{ cp.description }}</p>
-          </div>
-        </el-timeline-item>
-      </el-timeline>
-      <el-table v-else :data="sortedCheckpoints" size="small" class="checkpoint-table" :fit="true">
-        <el-table-column prop="checkpointDate" label="日期" width="100" />
-        <el-table-column label="状态" width="76">
-          <template #default="{ row }">
-            <CheckpointStatusTag :status="row.status" :overdue="checkpointOverdue(row)" :disabled="!canModify" @change="onChangeCheckpointStatus(row, $event)" />
-          </template>
-        </el-table-column>
-        <el-table-column prop="description" label="内容" min-width="120" show-overflow-tooltip>
-          <template #default="{ row }"><span :class="{ 'cp-table-desc': canModify }" :title="canModify ? '点击编辑点检' : ''" @click="openEditCheckpoint(row)">{{ row.description }}</span></template>
-        </el-table-column>
-        <el-table-column label="负责人" min-width="76" show-overflow-tooltip>
-          <template #default="{ row }"><span :title="getUserName(row.responsibleUserId)">{{ getUserName(row.responsibleUserId) }}</span></template>
-        </el-table-column>
-      </el-table>
-      </aside>
+      <PoiIssueCheckpointsSecondary
+        v-if="isModal"
+        :issue-id="issueId"
+        :issue-title="issueStore.currentIssue.title"
+        :issue-no="issueStore.currentIssue.issueNo"
+        :can-modify="canModify"
+        @checkpoint-created="emit('checkpoint-created')"
+      />
     </div>
 
-    <CheckpointFormDialog
-      v-if="showCpForm"
-      :users="activeUsers"
-      :issue-title="issueStore.currentIssue?.title"
-      :issue-no="issueStore.currentIssue?.issueNo"
-      @confirm="onCreateCp"
-      @close="showCpForm = false"
-    />
-    <CheckpointFormDialog
-      v-if="editCheckpoint"
-      :users="activeUsers"
-      :initial="editCheckpoint"
-      :issue-title="issueStore.currentIssue?.title"
-      :issue-no="issueStore.currentIssue?.issueNo"
-      @confirm="onEditCheckpoint"
-      @close="editCheckpoint = null"
-    />
     <IssueFormDialog
       v-if="showEdit"
       :all-users="activeUsers"
@@ -459,8 +302,11 @@ function goBack() {
 }
 .header-right { display: flex; align-items: center; gap: 6px; }
 .issue-workspace {
+  min-width: 0;
+}
+.issue-workspace--modal {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(400px, 480px);
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 400px), 1fr));
   gap: 28px;
   align-items: start;
 }
@@ -471,31 +317,8 @@ function goBack() {
 .detail-desc { margin-top: 16px; padding: 12px 16px; background: #fff; border-radius: 8px; border: 1px solid #ebeef5; }
 .detail-desc h4 { font-size: 0.85rem; color: #909399; margin-bottom: 6px; }
 .detail-desc p { font-size: 0.9rem; color: #606266; line-height: 1.6; }
-.checkpoints-section {
-  min-width: 0;
-  padding-left: 24px;
-  border-left: 1px solid #ebeef5;
-}
-.section-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-.section-head h3 { font-size: 1.1rem; font-weight: 650; }
-.timeline-tools { display: inline-flex; align-items: center; gap: 6px; }
-.cp-card { background: #fff; padding: 12px; border-radius: 8px; border: 1px solid #ebeef5; }
-.cp-card.cp-editable { cursor: pointer; }
-.cp-card.cp-editable:hover { border-color: #b3d8ff; background: #f7fbff; }
-.cp-header { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
-.cp-responsible { font-size: 0.78rem; color: #909399; }
-.cp-desc { font-size: 0.9rem; color: #303133; margin: 0; line-height: 1.6; white-space: pre-wrap; }
-.cp-table-desc { display: block; cursor: pointer; }
-.cp-table-desc:hover { color: #409eff; text-decoration: underline; text-underline-offset: 2px; }
-.checkpoint-table :deep(.el-table__cell) { padding: 7px 0; }
-@media (max-width: 1100px) {
-  .issue-workspace { grid-template-columns: minmax(0, 1fr); gap: 24px; }
-  .checkpoints-section { padding: 20px 0 0; border-top: 1px solid #ebeef5; border-left: 0; }
-}
 @media (max-width: 640px) {
   .detail-meta { flex-wrap: wrap; gap: 8px; }
-  .section-head { align-items: flex-start; gap: 10px; flex-direction: column; }
-  .timeline-tools { width: 100%; justify-content: flex-end; }
 }
 .page { padding: 16px; }
 </style>

@@ -43,6 +43,8 @@ import ListFormDialog from '@/components/ListFormDialog.vue'
 import MemberManageDialog from '@/components/MemberManageDialog.vue'
 import PushDialog from '@/views/push/PushDialog.vue'
 import { useAuthStore } from '@/stores/auth'
+import PoiIssueTablePrimary from '@/components/workbench/PoiIssueTablePrimary.vue'
+import { usePoiViewContribution } from '@/layout/workbench/poiViewContributions'
 
 const route = useRoute()
 const router = useRouter()
@@ -325,6 +327,32 @@ function clearFilters() {
   categoryFilter.value = ''
   showUnwatchedOnly.value = false
 }
+
+usePoiViewContribution(() => route.fullPath, {
+  primary: {
+    component: PoiIssueTablePrimary,
+    props: computed(() => ({
+      searchText: searchText.value,
+      showUnwatchedOnly: showUnwatchedOnly.value,
+      status: statusFilter.value,
+      priority: priorityFilter.value,
+      severity: severityFilter.value,
+      category: categoryFilter.value,
+      statusOptions: Object.entries(statusLabel).map(([value, label]) => ({ value, label })),
+      priorityOptions: Object.entries(priorityLabel).map(([value, label]) => ({ value, label })),
+      severityOptions: dict.getOptions('severity'),
+      categoryOptions: dict.getOptions('issueCategory'),
+      hasActiveFilters: hasActiveFilters.value,
+      onUpdateSearch: (value: string) => { searchText.value = value },
+      onUpdateUnwatched: (value: boolean) => { showUnwatchedOnly.value = value },
+      onUpdateStatus: (value: string) => { statusFilter.value = value },
+      onUpdatePriority: (value: string) => { priorityFilter.value = value },
+      onUpdateSeverity: (value: string) => { severityFilter.value = value },
+      onUpdateCategory: (value: string) => { categoryFilter.value = value },
+      onClear: clearFilters,
+    })),
+  },
+})
 
 function goIssueDetail(id: string) { modalIssueId.value = id; showIssueModal.value = true }
 
@@ -637,23 +665,7 @@ provide('issueListCellCtx', reactive({
       <template #help><PageHelpButton page-id="listDetail" /></template>
     </PnwPageHeader>
 
-    <!-- 筛选栏 -->
-    <div class="filters" data-tour="list-filters">
-      <el-input v-model="searchText" placeholder="搜索编号/标题/描述..." clearable style="width:220px" size="small" />
-      <el-checkbox v-model="showUnwatchedOnly" size="small" style="margin-left:4px">只显示【不关注】</el-checkbox>
-      <el-select v-model="statusFilter" placeholder="状态" clearable size="small" style="width:110px">
-        <el-option v-for="(l, v) in statusLabel" :key="v" :label="l" :value="v" />
-      </el-select>
-      <el-select v-model="priorityFilter" placeholder="优先级" clearable size="small" style="width:100px">
-        <el-option v-for="(l, v) in priorityLabel" :key="v" :label="l" :value="v" />
-      </el-select>
-      <el-select v-model="severityFilter" placeholder="严重度" clearable size="small" style="width:100px">
-        <el-option v-for="o in dict.getOptions('severity')" :key="o.value" :label="o.label" :value="o.value" />
-      </el-select>
-      <el-select v-model="categoryFilter" placeholder="分类" clearable size="small" style="width:100px">
-        <el-option v-for="o in dict.getOptions('issueCategory')" :key="o.value" :label="o.label" :value="o.value" />
-      </el-select>
-      <el-button v-if="hasActiveFilters" size="small" link type="primary" @click="clearFilters">清除筛选</el-button>
+    <div class="filters">
       <span v-if="viewMode === 'timeline'" style="font-size:0.8rem;color:#909399;display:inline-flex;align-items:center;gap:4px">
         显示最近
         <el-select :model-value="settings.maxTimelineRows" @update:model-value="settings.maxTimelineRows = $event" size="small" style="width:65px">
