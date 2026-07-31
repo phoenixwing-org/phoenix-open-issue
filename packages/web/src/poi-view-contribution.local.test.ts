@@ -1,3 +1,4 @@
+import { isProxy, isReactive, reactive } from 'vue'
 import { describe, expect, it } from 'vitest'
 import type { VNode } from 'vue'
 
@@ -44,6 +45,26 @@ const localDescribe = import.meta.env.VITE_PHOENIX_WING_SOURCE === 'LOCAL'
   : describe.skip
 
 localDescribe('Wing LOCAL View contribution 契约', () => {
+  it('静态导航树及图标组件不会被 Vue 深度响应式代理', async () => {
+    const { createOpenIssueNavigationNodes } = await import(
+      './layout/workbench/openIssueNavigation'
+    )
+    const nodes = createOpenIssueNavigationNodes()
+    const shellState = reactive({ navigation: { nodes } })
+    const exposedNodes = shellState.navigation.nodes
+    const pageNodes = exposedNodes.flatMap(module =>
+      module.children?.flatMap(group => group.children ?? [group]) ?? [],
+    )
+
+    expect(isReactive(exposedNodes)).toBe(false)
+    expect(isProxy(exposedNodes)).toBe(false)
+    expect(pageNodes.length).toBeGreaterThan(0)
+    for (const node of pageNodes) {
+      expect(isReactive(node.icon)).toBe(false)
+      expect(isProxy(node.icon)).toBe(false)
+    }
+  })
+
   it('路由切换、KeepAlive 停用/恢复与卸载都维护正确注册', async () => {
     const {
       pnwCreateViewContributionRegistry,

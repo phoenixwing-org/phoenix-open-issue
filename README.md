@@ -106,15 +106,15 @@ pnpm dev              # 一键启动 core + server + web（首次启动自动创
 
 ```bash
 pnpm dev             # 一键启动 core + server + web
-pnpm dev:local-wing  # 独立验证分支：使用并列 ../phoenix-wing 构建制品
+pnpm dev:local-wing  # 使用并列 ../phoenix-wing 构建制品验证源码候选
 pnpm dev:web         # 仅启动前端 :5183
 pnpm dev:server      # 仅启动后端 :3400
 pnpm build           # 全部构建
-pnpm build:local-wing # 使用未发布 Wing 本地候选完成三段构建
+pnpm build:local-wing # 使用并列 Wing 工作区完成三段构建
 pnpm seed            # CLI 重新填充演示数据（force 追加可清空）
 ```
 
-> 本仓前后端 manifest 与 lockfile 精确消费 npm Registry `phoenix-wing@0.5.1`。`single` 派生的工作台验证分支另提供显式 `*:local-wing` 命令，在单次进程内解析标准并列 `../phoenix-wing`；普通命令仍不探测相邻源码。详见 [phoenix-wing 依赖配置](doc/phoenix-wing依赖配置.md)。
+> 本仓前后端 manifest 与 lockfile 精确消费 npm Registry `phoenix-wing@0.6.0`。另提供显式 `*:local-wing` 命令，在单次进程内验证标准并列 `../phoenix-wing` 的源码候选；普通命令仍不探测相邻源码。详见 [phoenix-wing 依赖配置](doc/phoenix-wing依赖配置.md)。
 
 
 

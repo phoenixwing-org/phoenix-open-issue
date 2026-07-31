@@ -1,15 +1,29 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { getMyPushHistory, handlePush } from '@/api/push'
 import { ElMessage } from 'element-plus';
 import { pnwPromptInput } from 'phoenix-wing'
 import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
 import PageHelpButton from "@/components/PageHelpButton.vue"
+import PoiPushHistoryPrimary from '@/components/workbench/PoiPushHistoryPrimary.vue'
+import { usePoiViewContribution } from '@/layout/workbench/poiViewContributions'
 
+type PushStatusFilter = 'all' | 'pending' | 'accepted' | 'rejected'
+const route = useRoute()
 const router = useRouter()
 const records = ref<any[]>([])
 const loading = ref(false)
+const statusFilter = ref<PushStatusFilter>('all')
+const filteredRecords = computed(() => statusFilter.value === 'all'
+  ? records.value
+  : records.value.filter(record => record.status === statusFilter.value))
+const statusCounts = computed(() => ({
+  all: records.value.length,
+  pending: records.value.filter(record => record.status === 'pending').length,
+  accepted: records.value.filter(record => record.status === 'accepted').length,
+  rejected: records.value.filter(record => record.status === 'rejected').length,
+}))
 
 async function load() {
   loading.value = true
@@ -41,6 +55,19 @@ async function onReject(recordId: string) {
 function goList(listId: string) {
   router.push(`/list/${listId}`)
 }
+
+usePoiViewContribution(() => route.fullPath, {
+  primary: {
+    component: PoiPushHistoryPrimary,
+    props: computed(() => ({
+      status: statusFilter.value,
+      counts: statusCounts.value,
+      loading: loading.value,
+      onSelectStatus: (status: PushStatusFilter) => { statusFilter.value = status },
+      onRefresh: load,
+    })),
+  },
+})
 </script>
 
 <template>
@@ -49,7 +76,7 @@ function goList(listId: string) {
       <template #help><PageHelpButton page-id="pushHistory" /></template>
     </PnwPageHeader>
 
-    <el-table :data="records" v-loading="loading" stripe size="small" data-tour="push-table">
+    <el-table :data="filteredRecords" v-loading="loading" stripe size="small" data-tour="push-table">
       <el-table-column label="时间" width="140">
         <template #default="{ row }">{{ new Date(row.pushedAt).toLocaleString('zh-CN') }}</template>
       </el-table-column>
@@ -71,7 +98,7 @@ function goList(listId: string) {
         </template>
       </el-table-column>
       <el-table-column prop="note" label="备注" min-width="100" show-overflow-tooltip />
-      <el-table-column label="操作" width="140" fixed="right" v-if="records.some(r => r.status === 'pending' && r._canHandle)">
+      <el-table-column label="操作" width="140" fixed="right" v-if="filteredRecords.some(r => r.status === 'pending' && r._canHandle)">
         <template #default="{ row }">
           <template v-if="row.status === 'pending' && row._canHandle">
             <el-button size="small" type="success" @click="onAccept(row.id)">接受</el-button>

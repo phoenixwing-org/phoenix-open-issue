@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, inject } from 'vue'
-import { useRoute } from 'vue-router'
 import { useIssueListStore } from '@/stores/issueLists'
 import { useDictGroup } from '@/composables/useDictGroup'
 import { ElMessage } from 'element-plus'
@@ -16,10 +15,7 @@ import {
   listLifecycleStatus,
   type ListLifecycleFilter,
 } from '@/utils/listLifecycle'
-import PoiDashboardPrimary from '@/components/workbench/PoiDashboardPrimary.vue'
-import { usePoiViewContribution } from '@/layout/workbench/poiViewContributions'
 
-const route = useRoute()
 const store = useIssueListStore()
 const auth = useAuthStore()
 const listTypeDict = useDictGroup('listType')
@@ -75,21 +71,6 @@ async function switchScope(scope: DashboardScope) {
   await loadLists()
 }
 
-usePoiViewContribution(() => route.fullPath, {
-  primary: {
-    component: PoiDashboardPrimary,
-    props: computed(() => ({
-      scope: listScope.value,
-      lifecycle: lifecycleFilter.value,
-      isAdmin: isAdmin.value,
-      onSelectScope: switchScope,
-      onSelectLifecycle: (lifecycle: ListLifecycleFilter) => {
-        lifecycleFilter.value = lifecycle
-      },
-    })),
-  },
-})
-
 async function onArchive(listId: string, name: string, archived: boolean) {
   if (!await confirmListArchive(name, archived)) return
   await store.archiveList(listId, archived)
@@ -132,6 +113,18 @@ async function onCreate(data: { name: string; listType: string; description?: st
         <el-button v-if="canCreateList" type="primary" @click="showCreate = true" data-tour="dashboard-create">
           <el-icon><Plus /></el-icon> 新建列表
         </el-button>
+        <div class="dashboard-view-filters" data-tour="dashboard-views">
+          <span class="filter-label">范围</span>
+          <el-radio-group v-model="listScope" size="small" @change="switchScope">
+            <el-radio-button value="mine">我的</el-radio-button>
+            <el-radio-button v-if="isAdmin" value="all">所有</el-radio-button>
+          </el-radio-group>
+          <span class="filter-label">状态</span>
+          <el-radio-group v-model="lifecycleFilter" size="small">
+            <el-radio-button value="active">正常</el-radio-button>
+            <el-radio-button value="archived">已归档</el-radio-button>
+          </el-radio-group>
+        </div>
       </template>
       <template #help><PageHelpButton page-id="dashboard" /></template>
     </PnwPageHeader>
@@ -210,6 +203,17 @@ async function onCreate(data: { name: string; listType: string; description?: st
 .head-actions {
   display: flex;
   gap: 8px;
+}
+.dashboard-view-filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.filter-label {
+  color: var(--pnw-workbench-muted, var(--el-text-color-secondary, #64748b));
+  font-size: 0.75rem;
+  white-space: nowrap;
 }
 .page-head h2 {
   font-size: 1.3rem;

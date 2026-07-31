@@ -9,6 +9,7 @@ import PageHelpButton from "@/components/PageHelpButton.vue"
 import IssueFormDialog from '@/components/IssueFormDialog.vue'
 import PushDialog from '@/views/push/PushDialog.vue'
 import { useDictStore } from '@/stores/dict'
+import PoiIssueDetailPrimary from '@/components/workbench/PoiIssueDetailPrimary.vue'
 import PoiIssueCheckpointsSecondary from '@/components/workbench/PoiIssueCheckpointsSecondary.vue'
 import { usePoiViewContribution } from '@/layout/workbench/poiViewContributions'
 
@@ -43,6 +44,40 @@ const statusTag: Record<string, string | undefined> = { open: 'info', in_progres
 const priorityTag: Record<string, string | undefined> = { low: 'info', medium: 'warning', high: 'danger', critical: undefined }
 const priorityLabel: Record<string, string> = { low: '低', medium: '中', high: '高', critical: '紧急' }
 const severityTag: Record<string, string | undefined> = { fatal: 'danger', major: 'warning', minor: 'info', trivial: undefined }
+const has8d = computed(() => Boolean(
+  issueStore.currentIssue?.containment
+  || issueStore.currentIssue?.rootCause
+  || issueStore.currentIssue?.correctiveAction,
+))
+const hasDescription = computed(() => Boolean(issueStore.currentIssue?.description))
+
+function scrollToIssueSection(sectionId: string): void {
+  document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+function goBack() {
+  if (props.issueId) { emit('close'); return }
+  router.back()
+}
+
+const issuePrimaryContributionProps = computed(() => {
+  const issue = issueStore.currentIssue
+  return {
+    issueNo: issue?.issueNo ?? '',
+    title: issue?.title ?? '',
+    status: issue ? statusLabel[issue.status] ?? issue.status : '',
+    priority: issue ? priorityLabel[issue.priority] ?? issue.priority : '',
+    severity: issue ? dict.getLabel('severity', issue.severity) : '',
+    canModify: canModify.value,
+    canPush: canPush.value,
+    has8d: has8d.value,
+    hasDescription: hasDescription.value,
+    onBack: goBack,
+    onEdit: () => { showEdit.value = true },
+    onPush: () => { showPush.value = true },
+    onNavigateSection: scrollToIssueSection,
+  }
+})
 const checkpointContributionProps = computed(() => ({
   issueId,
   issueTitle: issueStore.currentIssue?.title,
@@ -54,6 +89,10 @@ const checkpointContributionProps = computed(() => ({
 usePoiViewContribution(
   () => isModal.value ? null : route.fullPath,
   {
+    primary: {
+      component: PoiIssueDetailPrimary,
+      props: issuePrimaryContributionProps,
+    },
     secondary: {
       component: PoiIssueCheckpointsSecondary,
       props: checkpointContributionProps,
@@ -95,10 +134,6 @@ async function onEditIssue(data: any) {
   ElMessage.success('Issue 已更新')
 }
 
-function goBack() {
-  if (props.issueId) { emit('close'); return }
-  router.back()
-}
 </script>
 
 <template>
@@ -156,7 +191,7 @@ function goBack() {
       </div>
 
       <!-- 基本信息 -->
-      <el-descriptions title="基本信息" :column="2" border size="small" class="detail-desc-block" data-tour="issue-basic">
+      <el-descriptions id="issue-basic" title="基本信息" :column="2" border size="small" class="detail-desc-block" data-tour="issue-basic">
         <el-descriptions-item label="严重度">
           <el-tag :type="severityTag[issueStore.currentIssue.severity]" size="small" effect="dark">
             {{ dict.getLabel('severity', issueStore.currentIssue.severity) }}
@@ -184,7 +219,7 @@ function goBack() {
       </el-descriptions>
 
       <!-- 人员与日期 -->
-      <el-descriptions title="人员与日期" :column="2" border size="small" class="detail-desc-block">
+      <el-descriptions id="issue-people" title="人员与日期" :column="2" border size="small" class="detail-desc-block">
         <el-descriptions-item label="提出人">
           <template v-if="issueStore.currentIssue.reporterId">👤{{ getUserName(issueStore.currentIssue.reporterId) }}</template>
           <span v-else>—</span>
@@ -214,7 +249,7 @@ function goBack() {
       </el-descriptions>
 
       <!-- 8D 报告（仅填写后显示） -->
-      <el-descriptions v-if="issueStore.currentIssue.containment || issueStore.currentIssue.rootCause || issueStore.currentIssue.correctiveAction" title="8D 报告" :column="1" border size="small" class="detail-desc-block" data-tour="issue-8d">
+      <el-descriptions id="issue-8d" v-if="issueStore.currentIssue.containment || issueStore.currentIssue.rootCause || issueStore.currentIssue.correctiveAction" title="8D 报告" :column="1" border size="small" class="detail-desc-block" data-tour="issue-8d">
         <el-descriptions-item label="D3 临时遏制措施">
           {{ issueStore.currentIssue.containment || '—' }}
         </el-descriptions-item>
@@ -226,7 +261,7 @@ function goBack() {
         </el-descriptions-item>
       </el-descriptions>
 
-      <div class="detail-desc" v-if="issueStore.currentIssue.description">
+      <div id="issue-description" class="detail-desc" v-if="issueStore.currentIssue.description">
         <h4>描述</h4>
         <p>{{ issueStore.currentIssue.description }}</p>
       </div>

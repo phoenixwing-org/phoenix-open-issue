@@ -6,14 +6,14 @@ Owner：Open Issue maintainers
 
 适用版本：0.5.x
 
-最后核验：2026-07-20
+最后核验：2026-07-31
 
 ## 已完成基线
 
 - v0.1–v0.4 已覆盖基础 CRUD、多列表关联、汽车行业字段、推送/点检、数据字典、Linux 部署、数据保护与 SQLite/PostgreSQL adapter。
 - **当前包版本 `0.5.0`**：含飞书 OAuth 二期（管理员绑定 + 待审查）、登录方式设定，以及 post-0.4 积压能力；见 [CHANGELOG](CHANGELOG.md)。
-- 前端和服务端精确消费 Registry `phoenix-wing@0.5.1`，不依赖相邻源码；已删除 `optimizeDeps.exclude`，singleton 与 Ribbon v1 fixture 回归、依赖来源、自动测试和三段构建已进入 `verify:ci`。
-- `codex/single-pnw-workbench` 仅作为未发布 Wing `0.5.2` 的真实消费者验证线：用受控并列 resolver 接入 `PnwWorkbenchShell`，不修改 Registry 依赖图，也不与 `develop/admin-plugin` 迁移线合并语义。
+- 前端和服务端精确消费 Registry `phoenix-wing@0.6.0`，不依赖相邻源码；singleton、Ribbon/Tree 工作台、View contribution、依赖来源、自动测试和三段构建已进入 `verify:ci`。
+- `codex/single-pnw-workbench` 已完成 `PnwWorkbenchShell` 真实消费者验证；受控并列 resolver 仅用于后续 Wing 源码候选联调，不修改 Registry 依赖图，也不与 `develop/admin-plugin` 迁移线合并语义。
 - `@open-issue/core` 保持纯 TypeScript，前后端共享类型和算法但不引入 Vue、Express 或数据库驱动。
 - 飞书 OAuth 二期设计归档：`doc/第三方登录/`；表结构点检纳入设置「表结构补全」。真实飞书点检已通过（2026-07-21）。
 

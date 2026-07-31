@@ -1,9 +1,13 @@
 import { defineConfig } from 'vitest/config'
+import path from 'node:path'
 import { openIssueLocalWingAliases } from './scripts/open-issue-wing-mode.mjs'
 
 export default defineConfig({
   resolve: {
-    alias: openIssueLocalWingAliases(),
+    alias: [
+      { find: '@', replacement: path.resolve(import.meta.dirname, 'packages/web/src') },
+      ...openIssueLocalWingAliases(),
+    ],
   },
   test: {
     server: {

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { useFunctionStore } from '@/stores/functions'
 import { useSettingsStore } from '@/stores/settings'
 import { ElMessage } from 'element-plus'
@@ -10,7 +11,10 @@ import { mapXlsxRow } from '@open-issue/core'
 import * as XLSX from 'xlsx'
 import * as api from '@/api/functions'
 import { useAuthStore } from '@/stores/auth'
+import PoiFunctionPrimary from '@/components/workbench/PoiFunctionPrimary.vue'
+import { usePoiViewContribution } from '@/layout/workbench/poiViewContributions'
 
+const route = useRoute()
 const store = useFunctionStore()
 const settings = useSettingsStore()
 const auth = useAuthStore()
@@ -46,6 +50,32 @@ function openCreate() {
   form.value = { platform: '', externalId: '', functionName: '', targetYear: '', clientGroup: '', developGroup: '' }
   showForm.value = true
 }
+
+function updateSearch(value: string): void {
+  settings.funcSearch = value
+  void doLoad()
+}
+
+function updateNumericSort(value: boolean): void {
+  settings.funcNumericSort = value
+  void doLoad()
+}
+
+usePoiViewContribution(() => route.fullPath, {
+  primary: {
+    component: PoiFunctionPrimary,
+    props: computed(() => ({
+      search: settings.funcSearch,
+      numericSort: settings.funcNumericSort,
+      itemCount: store.items.length,
+      isAdmin: isSystemAdmin.value,
+      onUpdateSearch: updateSearch,
+      onUpdateNumericSort: updateNumericSort,
+      onRefresh: doLoad,
+      onCreate: openCreate,
+    })),
+  },
+})
 
 function openEdit(row: any) {
   editTarget.value = row
@@ -155,11 +185,6 @@ async function onExport() {
       </template>
       <template #help><PageHelpButton page-id="functions" /></template>
     </PnwPageHeader>
-
-    <div style="margin-bottom:12px;display:flex;gap:8px" data-tour="functions-filters">
-      <el-input v-model="settings.funcSearch" placeholder="搜索功能名/平台/ID..." style="width:260px" clearable @input="doLoad" />
-      <el-checkbox v-model="settings.funcNumericSort" @change="doLoad" style="margin-left:12px">外部ID按数字排序</el-checkbox>
-    </div>
 
     <el-table :data="store.items" v-loading="store.loading" stripe @sort-change="onSortChange" data-tour="functions-table">
       <el-table-column prop="platform" label="平台" width="140" sortable="custom" />

@@ -1,3 +1,4 @@
+import { markRaw } from 'vue'
 import {
   pnwNavigationFromRibbonTabs,
   type PnwNavigationNode,
@@ -9,7 +10,8 @@ import { RIBBON_TABS, openIssueRibbonIconFor } from '../ribbon/ribbonConfig'
  * Router、权限和点击动作继续由 Open Issue 持有。
  */
 export function createOpenIssueNavigationNodes(): readonly PnwNavigationNode[] {
-  return pnwNavigationFromRibbonTabs(RIBBON_TABS, {
+  const nodes = pnwNavigationFromRibbonTabs(RIBBON_TABS, {
     iconFor: openIssueRibbonIconFor,
   })
+  return markRaw(nodes)
 }

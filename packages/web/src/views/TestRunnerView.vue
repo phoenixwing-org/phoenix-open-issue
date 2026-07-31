@@ -1,11 +1,15 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { isSystemAdmin } from '@open-issue/core'
 import { useAuthStore } from '@/stores/auth'
 import { getTestFiles, getTestStatus, runAllTests, type TestFileInfo, type TestRunResult } from '@/api/test'
 import PageHelpButton from '@/components/PageHelpButton.vue'
+import PoiTestRunnerPrimary from '@/components/workbench/PoiTestRunnerPrimary.vue'
+import { usePoiViewContribution } from '@/layout/workbench/poiViewContributions'
 
+const route = useRoute()
 const auth = useAuthStore()
 const isAdmin = computed(() => isSystemAdmin(auth.user ?? undefined))
 
@@ -107,6 +111,26 @@ async function onRunAll() {
   }
 }
 
+function scrollToTestSection(sectionId: string): void {
+  document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+usePoiViewContribution(() => route.fullPath, {
+  primary: {
+    component: PoiTestRunnerPrimary,
+    props: computed(() => ({
+      isAdmin: isAdmin.value,
+      available: available.value,
+      running: running.value,
+      fileCount: files.value.length,
+      totalCases: totalCases.value,
+      hasResult: Boolean(lastResult.value),
+      onRunAll,
+      onNavigateSection: scrollToTestSection,
+    })),
+  },
+})
+
 onMounted(async () => {
   await loadStatus()
   await loadFiles()
@@ -133,13 +157,13 @@ onMounted(async () => {
         <span v-if="files.length" class="hint">{{ files.length }} 个文件 · {{ totalCases }} 条用例</span>
       </div>
 
-      <el-table v-loading="loading" :data="files" stripe style="width: 100%; margin-top: 16px" data-tour="test-files">
+      <el-table id="test-files" v-loading="loading" :data="files" stripe style="width: 100%; margin-top: 16px" data-tour="test-files">
         <el-table-column prop="filePath" label="测试文件" min-width="320" />
         <el-table-column prop="packageName" label="包" width="100" />
         <el-table-column prop="caseCount" label="用例数" width="90" align="center" />
       </el-table>
 
-      <div v-if="lastResult" class="result-box" data-tour="test-result">
+      <div id="test-result" v-if="lastResult" class="result-box" data-tour="test-result">
         <h3>最近运行 · {{ lastResult.ranAt }}</h3>
         <p>
           共 {{ lastResult.summary.total }} 条 ·

@@ -1,6 +1,8 @@
 import {
+  computed,
   inject,
   provide,
+  toValue,
   type InjectionKey,
   type MaybeRefOrGetter,
 } from 'vue'
@@ -11,12 +13,44 @@ import {
   type PnwViewBlockComponentContributions,
   type PnwViewContributionRegistry,
 } from 'phoenix-wing'
+import PoiDefaultPrimary from '../../components/workbench/PoiDefaultPrimary.vue'
+import {
+  resolvePoiPrimaryContribution,
+} from './poiWorkbenchPrimaryPolicy'
+
+export {
+  POI_WORKBENCH_PRIMARY_POLICIES,
+  poiWorkbenchPrimaryPolicy,
+  type PoiWorkbenchPrimaryPolicy,
+  type PoiWorkbenchRouteName,
+} from './poiWorkbenchPrimaryPolicy'
 
 export type PoiViewContributions = PnwViewBlockComponentContributions
 export type PoiViewContributionRegistry = PnwViewContributionRegistry<PoiViewContributions>
 
 const POI_VIEW_CONTRIBUTION_REGISTRY: InjectionKey<PoiViewContributionRegistry> =
   Symbol('poi-view-contribution-registry')
+
+export interface PoiDefaultPrimaryProps {
+  title: string
+  routeName: string
+  onNavigate: (path: string) => void
+}
+
+export function resolvePoiViewContributions(
+  routeName: string | symbol | null | undefined,
+  registered: PoiViewContributions,
+  fallbackProps: PoiDefaultPrimaryProps,
+): PoiViewContributions {
+  return resolvePoiPrimaryContribution(
+    routeName,
+    registered,
+    {
+      component: PoiDefaultPrimary,
+      props: fallbackProps,
+    },
+  ) as PoiViewContributions
+}
 
 export function createPoiViewContributionRegistry(): PoiViewContributionRegistry {
   return pnwCreateViewContributionRegistry<PoiViewContributions>()
@@ -38,6 +72,13 @@ export function usePoiViewContribution(
 export function usePoiRegisteredViewContribution(
   registry: PoiViewContributionRegistry,
   viewId: MaybeRefOrGetter<string | null | undefined>,
+  routeName: MaybeRefOrGetter<string | symbol | null | undefined>,
+  fallbackProps: MaybeRefOrGetter<PoiDefaultPrimaryProps>,
 ) {
-  return usePnwRegisteredViewContribution(registry, viewId, {})
+  const registered = usePnwRegisteredViewContribution(registry, viewId, {})
+  return computed(() => resolvePoiViewContributions(
+    toValue(routeName),
+    registered.value,
+    toValue(fallbackProps),
+  ))
 }

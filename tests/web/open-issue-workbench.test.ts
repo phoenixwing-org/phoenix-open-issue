@@ -21,13 +21,17 @@ describe('Open Issue 本地 Pnw 工作台适配', () => {
     expect(adapter).toContain("const SESSION_KEY = 'open-issue-tabs'")
   })
 
-  it('由当前 View contribution 决定四区内容，并保留 Footer 与显示设置入口', () => {
+  it('由 AppShell 常驻 Bottom，页面 contribution 只替换内容而不控制可用性', () => {
     const shell = read('packages/web/src/layout/AppShell.vue')
 
     expect(shell).toContain(':view-blocks="viewBlocks"')
     expect(shell).toContain('usePoiRegisteredViewContribution')
-    expect(shell).not.toContain(':contributions="{ bottom: true }"')
-    expect(shell).not.toContain('<template #bottom>')
+    expect(shell).toContain('const workbenchContributions: PnwViewBlockContributions = { bottom: true }')
+    expect(shell).toContain(':contributions="workbenchContributions"')
+    expect(shell).toContain(':bottom-tabs="WORKBENCH_BOTTOM_TABS"')
+    expect(shell).toContain('<template #bottom>')
+    expect(shell).toContain('v-if="viewBlocks.bottom"')
+    expect(shell).toContain('<PoiWorkbenchBottom')
     expect(shell).not.toContain('<PnwShellLogPanel')
     expect(shell).toContain('<template #footer>')
     expect(shell).toContain('Open Issue List v{{ pkg.version }}')
@@ -51,26 +55,52 @@ describe('Open Issue 本地 Pnw 工作台适配', () => {
     expect(globalStyle).toContain('html.dark')
   })
 
+  it('页眉账号区垂直居中，并用带无障碍名称的图标退出', () => {
+    const shell = read('packages/web/src/layout/AppShell.vue')
+
+    expect(shell).toContain("import { SwitchButton, UserFilled } from '@element-plus/icons-vue'")
+    expect(shell).toContain('class="open-issue-account"')
+    expect(shell).toContain('class="open-issue-user-avatar"')
+    expect(shell).toContain('class="open-issue-logout"')
+    expect(shell).toContain('aria-label="退出登录"')
+    expect(shell).toContain('content="退出登录"')
+    expect(shell).toContain('align-items: center')
+    expect(shell).not.toContain('>退出</el-button>')
+  })
+
   it('业务页面在 setup 登记真实 Primary、Secondary 与 Bottom 内容', () => {
     const registry = read('packages/web/src/layout/workbench/poiViewContributions.ts')
     const dashboard = read('packages/web/src/views/DashboardView.vue')
+    const welcome = read('packages/web/src/views/WelcomeView.vue')
     const listIndex = read('packages/web/src/views/lists/ListIndexView.vue')
     const listDetail = read('packages/web/src/views/lists/ListDetailView.vue')
     const issueDetail = read('packages/web/src/views/issues/IssueDetailView.vue')
     const org = read('packages/web/src/views/org/OrgTreeView.vue')
+    const pushHistory = read('packages/web/src/views/push/PushHistoryView.vue')
+    const functions = read('packages/web/src/views/functions/FunctionIndexView.vue')
+    const testRunner = read('packages/web/src/views/TestRunnerView.vue')
     const settings = read('packages/web/src/views/SettingsView.vue')
 
     expect(registry).toContain('pnwCreateViewContributionRegistry')
     expect(registry).toContain('usePnwViewContribution')
-    for (const source of [dashboard, listIndex, listDetail, issueDetail, org, settings]) {
+    expect(registry).toContain('resolvePoiViewContributions')
+    expect(read('packages/web/src/layout/workbench/poiWorkbenchPrimaryPolicy.ts'))
+      .toContain("dashboard: 'none'")
+    for (const source of [welcome, listIndex, listDetail, issueDetail, org, pushHistory, functions, testRunner, settings]) {
       expect(source).toContain('usePoiViewContribution')
     }
-    expect(dashboard).toContain('component: PoiDashboardPrimary')
+    expect(dashboard).not.toContain('usePoiViewContribution')
+    expect(dashboard).not.toContain('PoiDashboardPrimary')
+    expect(welcome).toContain('component: PoiWelcomePrimary')
     expect(listIndex).toContain('component: PoiIssueListPrimary')
     expect(listDetail).toContain('component: PoiIssueTablePrimary')
     expect(org).toContain('component: PoiOrgPrimary')
+    expect(issueDetail).toContain('component: PoiIssueDetailPrimary')
     expect(issueDetail).toContain('secondary:')
     expect(issueDetail).toContain('component: PoiIssueCheckpointsSecondary')
+    expect(pushHistory).toContain('component: PoiPushHistoryPrimary')
+    expect(functions).toContain('component: PoiFunctionPrimary')
+    expect(testRunner).toContain('component: PoiTestRunnerPrimary')
     expect(settings).toContain('component: PoiSettingsPrimary')
     expect(settings).toContain('bottom:')
     expect(settings).toContain('component: PoiSettingsRepairBottom')
@@ -78,13 +108,19 @@ describe('Open Issue 本地 Pnw 工作台适配', () => {
 
   it('贡献组件不复制 Wing 的窄屏断点', () => {
     const contributionFiles = [
-      'PoiDashboardPrimary.vue',
+      'PoiDefaultPrimary.vue',
+      'PoiFunctionPrimary.vue',
       'PoiIssueCheckpointsSecondary.vue',
+      'PoiIssueDetailPrimary.vue',
       'PoiIssueListPrimary.vue',
       'PoiIssueTablePrimary.vue',
       'PoiOrgPrimary.vue',
+      'PoiPushHistoryPrimary.vue',
       'PoiSettingsPrimary.vue',
       'PoiSettingsRepairBottom.vue',
+      'PoiTestRunnerPrimary.vue',
+      'PoiWelcomePrimary.vue',
+      'PoiWorkbenchBottom.vue',
     ]
 
     for (const file of contributionFiles) {
@@ -99,17 +135,18 @@ describe('Open Issue 本地 Pnw 工作台适配', () => {
     const shell = read('packages/web/src/layout/AppShell.vue')
 
     expect(navigation).toContain('pnwNavigationFromRibbonTabs(RIBBON_TABS')
+    expect(navigation).toContain('return markRaw(nodes)')
     expect(shell).toContain(':nodes="openIssueWorkbench.navigation.nodes"')
     expect(shell).toContain(':presentation="workbenchStore.presentation"')
   })
 
-  it('本地 Wing 不污染 Registry 0.5.1 依赖图', () => {
+  it('受控本地 Wing 命令不污染 Registry 0.6.0 依赖图', () => {
     const rootManifest = JSON.parse(read('package.json'))
     const webManifest = JSON.parse(read('packages/web/package.json'))
     const serverManifest = JSON.parse(read('packages/server/package.json'))
 
-    expect(webManifest.dependencies['phoenix-wing']).toBe('0.5.1')
-    expect(serverManifest.dependencies['phoenix-wing']).toBe('0.5.1')
+    expect(webManifest.dependencies['phoenix-wing']).toBe('0.6.0')
+    expect(serverManifest.dependencies['phoenix-wing']).toBe('0.6.0')
     expect(rootManifest.scripts['dev:local-wing']).toContain('run-with-phoenix-wing.mjs')
     expect(rootManifest.scripts['verify:local-wing']).toContain('run-with-phoenix-wing.mjs')
   })

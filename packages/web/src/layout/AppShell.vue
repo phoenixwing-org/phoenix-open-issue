@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { SwitchButton, UserFilled } from '@element-plus/icons-vue'
 import pkg from '../../package.json'
 import {
   PnwAppModalOverlay,
@@ -9,9 +10,13 @@ import {
   PnwPhoenixWingMark,
   PnwWorkbenchShell,
   PNW_VERSION,
+  pnwResolveViewBlockComponentProps,
+  type PnwBottomPanelTab,
+  type PnwViewBlockContributions,
   usePnwDocumentTitle,
 } from 'phoenix-wing'
 import WelcomeView from '@/views/WelcomeView.vue'
+import PoiWorkbenchBottom from '@/components/workbench/PoiWorkbenchBottom.vue'
 import { useAuthStore } from '@/stores/auth'
 import { useWorkbenchStore } from '@/stores/workbench'
 import { useOpenIssueWorkbench } from '@/composables/useOpenIssueWorkbench'
@@ -34,12 +39,25 @@ const openIssueWorkbench = reactive(openIssueWorkbenchController)
 const showWelcome = ref(false)
 const wingSource = import.meta.env.VITE_PHOENIX_WING_SOURCE === 'LOCAL' ? 'LOCAL' : 'REGISTRY'
 const wingBrandSubtitle = `Phoenix Wing / ${wingSource} ${PNW_VERSION}`
+const workbenchContributions: PnwViewBlockContributions = { bottom: true }
+const WORKBENCH_BOTTOM_TABS = [
+  {
+    id: 'workbench-messages',
+    label: '工作台消息',
+  },
+] satisfies readonly PnwBottomPanelTab[]
 const activeViewId = computed(() =>
   openIssueWorkbenchController.tabs.empty.value ? null : route.fullPath,
 )
 const viewBlocks = usePoiRegisteredViewContribution(
   poiViewContributionRegistry,
   activeViewId,
+  () => route.name,
+  () => ({
+    title: openIssueWorkbenchController.pageLabel.value,
+    routeName: String(route.name || ''),
+    onNavigate: (path: string) => router.push(path),
+  }),
 )
 
 usePnwDocumentTitle({
@@ -69,7 +87,9 @@ function logout() {
         :color-scheme="workbenchStore.colorScheme"
         :layout-state="workbenchStore.layoutState"
         :display-settings-positions="workbenchStore.settingsPositions"
+        :contributions="workbenchContributions"
         :view-blocks="viewBlocks"
+        :bottom-tabs="WORKBENCH_BOTTOM_TABS"
         :tabs="openIssueWorkbench.tabs.items"
         :active-tab-id="openIssueWorkbench.tabs.activeId"
         :show-empty-view="openIssueWorkbench.tabs.empty"
@@ -104,10 +124,27 @@ function logout() {
         </template>
 
         <template #header-actions>
-          <span v-if="auth.user" class="open-issue-user">
-            {{ auth.user.displayName || auth.user.username }}
-          </span>
-          <el-button text size="small" type="danger" @click="logout">退出</el-button>
+          <div v-if="auth.user" class="open-issue-account">
+            <span class="open-issue-user-avatar" aria-hidden="true">
+              <UserFilled />
+            </span>
+            <span
+              class="open-issue-user"
+              :title="auth.user.displayName || auth.user.username"
+            >
+              {{ auth.user.displayName || auth.user.username }}
+            </span>
+          </div>
+          <el-tooltip content="退出登录" placement="bottom">
+            <button
+              class="open-issue-logout"
+              type="button"
+              aria-label="退出登录"
+              @click="logout"
+            >
+              <SwitchButton aria-hidden="true" />
+            </button>
+          </el-tooltip>
         </template>
 
         <div class="open-issue-editor" data-tour="shell-main">
@@ -119,6 +156,19 @@ function logout() {
             </transition>
           </router-view>
         </div>
+
+        <template #bottom>
+          <component
+            v-if="viewBlocks.bottom"
+            :is="viewBlocks.bottom.component"
+            v-bind="pnwResolveViewBlockComponentProps(viewBlocks.bottom)"
+          />
+          <PoiWorkbenchBottom
+            v-else
+            :page-label="openIssueWorkbench.pageLabel"
+            :wing-version="PNW_VERSION"
+          />
+        </template>
 
         <template #footer>
           <span class="open-issue-footer-page">【{{ openIssueWorkbench.pageLabel }}】</span>
@@ -203,10 +253,80 @@ function logout() {
 
 .open-issue-brand strong { font-size: 13px; }
 .open-issue-brand small { color: var(--pnw-workbench-muted, #64748b); font-size: 9px; letter-spacing: .06em; }
-.open-issue-user { color: var(--pnw-workbench-muted, #64748b); font-size: 12px; white-space: nowrap; }
+
+.open-issue-account {
+  height: 100%;
+  max-width: 154px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  box-sizing: border-box;
+  color: var(--pnw-workbench-text, #0f172a);
+}
+
+.open-issue-user-avatar {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--pnw-control-active-text, #409eff) 13%, transparent);
+  color: var(--pnw-control-active-text, #409eff);
+}
+
+.open-issue-user-avatar svg {
+  width: 14px;
+  height: 14px;
+}
+
+.open-issue-user {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--pnw-workbench-text, #0f172a);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 1;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.open-issue-logout {
+  width: 38px;
+  height: 100%;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 0;
+  border-left: 1px solid var(--pnw-header-divider, var(--pnw-workbench-border, #dbe3ed));
+  background: transparent;
+  color: var(--pnw-workbench-muted, #64748b);
+  cursor: pointer;
+}
+
+.open-issue-logout svg {
+  width: 17px;
+  height: 17px;
+}
+
+.open-issue-logout:hover,
+.open-issue-logout:focus-visible {
+  outline: none;
+  background: color-mix(in srgb, var(--el-color-danger, #f56c6c) 10%, transparent);
+  color: var(--el-color-danger, #f56c6c);
+}
+
+.open-issue-logout:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--pnw-focus-ring, #409eff);
+}
 
 @container pnw-workbench (max-width: 700px) {
   .open-issue-brand { min-width: 38px; padding-right: 4px; }
   .open-issue-brand span { display: none; }
+  .open-issue-account { max-width: 112px; padding: 0 7px; }
 }
 </style>

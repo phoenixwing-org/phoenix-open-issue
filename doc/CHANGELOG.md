@@ -14,8 +14,10 @@
 
 ## 未发布
 
-- phoenix-wing 前后端精确升级至 npm Registry `0.5.1`，同步更新消费者契约门禁并完成完整测试与构建验证。
-- `single` 派生验证分支使用未发布 Wing `0.5.2`：以一棵导航树接入 `PnwWorkbenchShell`，将 Router/Tab/session 收敛到产品 adapter；旧 Footer 日志按钮由 Wing Footer 的 Bottom 开关替代，页面/版本信息通过 consumer slot 保留，Ribbon/Tree 共用工作台显示设置；并增加不污染依赖图的 `*:local-wing` 命令。该项不是 Registry 升级或 Admin 插件迁移。
+- phoenix-wing 前后端由 npm Registry `0.5.1` 精确升级至 `0.6.0`，同步更新消费者契约门禁并完成完整测试与构建验证。
+- `single` 派生验证分支先通过受控本地候选接入 `PnwWorkbenchShell`，Wing `0.6.0` 发布后回归 Registry 基线：一棵导航树供 Ribbon/Tree 共用，将 Router/Tab/session 收敛到产品 adapter；Footer 面板开关、页面/版本信息和工作台显示设置均使用 Wing 正式契约。`*:local-wing` 命令保留用于后续源码候选联调。
+- 完善认证工作台子 View 的 Primary 覆盖：Dashboard 明确不提供 Primary；欢迎页、Issue 详情、推送历史、功能表和单元测试页新增页面专用导航、筛选或快捷操作；路由策略会为后续认证子 View 补齐有内容的默认 Primary，并按分区保留已有 Primary、Secondary 与 Bottom contribution。
+- 将静态工作台导航树标记为非响应式，避免 Element Plus 图标组件被 Vue 深度代理并反复产生性能警告。
 
 ## v0.4.0（2026-07-11）
 

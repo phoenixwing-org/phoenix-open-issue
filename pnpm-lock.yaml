@@ -51,8 +51,8 @@ importers:
         specifier: ^8.22.0
         version: 8.22.0
       phoenix-wing:
-        specifier: 0.5.1
-        version: 0.5.1(element-plus@2.14.2(vue@3.5.39(typescript@5.7.3)))(pinia@3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3)))(vue@3.5.39(typescript@5.7.3))
+        specifier: 0.6.0
+        version: 0.6.0(element-plus@2.14.2(vue@3.5.39(typescript@5.7.3)))(pinia@3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3)))(vue@3.5.39(typescript@5.7.3))
       uuid:
         specifier: ^11.1.0
         version: 11.1.1
@@ -100,8 +100,8 @@ importers:
         specifier: ^2.10.2
         version: 2.14.2(vue@3.5.39(typescript@5.7.3))
       phoenix-wing:
-        specifier: 0.5.1
-        version: 0.5.1(element-plus@2.14.2(vue@3.5.39(typescript@5.7.3)))(pinia@3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3)))(vue@3.5.39(typescript@5.7.3))
+        specifier: 0.6.0
+        version: 0.6.0(element-plus@2.14.2(vue@3.5.39(typescript@5.7.3)))(pinia@3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3)))(vue@3.5.39(typescript@5.7.3))
       pinia:
         specifier: ^3.0.4
         version: 3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3))
@@ -574,11 +574,11 @@ packages:
     resolution: {integrity: sha512-tmmZ3lQxAe/k/+rNnXQRawJ4NjxO2hqiOLTHvWchtGZULp4RyFeh6aU4XdOYBFe2KE1oShQTv4AblOs2iOrNnQ==}
     engines: {node: '>= 10.0.0'}
 
-  '@phoenix-wing/code-core@0.5.1':
-    resolution: {integrity: sha512-ePd99OVLefImEBVuLrc+ZZ+vTvC9MsBB7HDahr6zJtFeweAI4Eer1PZLXjKXqBeOX8pmAUgnN3IpvvTO3Mnjew==}
+  '@phoenix-wing/code-core@0.6.0':
+    resolution: {integrity: sha512-tCoP7BNDfTM/fBHPKz31jysazI0LtcuvHTrh04VXLm6mxnRXQkayU0cWS8IzE3vbnOwXP6DP5i5dALavCkapjQ==}
 
-  '@phoenix-wing/db-node@0.5.1':
-    resolution: {integrity: sha512-Z9iKhcXRsoUWJXLPf7fZwTAQYNocyJdBWQpRB8x8c5pknAoaymOaQd93ZA/rbn42lOLwlfrYcDgzhOvCyyBnfw==}
+  '@phoenix-wing/db-node@0.6.0':
+    resolution: {integrity: sha512-SjwIxxHIOI5CSP4QH7nlKkK2mCnddCrcKYTQmQv5/WQ3DemDzXDhi83Afc8JjXRXabBIpFA2Pujc+mxwEzVsIg==}
 
   '@rollup/rollup-android-arm-eabi@4.62.2':
     resolution: {integrity: sha512-6o7ZLZK+BeenkZCFNDXqpbjw9bD6nuWonvS/lwQJp7NoVVxm6p3qE7qQ5jGuBjiFsgvqjD8mZAU5oWxTmbOeOg==}
@@ -1417,6 +1417,9 @@ packages:
   node-sqlite3-wasm@0.8.59:
     resolution: {integrity: sha512-BsVATSCxLzgpdj6Ey6bZ72MzhkXTCPmb9aVCqyptiwRojo/hzCCoXILoU0SiU7av+iiSyLCTLsCrV96yNUf2/w==}
 
+  node-sqlite3-wasm@0.8.60:
+    resolution: {integrity: sha512-woDEJy/Df0EBFKJ2N7HSL4SiH5UL1GDwxvBeBjaKvqmUApgTKapcoQiAgZKrLSUmrWU6VYyHz41Sz58Hi6YPmg==}
+
   normalize-wheel-es@1.2.0:
     resolution: {integrity: sha512-Wj7+EJQ8mSuXr2iWfnujrimU35R2W4FAErEyTmJoJ7ucwTn2hOUSsRehMb5RSYkxXGTM7Y9QpvPmp++w5ftoJw==}
 
@@ -1489,8 +1492,8 @@ packages:
   pgpass@1.0.5:
     resolution: {integrity: sha512-FdW9r/jQZhSeohs1Z3sI1yxFQNFvMcnmfuj4WBMUTxOrAyLMaTcE1aAMBiTlbMNaXvBCQuVi0R7hd8udDSP7ug==}
 
-  phoenix-wing@0.5.1:
-    resolution: {integrity: sha512-V6sNU8OmiUdgIOq0T0eCVbeGscEtRq+y7vO/5OrRbKsn6YxzlczkhbIt2o5gbefYkpJHlHzQmLrvB6iq/+oDPg==}
+  phoenix-wing@0.6.0:
+    resolution: {integrity: sha512-O0fPuEi2zr06fd9ivSJEDOFjiHNoJO/l0NIST7uDBBJ4OI3KK0gJtJ1zCxJpnCBAxx3847aUP8lNlR62lvJHdw==}
     peerDependencies:
       element-plus: ^2.0.0
       pinia: ^2.0.0 || ^3.0.0
@@ -2301,11 +2304,11 @@ snapshots:
       '@parcel/watcher-win32-x64': 2.5.6
     optional: true
 
-  '@phoenix-wing/code-core@0.5.1': {}
+  '@phoenix-wing/code-core@0.6.0': {}
 
-  '@phoenix-wing/db-node@0.5.1':
+  '@phoenix-wing/db-node@0.6.0':
     dependencies:
-      node-sqlite3-wasm: 0.8.59
+      node-sqlite3-wasm: 0.8.60
 
   '@rollup/rollup-android-arm-eabi@4.62.2':
     optional: true
@@ -3203,6 +3206,8 @@ snapshots:
 
   node-sqlite3-wasm@0.8.59: {}
 
+  node-sqlite3-wasm@0.8.60: {}
+
   normalize-wheel-es@1.2.0: {}
 
   object-assign@4.1.1: {}
@@ -3264,13 +3269,13 @@ snapshots:
     dependencies:
       split2: 4.2.0
 
-  phoenix-wing@0.5.1(element-plus@2.14.2(vue@3.5.39(typescript@5.7.3)))(pinia@3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3)))(vue@3.5.39(typescript@5.7.3)):
+  phoenix-wing@0.6.0(element-plus@2.14.2(vue@3.5.39(typescript@5.7.3)))(pinia@3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3)))(vue@3.5.39(typescript@5.7.3)):
     dependencies:
-      '@phoenix-wing/code-core': 0.5.1
-      '@phoenix-wing/db-node': 0.5.1
+      '@phoenix-wing/code-core': 0.6.0
+      '@phoenix-wing/db-node': 0.6.0
     optionalDependencies:
       element-plus: 2.14.2(vue@3.5.39(typescript@5.7.3))
-      node-sqlite3-wasm: 0.8.59
+      node-sqlite3-wasm: 0.8.60
       pinia: 3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3))
       vue: 3.5.39(typescript@5.7.3)
 
