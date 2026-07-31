@@ -4,6 +4,7 @@ export interface Checkpoint {
   id: string
   issueId: string
   checkpointDate: string
+  deadline: string | null
   description: string
   status: CheckpointStatus
   responsibleUserId: string | null
@@ -14,12 +15,14 @@ export interface Checkpoint {
 
 export interface CreateCheckpointInput {
   checkpointDate: string
+  deadline?: string | null
   description: string
   responsibleUserId?: string
 }
 
 export interface UpdateCheckpointInput {
   checkpointDate?: string
+  deadline?: string | null
   description?: string
   status?: CheckpointStatus
   responsibleUserId?: string

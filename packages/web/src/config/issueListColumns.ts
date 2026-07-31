@@ -33,14 +33,14 @@ export interface IssueColumnMeta {
 
 export const ISSUE_COLUMN_METAS: IssueColumnMeta[] = [
   { key: 'issueNo', label: '编号', modes: ALL_VIEW_MODES },
-  { key: 'severity', label: '严重度', modes: ALL_VIEW_MODES },
-  { key: 'priority', label: '优先级', modes: ALL_VIEW_MODES },
+  { key: 'severity', label: '重要度', modes: ALL_VIEW_MODES },
+  { key: 'priority', label: '紧急度', modes: ALL_VIEW_MODES },
   { key: 'category', label: '分类', modes: ALL_VIEW_MODES },
   { key: 'detectionPhase', label: '发现阶段', modes: ALL_VIEW_MODES },
   { key: 'function', label: '功能', modes: ALL_VIEW_MODES },
   { key: 'reporter', label: '提出人', modes: ALL_VIEW_MODES },
   { key: 'assignee', label: '责任人', modes: ALL_VIEW_MODES },
-  { key: 'dueDate', label: '计划完成日', modes: ALL_VIEW_MODES },
+  { key: 'dueDate', label: '截止日', modes: ALL_VIEW_MODES },
   { key: 'attention', label: '关注', modes: ALL_VIEW_MODES },
   { key: 'status', label: '状态', modes: ALL_VIEW_MODES },
   { key: 'createdAt', label: '创建日期', modes: ALL_VIEW_MODES },
@@ -58,8 +58,11 @@ const DEFAULT_COMPLEX: IssueColumnKey[] = [
 
 const DEFAULT_TIMELINE: IssueColumnKey[] = [
   'function', 'severity', 'priority', 'assignee', 'attention',
-  'status', 'checkpoints', 'createdAt',
+  'status', 'dueDate', 'checkpoints',
 ]
+
+/** 列配置结构版本；v2 的跟踪视图默认用截止日替代创建日期。 */
+export const ISSUE_LIST_COLUMNS_VERSION = 2
 
 function buildDefault(mode: ListViewMode): IssueColumnItemConfig[] {
   const order = mode === 'simple' ? DEFAULT_SIMPLE
@@ -141,7 +144,7 @@ export const SORTABLE_ISSUE_COLUMNS = new Set<IssueColumnKey>([
   'issueNo', 'severity', 'priority', 'attention', 'dueDate', 'status', 'createdAt',
 ])
 
-/** 列表默认排序：关注度降序，同档内优先级（紧急优先） */
+/** 列表默认排序：关注度降序，同档内紧急度（立即优先）。字段名 priority 保留兼容。 */
 export const DEFAULT_ISSUE_SORT = 'attention:desc,priority:asc'
 
 export function primaryIssueSort(issueSort: string): { field: string; dir: 'asc' | 'desc' } {
@@ -159,4 +162,32 @@ export function normalizeIssueListColumns(input: unknown): IssueListColumnSettin
     complex: columnsForMode('complex', { ...base, complex: obj.complex ?? base.complex }),
     timeline: columnsForMode('timeline', { ...base, timeline: obj.timeline ?? base.timeline }),
   }
+}
+
+/**
+ * 升级旧的本地列配置。跟踪视图用于判断计划是否逾期，因此只默认展示截止日；
+ * 创建日期仍保留在列设置中，用户需要审计信息时可以手动打开。
+ */
+export function upgradeIssueListColumns(
+  input: unknown,
+  fromVersion: number,
+): IssueListColumnSettings {
+  const normalized = normalizeIssueListColumns(input)
+  if (fromVersion >= ISSUE_LIST_COLUMNS_VERSION) return normalized
+
+  const timeline = normalized.timeline.map(item => ({ ...item }))
+  const dueDate = timeline.find(item => item.key === 'dueDate')
+  const createdAt = timeline.find(item => item.key === 'createdAt')
+  if (dueDate) dueDate.visible = true
+  if (createdAt) createdAt.visible = false
+
+  // 截止日紧邻最近点检，避免在有限宽度里同时出现两种日期。
+  if (dueDate) {
+    const withoutDueDate = timeline.filter(item => item.key !== 'dueDate')
+    const checkpointIndex = withoutDueDate.findIndex(item => item.key === 'checkpoints')
+    withoutDueDate.splice(checkpointIndex >= 0 ? checkpointIndex : withoutDueDate.length, 0, dueDate)
+    return { ...normalized, timeline: withoutDueDate }
+  }
+
+  return { ...normalized, timeline }
 }

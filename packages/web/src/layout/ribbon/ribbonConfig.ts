@@ -1,11 +1,12 @@
 import type { PnwRibbonTabDef } from 'phoenix-wing'
 import { pnwRegisterRibbonIcons } from 'phoenix-wing'
-import { HomeFilled, Setting, List, Share, Odometer, TrendCharts, Collection, Cpu } from '@element-plus/icons-vue'
+import { HomeFilled, Setting, List, Share, Odometer, TrendCharts, Collection, Cpu, Document } from '@element-plus/icons-vue'
 
 const OPEN_ISSUE_RIBBON_ICONS = {
   dashboard: Odometer,
   lists: List,
   pushHistory: TrendCharts,
+  eightDReports: Document,
   org: Share,
   functions: Collection,
   testRunner: Cpu,
@@ -25,6 +26,7 @@ export const RIBBON_TABS: PnwRibbonTabDef[] = [
           { pageId: 'dashboard', label: '仪表盘' },
           { pageId: 'lists', label: '列表管理' },
           { pageId: 'pushHistory', label: '推送历史' },
+          { pageId: 'eightDReports', label: '8D 报告' },
         ],
       },
     ],

@@ -6,7 +6,9 @@
 export type IssueStatus = 'open' | 'in_progress' | 'resolved' | 'closed' | 'cancelled'
 export type CloseReason = 'completed' | 'cancelled' | 'duplicate' | 'transferred' | 'unreproducible'
 
-// --- 第二层：优先级与严重度 ---
+// --- 第二层：二维决策模型 ---
+// 兼容说明：历史 API/数据库字段名保持 priority / severity；
+// 产品语义分别为“紧急度 / 重要度”，固定 value 的显示名由内置数据字典管理。
 export type IssuePriority = 'low' | 'medium' | 'high' | 'critical'
 export type Severity = 'fatal' | 'major' | 'minor' | 'trivial'
 
@@ -48,9 +50,9 @@ export interface Issue {
   closeReason: CloseReason | null
   closedBy: string | null
 
-  // 第三层：优先级与严重度
-  priority: IssuePriority
-  severity: Severity
+  // 第三层：重要度与紧急度（保留历史字段名，见上方兼容说明）
+  priority: IssuePriority              // 紧急度：low → critical
+  severity: Severity                   // 重要度：trivial → fatal
 
   // 第四层：问题分类与发现阶段
   category: IssueCategory | null
@@ -62,13 +64,12 @@ export interface Issue {
   dueDate: string | null              // 计划完成日 YYYY-MM-DD
   completedAt: string | null          // 实际完成时间
 
-  // 第六层：8D 报告字段（D3-D6）
-  containment: string | null          // D3 临时遏制措施
-  rootCause: string | null            // D4 根本原因
-  correctiveAction: string | null     // D5-D6 永久纠正措施
-
   // 元数据
   sortOrder: number
+  /** 通用扩展属性；业务字段成熟后应优先升级为独立结构化列或附属表。 */
+  extensions: Record<string, unknown>
+  /** 当前关联的点检表数量；由 issueListLinks 数据库触发器维护。 */
+  listCount: number
   createdBy: string
   createdAt: string
   updatedAt: string
@@ -88,9 +89,6 @@ export interface CreateIssueInput {
   assigneeId?: string
   dueDate?: string
   issueNo?: string
-  containment?: string
-  rootCause?: string
-  correctiveAction?: string
   functionId?: string
 }
 
@@ -109,9 +107,6 @@ export interface UpdateIssueInput {
   closeReason?: CloseReason
   closedBy?: string
   completedAt?: string
-  containment?: string
-  rootCause?: string
-  correctiveAction?: string
   functionId?: string
 }
 

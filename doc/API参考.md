@@ -89,10 +89,16 @@ Query: ?status=open&priority=high&search=xxx&sort=attention:desc,priority:asc&pa
 ```
 ```json
 // Response 200  { "items": [...], "total": 3 }
-// 每条 item 含 _attentionLevel（0~5）；接口返回全量链接，不关注项显隐由前端「只显示【不关注】」控制
+// 每条 item 含 _attentionLevel（0~5）、extensions（对象）与 listCount（整数）。
+// listCount 已固化在 issues 表，由 issueListLinks 触发器维护；列表查询不做关联计数。
+// 接口返回全量链接，不关注项显隐由前端「只显示【不关注】」控制
 ```
 
 **sort 参数**：`field:dir` 或复合 `field:dir,field2:dir2`。支持 `attention`、`priority`、`severity`、`status`、`issueNo`、`title`、`dueDate`、`createdAt`。未传时默认 `attention DESC, priority ASC, createdAt DESC`。
+
+兼容语义：`severity` 表示重要度（`trivial` → `fatal`），`priority` 表示紧急度（`low` → `critical`）。字段名为兼容旧数据保持不变；两组固定值按低到高排列。
+
+`extensions` 为 `JSONB NOT NULL DEFAULT '{}'` 的通用扩展属性容器；当前通用 Issue 新建/编辑接口不接受任意 JSON 修改。`listCount` 为 `INTEGER NOT NULL DEFAULT 0` 的关联列表计数缓存，只在数量大于等于 2 时由列表和详情界面显示。
 
 ### POST /list/:listId/issue — `{ "title": "...", "priority": "high" }`
 ### GET /issue/:id
@@ -108,20 +114,79 @@ Query: ?status=open&priority=high&search=xxx&sort=attention:desc,priority:asc&pa
 
 ### GET /list/:listId/checkpoints
 ### GET /issue/:issueId/checkpoints
-### POST /issue/:issueId/checkpoint — `{ "checkpointDate": "...", "description": "..." }`
-### PUT /checkpoint/:id
+### POST /issue/:issueId/checkpoint — `{ "checkpointDate": "2026-07-30", "deadline": "2026-08-05" | null, "description": "..." }`
+### PUT /checkpoint/:id — 不传 `deadline` 保持原值；传日期修改；传 `null` 清空
 ### DELETE /checkpoint/:id
+
+`checkpointDate` 是必填、可编辑的点检日，用于时间线排序；`deadline` 是可选截止日，仅用于逾期判断。两者均使用 `YYYY-MM-DD`。详见[点检日期设计](点检日期设计.md)。
 
 ---
 
 ## Push
 
+### GET /dashboard/tasks — 仪表盘待办中心
+
+查询参数：`tab=summary|incoming|outgoing|admin`（默认 `summary`），`limit=1..20`（默认 `5`）。`summary` 只返回各 Tab 数量；其他值只返回对应 Tab 的最多 `limit` 条明细，其余明细数组为空。数据包括当前账号的待我处理推送、我发起的待处理推送，以及系统管理员专属的待批准账号和第三方登录待关联申请。只查询 `pending` 状态；非管理员的管理审批数组固定为空。总数对两个推送视角按记录 ID 去重。
+
+详见[仪表盘待办中心](仪表盘待办中心.md)。
+
 ### GET /push/preview — `?fromListId=uuid&toListId=uuid`
-### POST /push — `{ "fromListId": "...", "toListId": "...", "issueIds": [...] }`
+### POST /push
+
+列表推送（兼容旧客户端省略 `targetType`）：
+
+```json
+{ "fromListId": "...", "targetType": "list", "toListId": "...", "issueIds": ["..."] }
+```
+
+用户定向推送：
+
+```json
+{ "fromListId": "...", "targetType": "user", "toUserId": "...", "issueIds": ["..."] }
+```
+
+用户推送在待处理时 `toListId=null`；指定接收人接受时才选择目标列表。
+
 ### GET /list/:listId/push-history
 ### GET /push/history
 ### GET /list/:listId/incoming-pushes
-### PATCH /push/:id/handle — `{ "action": "accepted", "rejectReason": "..." }`
+### GET /push/:id/target-lists — 用户推送接收人可选择的 owner/admin 列表
+### PATCH /push/:id/handle
+
+- 列表推送接受：`{ "action": "accepted" }`
+- 用户推送接受：`{ "action": "accepted", "toListId": "..." }`
+- 拒绝：`{ "action": "rejected", "rejectReason": "..." }`
+
+### PATCH /push/:id/withdraw — 仅发起人可撤回待处理推送
+
+推送状态：`pending | accepted | rejected | withdrawn`。接受、拒绝和撤回都以 `status=pending` 条件更新，重复或并发处理不会产生第二条列表链接。
+
+---
+
+## 8D 附属报告
+
+8D 报告是独立业务记录，不属于 Issue 核心字段。`relatedIssueId` 可为 `null`；关联不会授予 Issue 权限。
+
+### GET /eight-d-reports — 当前用户可读的关联/独立报告
+### GET /eight-d-reports/issue-options — 当前用户可编辑并可作为关联目标的 Issue
+### GET /issue/:issueId/eight-d-reports
+### GET /eight-d-report/:id
+### POST /eight-d-report
+### PUT /eight-d-report/:id
+
+```json
+{
+  "title": "供应商来料尺寸异常 8D",
+  "relatedIssueId": "issue-id-or-null",
+  "containment": "D3 临时措施",
+  "rootCause": "D4 根因",
+  "correctiveAction": "D5-D6 永久措施"
+}
+```
+
+### DELETE /eight-d-report/:id — 软删除，保留审计字段
+
+关联报告读取服从 Issue 权限；关联/改绑/解绑要求目标 Issue 原列表的编辑权限。独立报告默认仅创建人和系统管理员可读写。
 
 ---
 
@@ -136,6 +201,8 @@ Query: ?status=open&priority=high&search=xxx&sort=attention:desc,priority:asc&pa
 ### PUT /dict/:id
 ### DELETE /dict/:id
 ### DELETE /dict/tag/:tag
+
+`severity`（重要度）与 `priority`（紧急度）是内置系统字典：不允许新增、删除、停用、调整顺序或修改 `value`，`PUT /dict/:id` 只接受显示名 `label` 变化。
 
 ---
 
@@ -155,7 +222,7 @@ Query: ?status=open&priority=high&search=xxx&sort=attention:desc,priority:asc&pa
 ### GET /db/export
 ### POST /db/import — `{ "data": {...}, "mode": "replace|merge" }`
 ### POST /db/repair-links
-### POST /db/repair — `{ "task": "all|schema|..." }`
+### POST /db/repair — `{ "task": "all|schema|checkpoints|links|dict|users|issueNo|linkAttention|reports" }`
 ### POST /db/repair/:task
 
 ---

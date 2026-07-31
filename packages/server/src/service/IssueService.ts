@@ -39,7 +39,8 @@ export class IssueService {
     const fromJoin = `FROM issues i JOIN issueListLinks il ON i.id = il.issueId AND il.listId = ? LEFT JOIN issueLists origin ON i.listId = origin.id LEFT JOIN poiFunctions f ON i.functionId = f.id`
     const total = await db.get(`SELECT COUNT(*) as count FROM issues i JOIN issueListLinks il ON i.id = il.issueId AND il.listId = ?${where}`, [listId, ...params.slice(1)]) as { count: number }
 
-    // 排序：默认关注度 → 优先级；sort 支持 "field:dir" 或 "field:dir,field2:dir2"
+    // 排序：默认关注度 → 紧急度；priority 是历史兼容字段名。
+    // sort 支持 "field:dir" 或 "field:dir,field2:dir2"
     const SEVERITY_ORDER = "CASE i.severity WHEN 'fatal' THEN 1 WHEN 'major' THEN 2 WHEN 'minor' THEN 3 WHEN 'trivial' THEN 4 ELSE 5 END"
     const PRIORITY_ORDER = "CASE i.priority WHEN 'critical' THEN 1 WHEN 'high' THEN 2 WHEN 'medium' THEN 3 WHEN 'low' THEN 4 ELSE 5 END"
     const STATUS_ORDER = "CASE i.status WHEN 'open' THEN 1 WHEN 'in_progress' THEN 2 WHEN 'resolved' THEN 3 WHEN 'closed' THEN 4 WHEN 'cancelled' THEN 5 ELSE 6 END"
@@ -92,7 +93,8 @@ export class IssueService {
       items: items.map(item => Object.assign(item, {
         _canModify: canPerformListAction(user, item._originRole, 'modify-issue'),
         _canSetAttention: canPerformListAction(user, currentRole, 'modify-issue'),
-        _canPush: item.listId === listId && canPerformListAction(user, currentRole, 'push'),
+        // 推送权限属于当前列表：关联进来的 Issue 也可从这里继续向上或横向流转。
+        _canPush: canPerformListAction(user, currentRole, 'push'),
       })),
       total: total.count,
     }
@@ -154,15 +156,13 @@ export class IssueService {
 
           await tx.run(
             `INSERT INTO issues (id, listId, issueNo, title, description, status, priority, severity, category, detectionPhase,
-              reporterId, assigneeId, dueDate, containment, rootCause, correctiveAction,
-              functionId, sortOrder, createdBy, createdAt, updatedAt)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              reporterId, assigneeId, dueDate, functionId, sortOrder, createdBy, createdAt, updatedAt)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               id, listId, issueNo, input.title, input.description ?? '',
               'open', input.priority ?? 'medium', input.severity ?? 'minor',
               input.category ?? null, input.detectionPhase ?? null,
               input.reporterId ?? null, input.assigneeId ?? null, input.dueDate ?? null,
-              input.containment ?? '', input.rootCause ?? '', input.correctiveAction ?? '',
               input.functionId ?? null, sortOrder, userId, now, now,
             ],
           )
@@ -202,9 +202,6 @@ export class IssueService {
            closeReason = COALESCE(?, closeReason),
            closedBy = COALESCE(?, closedBy),
            completedAt = COALESCE(?, completedAt),
-           containment = COALESCE(?, containment),
-           rootCause = COALESCE(?, rootCause),
-           correctiveAction = COALESCE(?, correctiveAction),
            functionId = COALESCE(?, functionId),
            updatedAt = ?
        WHERE id = ?`,
@@ -223,9 +220,6 @@ export class IssueService {
         input.closeReason ?? null,
         input.closedBy ?? null,
         input.completedAt ?? null,
-        input.containment ?? null,
-        input.rootCause ?? null,
-        input.correctiveAction ?? null,
         input.functionId ?? null,
         new Date().toISOString(), id,
       ],

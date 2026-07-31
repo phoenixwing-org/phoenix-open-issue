@@ -8,7 +8,9 @@ export const DICT_GROUPS = {
   issueCategory: '问题分类',
   detectionPhase: '发现阶段',
   orgUnitType: '组织类型',
-  severity: '严重度',
+  // 历史分组名 severity / priority 保持兼容；界面采用二维模型语义。
+  severity: '重要度',
+  priority: '紧急度',
   closeReason: '关闭理由',
   listType: '点检表类型',
 } as const

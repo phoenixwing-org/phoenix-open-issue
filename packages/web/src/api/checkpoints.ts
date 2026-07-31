@@ -10,7 +10,7 @@ export function getCheckpointsByList(listId: string) {
 }
 
 // 单个操作 → 单数
-export function createCheckpoint(issueId: string, data: { checkpointDate: string; description: string; responsibleUserId?: string }) {
+export function createCheckpoint(issueId: string, data: { checkpointDate: string; deadline?: string | null; description: string; responsibleUserId?: string }) {
   return request.post(`/issue/${issueId}/checkpoint`, data)
 }
 

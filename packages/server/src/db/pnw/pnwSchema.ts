@@ -1,8 +1,12 @@
 import type { PnwDbAdapter } from './pnwDbTypes.js'
 import { externalAuthSchemaSql } from '../externalAuthSchema.js'
+import { pnwIssueExtensionsSchemaSql } from './pnwIssueExtensions.js'
 
 export async function pnwRunSchema(db: PnwDbAdapter): Promise<void> {
   const now = db.dialect === 'postgres' ? "(CURRENT_TIMESTAMP::TEXT)" : '(CURRENT_TIMESTAMP)'
+  const extensions = db.dialect === 'postgres'
+    ? `JSONB NOT NULL DEFAULT '{}'::jsonb`
+    : `TEXT NOT NULL DEFAULT '{}'`
   await db.exec(`
     CREATE TABLE IF NOT EXISTS "schemaMigrations" (
       "id" TEXT PRIMARY KEY,
@@ -76,6 +80,8 @@ export async function pnwRunSchema(db: PnwDbAdapter): Promise<void> {
       "correctiveAction" TEXT DEFAULT '',
       "sortOrder" INTEGER DEFAULT 0,
       "functionId" TEXT,
+      "extensions" ${extensions},
+      "listCount" INTEGER NOT NULL DEFAULT 0 CHECK("listCount" >= 0),
       "createdBy" TEXT NOT NULL,
       "createdAt" TEXT DEFAULT ${now},
       "updatedAt" TEXT DEFAULT ${now}
@@ -85,6 +91,7 @@ export async function pnwRunSchema(db: PnwDbAdapter): Promise<void> {
       "id" TEXT PRIMARY KEY,
       "issueId" TEXT NOT NULL,
       "checkpointDate" TEXT NOT NULL,
+      "deadline" TEXT,
       "description" TEXT NOT NULL,
       "status" TEXT DEFAULT 'pending' CHECK("status" IN ('pending','done','skipped','voided')),
       "responsibleUserId" TEXT,
@@ -96,11 +103,13 @@ export async function pnwRunSchema(db: PnwDbAdapter): Promise<void> {
     CREATE TABLE IF NOT EXISTS "pushRecords" (
       "id" TEXT PRIMARY KEY,
       "fromListId" TEXT NOT NULL,
-      "toListId" TEXT NOT NULL,
+      "targetType" TEXT NOT NULL DEFAULT 'list' CHECK("targetType" IN ('list','user')),
+      "toListId" TEXT,
+      "toUserId" TEXT,
       "issueId" TEXT NOT NULL,
       "pushedBy" TEXT NOT NULL,
       "pushedAt" TEXT DEFAULT ${now},
-      "status" TEXT NOT NULL DEFAULT 'pending' CHECK("status" IN ('pending','accepted','rejected')),
+      "status" TEXT NOT NULL DEFAULT 'pending' CHECK("status" IN ('pending','accepted','rejected','withdrawn')),
       "handledBy" TEXT,
       "handledAt" TEXT,
       "rejectReason" TEXT,
@@ -116,6 +125,20 @@ export async function pnwRunSchema(db: PnwDbAdapter): Promise<void> {
       "attentionUpdatedBy" TEXT,
       "linkedAt" TEXT DEFAULT ${now},
       "linkedBy" TEXT NOT NULL
+    );
+
+    CREATE TABLE IF NOT EXISTS "eightDReports" (
+      "id" TEXT PRIMARY KEY,
+      "relatedIssueId" TEXT,
+      "title" TEXT NOT NULL,
+      "containment" TEXT NOT NULL DEFAULT '',
+      "rootCause" TEXT NOT NULL DEFAULT '',
+      "correctiveAction" TEXT NOT NULL DEFAULT '',
+      "createdBy" TEXT NOT NULL,
+      "createdAt" TEXT DEFAULT ${now},
+      "updatedAt" TEXT DEFAULT ${now},
+      "isDeleted" INTEGER NOT NULL DEFAULT 0,
+      "deletedAt" TEXT
     );
 
     CREATE TABLE IF NOT EXISTS "dict" (
@@ -154,6 +177,9 @@ export async function pnwRunSchema(db: PnwDbAdapter): Promise<void> {
     CREATE UNIQUE INDEX IF NOT EXISTS "uq_issues_issueNo" ON "issues"("issueNo");
     CREATE UNIQUE INDEX IF NOT EXISTS "idx_issueListLinks_unique" ON "issueListLinks"("issueId", "listId");
     CREATE UNIQUE INDEX IF NOT EXISTS "idx_dict_group_value" ON "dict"("groupName", "value");
+    CREATE INDEX IF NOT EXISTS "idx_eightDReports_issue" ON "eightDReports"("relatedIssueId", "isDeleted");
+    CREATE INDEX IF NOT EXISTS "idx_eightDReports_creator" ON "eightDReports"("createdBy", "isDeleted");
   `)
   await db.exec(externalAuthSchemaSql(db.dialect))
+  if (db.dialect === 'postgres') await db.exec(pnwIssueExtensionsSchemaSql())
 }

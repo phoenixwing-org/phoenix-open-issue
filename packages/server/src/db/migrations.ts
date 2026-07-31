@@ -16,8 +16,11 @@ export const COLUMN_MIGRATIONS: { table: string; column: string; sql: string }[]
   { table: 'issueLists', column: 'deletedAt', sql: 'ALTER TABLE issueLists ADD COLUMN deletedAt TEXT' },
   { table: 'dict', column: 'tags', sql: "ALTER TABLE dict ADD COLUMN tags TEXT NOT NULL DEFAULT ''" },
   { table: 'issues', column: 'functionId', sql: 'ALTER TABLE issues ADD COLUMN functionId TEXT' },
+  { table: 'issues', column: 'extensions', sql: "ALTER TABLE issues ADD COLUMN extensions TEXT NOT NULL DEFAULT '{}'" },
+  { table: 'issues', column: 'listCount', sql: 'ALTER TABLE issues ADD COLUMN listCount INTEGER NOT NULL DEFAULT 0 CHECK(listCount >= 0)' },
   { table: 'poiFunctions', column: 'enabled', sql: 'ALTER TABLE poiFunctions ADD COLUMN enabled INTEGER NOT NULL DEFAULT 1' },
   { table: 'checkpoints', column: 'status', sql: "ALTER TABLE checkpoints ADD COLUMN status TEXT DEFAULT 'pending'" },
+  { table: 'checkpoints', column: 'deadline', sql: 'ALTER TABLE checkpoints ADD COLUMN deadline TEXT' },
   { table: 'checkpoints', column: 'responsibleUserId', sql: 'ALTER TABLE checkpoints ADD COLUMN responsibleUserId TEXT' },
   { table: 'checkpoints', column: 'sortOrder', sql: 'ALTER TABLE checkpoints ADD COLUMN sortOrder INTEGER DEFAULT 0' },
   { table: 'checkpoints', column: 'createdAt', sql: "ALTER TABLE checkpoints ADD COLUMN createdAt TEXT DEFAULT (datetime('now'))" },
@@ -114,12 +117,17 @@ export function migrateCheckpointStatusVoided(db: PnwDbAdapter): boolean {
   const sqlInfo = db.all("SELECT sql FROM sqlite_master WHERE type='table' AND name='checkpoints'") as { sql: string }[]
   const ddl = sqlInfo[0]?.sql || ''
   if (ddl.includes("'voided'")) return false
+  // 极旧版本还没有 deadline。重建状态约束时直接以原点检日初始化该列，
+  // 避免要求调用方必须先按某个固定顺序执行列迁移。
+  const oldColumns = getTableColumns(db, 'checkpoints')
+  const deadlineExpression = oldColumns.has('deadline') ? 'deadline' : 'checkpointDate'
 
   db.exec(`
     CREATE TABLE checkpoints_new (
       id TEXT PRIMARY KEY,
       issueId TEXT NOT NULL,
       checkpointDate TEXT NOT NULL,
+      deadline TEXT,
       description TEXT NOT NULL,
       status TEXT DEFAULT 'pending' CHECK(status IN ('pending','done','skipped','voided')),
       responsibleUserId TEXT,
@@ -127,13 +135,105 @@ export function migrateCheckpointStatusVoided(db: PnwDbAdapter): boolean {
       createdAt TEXT DEFAULT (datetime('now')),
       updatedAt TEXT DEFAULT (datetime('now'))
     );
-    INSERT INTO checkpoints_new (id, issueId, checkpointDate, description, status, responsibleUserId, sortOrder, createdAt, updatedAt)
-    SELECT id, issueId, checkpointDate, description, status, responsibleUserId, sortOrder, createdAt, updatedAt
+    INSERT INTO checkpoints_new (id, issueId, checkpointDate, deadline, description, status, responsibleUserId, sortOrder, createdAt, updatedAt)
+    SELECT id, issueId, checkpointDate, ${deadlineExpression}, description, status, responsibleUserId, sortOrder, createdAt, updatedAt
     FROM checkpoints;
     DROP TABLE checkpoints;
     ALTER TABLE checkpoints_new RENAME TO checkpoints;
   `)
   return true
+}
+
+/**
+ * v0.6.1 将原 checkpointDate 明确为可编辑的点检日，并新增可选 deadline。
+ * 旧数据仅在首次迁移时复制一次；之后用户清空截止日不会被启动流程重新填回。
+ */
+export function migrateCheckpointDeadline(db: PnwDbAdapter): number {
+  if (!tableExists(db, 'checkpoints') || !tableExists(db, 'systemFlags')) return 0
+  const done = db.get("SELECT value FROM systemFlags WHERE key = 'migrate_checkpoint_deadline'") as { value: string } | undefined
+  if (done?.value === '1') return 0
+  const columns = getTableColumns(db, 'checkpoints')
+  if (!columns.has('deadline')) return 0
+
+  const result = db.run("UPDATE checkpoints SET deadline = checkpointDate WHERE deadline IS NULL OR deadline = ''")
+  db.run("INSERT OR REPLACE INTO systemFlags (key, value) VALUES ('migrate_checkpoint_deadline', '1')")
+  return result.changes ?? 0
+}
+
+/**
+ * v0.6.1 推送目标扩展：列表推送保持兼容，用户推送在接受前不绑定目标列表。
+ * SQLite 无法直接解除 NOT NULL/替换 CHECK，因此以同事务表重建完成迁移。
+ */
+export function migratePushTargets(db: PnwDbAdapter): boolean {
+  if (!tableExists(db, 'pushRecords')) return false
+  const columns = getTableColumns(db, 'pushRecords')
+  const sqlInfo = db.all("SELECT sql FROM sqlite_master WHERE type='table' AND name='pushRecords'") as { sql: string }[]
+  const ddl = sqlInfo[0]?.sql ?? ''
+  const isCurrent = columns.has('targetType')
+    && columns.has('toUserId')
+    && ddl.includes("'withdrawn'")
+    && !/toListId\s+TEXT\s+NOT\s+NULL/i.test(ddl)
+
+  if (!isCurrent) {
+    const targetType = columns.has('targetType') ? 'targetType' : "'list'"
+    const toUserId = columns.has('toUserId') ? 'toUserId' : 'NULL'
+    db.exec(`
+      CREATE TABLE pushRecords_new (
+        id TEXT PRIMARY KEY,
+        fromListId TEXT NOT NULL,
+        targetType TEXT NOT NULL DEFAULT 'list' CHECK(targetType IN ('list','user')),
+        toListId TEXT,
+        toUserId TEXT,
+        issueId TEXT NOT NULL,
+        pushedBy TEXT NOT NULL,
+        pushedAt TEXT DEFAULT (datetime('now')),
+        status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','accepted','rejected','withdrawn')),
+        handledBy TEXT,
+        handledAt TEXT,
+        rejectReason TEXT,
+        note TEXT DEFAULT ''
+      );
+      INSERT INTO pushRecords_new
+        (id, fromListId, targetType, toListId, toUserId, issueId, pushedBy, pushedAt, status, handledBy, handledAt, rejectReason, note)
+      SELECT id, fromListId, ${targetType}, toListId, ${toUserId}, issueId, pushedBy, pushedAt, status, handledBy, handledAt, rejectReason, note
+      FROM pushRecords;
+      DROP TABLE pushRecords;
+      ALTER TABLE pushRecords_new RENAME TO pushRecords;
+    `)
+  }
+
+  db.exec(`
+    CREATE INDEX IF NOT EXISTS idx_push_target_list ON pushRecords(toListId, status);
+    CREATE INDEX IF NOT EXISTS idx_push_target_user ON pushRecords(toUserId, status);
+    CREATE INDEX IF NOT EXISTS idx_push_source ON pushRecords(fromListId, pushedAt);
+  `)
+  if (tableExists(db, 'systemFlags')) {
+    db.run("INSERT OR REPLACE INTO systemFlags (key, value) VALUES ('migrate_push_targets', '1')")
+  }
+  return !isCurrent
+}
+
+/** 将旧 Issue 主表里的 8D 长文本一次性复制为独立附属记录；保留旧列用于回滚。 */
+export function migrateLegacyEightDReports(db: PnwDbAdapter): number {
+  if (!tableExists(db, 'issues') || !tableExists(db, 'eightDReports') || !tableExists(db, 'systemFlags')) return 0
+  const done = db.get("SELECT value FROM systemFlags WHERE key = 'migrate_legacy_eight_d_reports'") as { value: string } | undefined
+  if (done?.value === '1') return 0
+  const issueColumns = getTableColumns(db, 'issues')
+  if (!['containment', 'rootCause', 'correctiveAction'].every(column => issueColumns.has(column))) return 0
+
+  const result = db.run(`
+    INSERT OR IGNORE INTO eightDReports
+      (id, relatedIssueId, title, containment, rootCause, correctiveAction, createdBy, createdAt, updatedAt)
+    SELECT 'legacy-8d-' || id, id, '8D · ' || title,
+           COALESCE(containment, ''), COALESCE(rootCause, ''), COALESCE(correctiveAction, ''),
+           createdBy, createdAt, updatedAt
+      FROM issues
+     WHERE TRIM(COALESCE(containment, '')) != ''
+        OR TRIM(COALESCE(rootCause, '')) != ''
+        OR TRIM(COALESCE(correctiveAction, '')) != ''
+  `)
+  db.run("INSERT OR REPLACE INTO systemFlags (key, value) VALUES ('migrate_legacy_eight_d_reports', '1')")
+  return result.changes ?? 0
 }
 
 /** 清理重复 issueListLinks，返回删除条数 */
@@ -142,6 +242,62 @@ export function dedupeIssueListLinks(db: PnwDbAdapter): number {
   db.exec('DELETE FROM issueListLinks WHERE id NOT IN (SELECT MIN(id) FROM issueListLinks GROUP BY issueId, listId)')
   const after = db.get('SELECT COUNT(*) as c FROM issueListLinks') as { c: number }
   return before.c - after.c
+}
+
+/**
+ * SQLite 仅保留旧库/自动化兼容。正式运行以 PostgreSQL 触发器契约为准。
+ * 触发器保证列表查询只读取 issues.listCount，不做逐行关联统计。
+ */
+export function ensureIssueExtensionsAndListCount(db: PnwDbAdapter, forceBackfill = false): number {
+  if (!tableExists(db, 'issues') || !tableExists(db, 'issueListLinks') || !tableExists(db, 'systemFlags')) return 0
+  applyColumnMigrations(db)
+
+  const done = db.get("SELECT value FROM systemFlags WHERE key = 'migrate_issue_extensions_list_count'") as { value: string } | undefined
+  let fixed = 0
+  if (forceBackfill || done?.value !== '1') {
+    const result = db.run(`
+      UPDATE issues
+         SET listCount = (
+           SELECT CAST(COUNT(*) AS INTEGER)
+             FROM issueListLinks link
+            WHERE link.issueId = issues.id
+         )
+       WHERE listCount != (
+           SELECT CAST(COUNT(*) AS INTEGER)
+             FROM issueListLinks link
+            WHERE link.issueId = issues.id
+         )
+    `)
+    fixed = result.changes ?? 0
+  }
+
+  db.exec(`
+    DROP TRIGGER IF EXISTS trg_issueListLinks_count_insert;
+    DROP TRIGGER IF EXISTS trg_issueListLinks_count_delete;
+    DROP TRIGGER IF EXISTS trg_issueListLinks_count_update;
+
+    CREATE TRIGGER trg_issueListLinks_count_insert
+    AFTER INSERT ON issueListLinks
+    BEGIN
+      UPDATE issues SET listCount = COALESCE(listCount, 0) + 1 WHERE id = NEW.issueId;
+    END;
+
+    CREATE TRIGGER trg_issueListLinks_count_delete
+    AFTER DELETE ON issueListLinks
+    BEGIN
+      UPDATE issues SET listCount = MAX(COALESCE(listCount, 0) - 1, 0) WHERE id = OLD.issueId;
+    END;
+
+    CREATE TRIGGER trg_issueListLinks_count_update
+    AFTER UPDATE OF issueId ON issueListLinks
+    WHEN OLD.issueId != NEW.issueId
+    BEGIN
+      UPDATE issues SET listCount = MAX(COALESCE(listCount, 0) - 1, 0) WHERE id = OLD.issueId;
+      UPDATE issues SET listCount = COALESCE(listCount, 0) + 1 WHERE id = NEW.issueId;
+    END;
+  `)
+  db.run("INSERT OR REPLACE INTO systemFlags (key, value) VALUES ('migrate_issue_extensions_list_count', '1')")
+  return fixed
 }
 
 /**
@@ -370,6 +526,7 @@ export function runDataMigrations(db: PnwDbAdapter): {
   const userRole = migrateUserSystemRole(db, true)
   const listTypeRebuilt = migrateIssueListsListType(db)
   const linkAttention = migrateIssueListLinkAttention(db)
+  ensureIssueExtensionsAndListCount(db)
   const pendingBefore = db.get("SELECT id FROM orgUnits WHERE name = '待定组'") as { id: string } | undefined
   ensurePendingOrgUnit(db)
   const pendingAfter = db.get("SELECT id FROM orgUnits WHERE name = '待定组'") as { id: string } | undefined

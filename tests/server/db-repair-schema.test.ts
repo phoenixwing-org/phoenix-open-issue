@@ -59,4 +59,65 @@ describe.sequential('数据库修正 · 表结构补全', () => {
     const schema = again.find(r => r.task === 'schema')!
     expect(schema.fixed).toBe(0)
   })
+
+  it('点检修正保留无截止日记录并明确其为合法数据', async () => {
+    db.run(`
+      INSERT INTO checkpoints (id, issueId, checkpointDate, deadline, description)
+      VALUES ('repair-no-deadline', 'repair-issue', '2026-07-31', NULL, '允许无截止日')
+    `)
+
+    const result = await repair.repairCheckpoints()
+    expect(result.details).toEqual(expect.arrayContaining([
+      expect.stringContaining('无截止日'),
+      expect.stringContaining('不补写'),
+      expect.stringContaining('checkpointDate'),
+    ]))
+    expect(db.get('SELECT deadline FROM checkpoints WHERE id = ?', 'repair-no-deadline'))
+      .toEqual({ deadline: null })
+  })
+
+  it('链接修正会按 issueListLinks 重新校正 Issue.listCount', async () => {
+    const adminId = (db.get("SELECT id FROM users WHERE username = 'admin'") as { id: string }).id
+    db.run(`INSERT INTO issueLists (id, name, listType, ownerId) VALUES ('repair-count-list', '计数修复', 'custom', ?)`, adminId)
+    db.run(`
+      INSERT INTO issues (id, listId, issueNo, title, createdBy)
+      VALUES ('repair-count-issue', 'repair-count-list', 'ISS-2099-9998', '关联计数修复', ?)
+    `, adminId)
+    db.run(`
+      INSERT INTO issueListLinks (id, issueId, listId, linkedBy)
+      VALUES ('repair-count-link', 'repair-count-issue', 'repair-count-list', ?)
+    `, adminId)
+    db.run(`UPDATE issues SET listCount = 9 WHERE id = 'repair-count-issue'`)
+
+    const repaired = await repair.repairIssueListLinks()
+    expect(repaired.details).toEqual(expect.arrayContaining([
+      expect.stringContaining('关联计数校正 1 条'),
+    ]))
+    expect(db.get('SELECT listCount FROM issues WHERE id = ?', 'repair-count-issue'))
+      .toEqual({ listCount: 1 })
+  })
+
+  it('8D 报告修正保留正文，并把失效 Issue 关联转为独立报告', async () => {
+    const adminId = (db.get("SELECT id FROM users WHERE username = 'admin'") as { id: string }).id
+    db.run(`
+      INSERT INTO eightDReports
+        (id, relatedIssueId, title, containment, createdBy)
+      VALUES ('repair-orphan-report', 'missing-issue', '孤立报告', '保留正文', ?)
+    `, adminId)
+    db.run(`
+      INSERT INTO issues
+        (id, listId, issueNo, title, containment, rootCause, correctiveAction, createdBy)
+      VALUES ('repair-legacy-8d-issue', 'repair-list', 'ISS-2099-9999', '旧 8D', '隔离', '根因', '措施', ?)
+    `, adminId)
+
+    const repaired = await repair.repairReports()
+    expect(repaired.fixed).toBeGreaterThanOrEqual(2)
+    expect(db.get('SELECT relatedIssueId, containment FROM eightDReports WHERE id = ?', 'repair-orphan-report'))
+      .toEqual({ relatedIssueId: null, containment: '保留正文' })
+    expect(db.get('SELECT relatedIssueId, rootCause FROM eightDReports WHERE id = ?', 'legacy-8d-repair-legacy-8d-issue'))
+      .toEqual({ relatedIssueId: 'repair-legacy-8d-issue', rootCause: '根因' })
+
+    const again = await repair.repairReports()
+    expect(again.fixed).toBe(0)
+  })
 })

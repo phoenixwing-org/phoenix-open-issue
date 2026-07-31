@@ -31,7 +31,7 @@ const showIssueModal = ref(false)
 const modalIssueId = ref('')
 import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
 import PageHelpButton from "@/components/PageHelpButton.vue"
-import { canPerformListAction, DEFAULT_ATTENTION_LEVEL } from '@open-issue/core'
+import { canPerformListAction, DEFAULT_ATTENTION_LEVEL, ISSUE_URGENCY_DICT } from '@open-issue/core'
 import type { Checkpoint } from '@open-issue/core'
 import IssueFormDialog from '@/components/IssueFormDialog.vue'
 import IssueQuickEditDialog from '@/components/IssueQuickEditDialog.vue'
@@ -89,9 +89,10 @@ const incomingPushes = ref<any[]>([])
 const showPushInbox = ref(false)
 const loadedListId = ref<string | null>(null)
 
-// ── 标签映射（汽车行业标准） ──
+// ── 标签映射 ──
+// priority / severity 是兼容字段名，产品语义分别是紧急度 / 重要度。
 const statusLabel: Record<string, string> = {
-  open: '待处理', in_progress: '进行中', resolved: '已解决', closed: '已关闭', cancelled: '已取消',
+  open: '待处理', in_progress: '处理中', resolved: '待验收', closed: '已完成', cancelled: '已取消',
 }
 const statusTag: Record<string, string | undefined> = {
   open: 'info', in_progress: 'warning', resolved: 'success', closed: undefined, cancelled: 'danger',
@@ -101,7 +102,12 @@ const severityTag: Record<string, string | undefined> = {
   fatal: 'danger', major: 'warning', minor: 'info', trivial: undefined,
 }
 
-const priorityLabel: Record<string, string> = { low: '低', medium: '中', high: '高', critical: '紧急' }
+const priorityLabel = computed<Record<string, string>>(() => Object.fromEntries(
+  ISSUE_URGENCY_DICT.map(item => [
+    item.value,
+    dict.labelIndex[`priority:${item.value}`] || item.label,
+  ]),
+))
 const priorityTag: Record<string, string | undefined> = { low: 'info', medium: 'warning', high: 'danger', critical: undefined }
 
 // 列表详情页会被 keep-alive 缓存。全局 store 正在加载另一列表时，不能短暂显示其数据。
@@ -339,7 +345,7 @@ usePoiViewContribution(() => route.fullPath, {
       severity: severityFilter.value,
       category: categoryFilter.value,
       statusOptions: Object.entries(statusLabel).map(([value, label]) => ({ value, label })),
-      priorityOptions: Object.entries(priorityLabel).map(([value, label]) => ({ value, label })),
+      priorityOptions: dict.getOptions('priority').length ? dict.getOptions('priority') : ISSUE_URGENCY_DICT,
       severityOptions: dict.getOptions('severity'),
       categoryOptions: dict.getOptions('issueCategory'),
       hasActiveFilters: hasActiveFilters.value,
@@ -434,6 +440,7 @@ function openCreateCheckpoint(row: { id: string; title: string; issueNo?: string
 
 async function onCreateCheckpoint(data: {
   checkpointDate: string
+  deadline: string | null
   description: string
   responsibleUserId?: string
 }) {
@@ -446,6 +453,7 @@ async function onCreateCheckpoint(data: {
 
 async function onEditCheckpoint(data: {
   checkpointDate: string
+  deadline: string | null
   description: string
   responsibleUserId?: string
   status?: Checkpoint['status']
@@ -573,7 +581,7 @@ function formatDate(d: string | null) {
   return d.slice(0, 10)
 }
 
-// 点检日期格式化：同年或差距 < 阈值月数 → MM-DD，否则 → YYYY-MM-DD
+// 最近点检的点检日格式化：同年或差距 < 阈值月数 → MM-DD，否则 → YYYY-MM-DD
 function formatCpDate(dateStr: string): string {
   if (!dateStr) return '—'
   const d = new Date(dateStr)
@@ -634,7 +642,7 @@ provide('issueListCellCtx', reactive({
   dict,
   userMap,
   severityTag,
-  priorityLabel,
+  get priorityLabel() { return priorityLabel.value },
   priorityTag,
   statusLabel,
   statusTag,
@@ -745,7 +753,16 @@ provide('issueListCellCtx', reactive({
       </el-table-column>
       <el-table-column prop="title" label="标题" min-width="180" show-overflow-tooltip fixed="left" sortable="custom">
         <template #default="{ row }">
-          <span class="cell-link" title="点击查看" @click="openViewIssue(row, $event)">{{ row.title }}</span>
+          <div class="issue-title-cell">
+            <span class="cell-link issue-title-text" title="点击查看" @click="openViewIssue(row, $event)">{{ row.title }}</span>
+            <el-tooltip
+              v-if="Number(row.listCount) >= 2"
+              :content="`当前关联 ${row.listCount} 个点检表`"
+              placement="top"
+            >
+              <span class="issue-list-count" :aria-label="`关联 ${row.listCount} 个点检表`">关联 {{ row.listCount }}</span>
+            </el-tooltip>
+          </div>
         </template>
       </el-table-column>
       <el-table-column
@@ -955,6 +972,35 @@ provide('issueListCellCtx', reactive({
   color: #409eff;
   text-decoration: underline;
   text-underline-offset: 2px;
+}
+.issue-title-cell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 6px;
+  min-width: 0;
+  min-height: 26px;
+  padding-right: 4px;
+  width: 100%;
+}
+.issue-title-text {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.issue-list-count {
+  align-self: end;
+  padding: 0 4px;
+  border: 1px solid var(--el-color-primary-light-5, #79bbff);
+  border-radius: 999px;
+  background: var(--el-color-primary-light-9, #ecf5ff);
+  color: var(--el-color-primary, #409eff);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+  line-height: 13px;
+  white-space: nowrap;
 }
 .issue-row-index {
   display: inline-grid;

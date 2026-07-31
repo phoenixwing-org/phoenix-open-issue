@@ -5,6 +5,7 @@ defineProps<{
   status: string
   priority: string
   severity: string
+  listCount: number
   canModify: boolean
   canPush: boolean
   has8d: boolean
@@ -24,8 +25,9 @@ defineProps<{
     </header>
     <dl>
       <div><dt>状态</dt><dd>{{ status || '—' }}</dd></div>
-      <div><dt>优先级</dt><dd>{{ priority || '—' }}</dd></div>
-      <div><dt>严重度</dt><dd>{{ severity || '—' }}</dd></div>
+      <div><dt>紧急度</dt><dd>{{ priority || '—' }}</dd></div>
+      <div><dt>重要度</dt><dd>{{ severity || '—' }}</dd></div>
+      <div v-if="listCount >= 2"><dt>关联点检表</dt><dd>{{ listCount }}</dd></div>
     </dl>
     <nav aria-label="Issue 章节">
       <span>章节</span>

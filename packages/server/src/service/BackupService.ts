@@ -17,7 +17,7 @@ type BackupExportScope = 'full' | 'accessible'
 
 const TABLE_NAMES = [
   'users', 'externalIdentities', 'externalBindRequests', 'orgUnits', 'issueLists', 'issueListMembers',
-  'issues', 'issueListLinks', 'checkpoints', 'pushRecords', 'dict', 'poiFunctions',
+  'issues', 'issueListLinks', 'checkpoints', 'eightDReports', 'pushRecords', 'dict', 'poiFunctions',
 ]
 const TRANSIENT_TABLE_NAMES = ['oauthLoginTickets', 'oauthLoginAttempts']
 
@@ -111,12 +111,17 @@ export class BackupService {
               else passwords.reset++
             }
           } else {
-            const cols = Object.keys(row).filter(k => row[k] !== undefined)
+            // v0.6.1 以前的备份没有 checkpoint.deadline。当且仅当字段完全缺失时，
+            // 继承旧 checkpointDate，保持升级前的计划/逾期含义；显式 null 必须保留。
+            const normalizedRow = table === 'checkpoints' && !Object.hasOwn(row, 'deadline')
+              ? { ...row, deadline: row.checkpointDate ?? null }
+              : row
+            const cols = Object.keys(normalizedRow).filter(k => normalizedRow[k] !== undefined)
             if (!cols.every(isSafeIdentifier)) {
               throw new BadRequestError(`备份 ${table} 包含非法列名`)
             }
             const placeholders = cols.map(() => '?').join(', ')
-            const values = cols.map(k => row[k])
+            const values = cols.map(k => normalizedRow[k])
             const result = await tx.run(
               `INSERT INTO "${table}" (${cols.map(quoteIdentifier).join(', ')}) VALUES (${placeholders}) ON CONFLICT DO NOTHING`,
               values,
@@ -126,6 +131,17 @@ export class BackupService {
         }
         imported[table] = count
       }
+
+      // listCount 是可重建的 counter cache。备份可能来自旧版本，也可能在导入
+      // issueListLinks 时被触发器递增，因此导入结束后以关联表为准统一校正一次。
+      await tx.run(`
+        UPDATE issues
+           SET listCount = (
+             SELECT CAST(COUNT(*) AS INTEGER)
+               FROM issueListLinks link
+              WHERE link.issueId = issues.id
+           )
+      `)
     })
 
     console.log(`📦 [BACKUP] import ${mode} — ${Object.values(imported).reduce((a, b) => a + b, 0)} rows`)
@@ -144,6 +160,14 @@ export class BackupService {
     `, [userId, userId])
     const listIds = lists.map(row => row.id).filter((id): id is string => typeof id === 'string')
     tables.issueLists = lists
+    tables.eightDReports = await db.all(
+      'SELECT * FROM eightDReports WHERE relatedIssueId IS NULL AND createdBy = ? AND isDeleted = 0',
+      [userId],
+    )
+    tables.pushRecords = await db.all(
+      'SELECT * FROM pushRecords WHERE pushedBy = ? OR toUserId = ?',
+      [userId, userId],
+    )
     if (!listIds.length) return {
       version: 1,
       timestamp: new Date().toISOString(),
@@ -169,14 +193,21 @@ export class BackupService {
       listIds,
     )
     tables.pushRecords = await db.all(
-      `SELECT * FROM pushRecords WHERE fromListId IN (${placeholders}) OR toListId IN (${placeholders})`,
-      [...listIds, ...listIds],
+      `SELECT * FROM pushRecords
+       WHERE fromListId IN (${placeholders}) OR toListId IN (${placeholders})
+          OR pushedBy = ? OR toUserId = ?`,
+      [...listIds, ...listIds, userId, userId],
     )
     if (issueIds.length) {
       const issuePlaceholders = issueIds.map(() => '?').join(', ')
       tables.checkpoints = await db.all(
         `SELECT * FROM checkpoints WHERE issueId IN (${issuePlaceholders})`,
         issueIds,
+      )
+      tables.eightDReports = await db.all(
+        `SELECT * FROM eightDReports
+         WHERE isDeleted = 0 AND (relatedIssueId IN (${issuePlaceholders}) OR (relatedIssueId IS NULL AND createdBy = ?))`,
+        [...issueIds, userId],
       )
     }
     return {

@@ -58,3 +58,7 @@
 - [ ] 权限细化（列表级 + Issue 级）
 - [ ] 搜索与全文检索
 - [x] phoenix-wing 组件向 npm 包收敛
+
+## 🔜 数据库收敛
+
+- [ ] 本轮 `extensions` / `listCount` 完成后，独立清理 SQLite：正式运行仅支持 PostgreSQL，删除 SQLite 配置入口、同步适配层、旧 schema bridge 与专属测试；迁移前先归档旧 SQLite 数据导入 PostgreSQL 的操作说明。

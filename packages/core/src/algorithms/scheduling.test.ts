@@ -2,7 +2,12 @@ import { describe, it, expect } from 'vitest'
 import { isOverdue, calculateNextCheckpoint } from './scheduling.js'
 
 describe('isOverdue', () => {
-  const today = new Date('2026-06-30')
+  const today = new Date(2026, 5, 30)
+
+  it('returns overdue=false when the optional deadline is missing', () => {
+    expect(isOverdue(null, 'pending', today)).toEqual({ overdue: false, daysOverdue: 0 })
+    expect(isOverdue(undefined, 'pending', today)).toEqual({ overdue: false, daysOverdue: 0 })
+  })
 
   it('returns overdue=true for past pending checkpoint', () => {
     const result = isOverdue('2026-01-01', 'pending', today)
@@ -50,6 +55,14 @@ describe('isOverdue', () => {
     const result = isOverdue('2026-06-20', 'pending', today)
     expect(result.overdue).toBe(true)
     expect(result.daysOverdue).toBe(10)
+  })
+
+  it('treats a date-only checkpoint as due at the end of that local day', () => {
+    const beforeEndOfDay = new Date(2026, 5, 30, 23, 59, 59)
+    const nextDay = new Date(2026, 6, 1, 0, 0, 1)
+
+    expect(isOverdue('2026-06-30', 'pending', beforeEndOfDay).overdue).toBe(false)
+    expect(isOverdue('2026-06-30', 'pending', nextDay)).toEqual({ overdue: true, daysOverdue: 1 })
   })
 })
 

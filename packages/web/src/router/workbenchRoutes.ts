@@ -54,6 +54,12 @@ export const POI_AUTHENTICATED_WORKBENCH_ROUTES: RouteRecordRaw[] = [
     meta: workbenchMeta('pushHistory'),
   },
   {
+    path: 'reports/8d',
+    name: 'eightDReports',
+    component: () => import('@/views/reports/EightDReportIndexView.vue'),
+    meta: workbenchMeta('eightDReports'),
+  },
+  {
     path: 'settings',
     name: 'settings',
     component: () => import('@/views/SettingsView.vue'),

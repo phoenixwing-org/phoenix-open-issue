@@ -20,6 +20,13 @@ export {
   mergeDictTags,
 } from './types/dict-tags.js'
 
+export {
+  ISSUE_IMPORTANCE_DICT,
+  ISSUE_URGENCY_DICT,
+  ISSUE_SYSTEM_DICT_GROUPS,
+  isIssueSystemDictGroup,
+} from './types/dict.js'
+
 // 算法
 export {
   validatePush,

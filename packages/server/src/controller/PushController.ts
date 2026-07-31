@@ -32,8 +32,18 @@ export class PushController {
   }
 
   async handlePush(req: Request, res: Response): Promise<void> {
-    const { action, rejectReason } = req.body
-    const record = await pushService.handlePush(routeParam(req, 'id'), action, req.user!.userId, rejectReason)
+    const { action, rejectReason, toListId } = req.body
+    const record = await pushService.handlePush(routeParam(req, 'id'), action, req.user!.userId, rejectReason, toListId)
+    res.json(record)
+  }
+
+  async getTargetLists(req: Request, res: Response): Promise<void> {
+    const lists = await pushService.getTargetLists(routeParam(req, 'id'), req.user!.userId)
+    res.json(lists)
+  }
+
+  async withdrawPush(req: Request, res: Response): Promise<void> {
+    const record = await pushService.withdrawPush(routeParam(req, 'id'), req.user!.userId)
     res.json(record)
   }
 }

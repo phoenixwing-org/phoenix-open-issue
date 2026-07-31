@@ -1,5 +1,5 @@
 <script setup lang="ts">
-type PoiPushStatus = 'all' | 'pending' | 'accepted' | 'rejected'
+type PoiPushStatus = 'all' | 'pending' | 'accepted' | 'rejected' | 'withdrawn'
 
 defineProps<{
   status: PoiPushStatus
@@ -14,6 +14,7 @@ const STATUS_OPTIONS: readonly { value: PoiPushStatus; label: string }[] = [
   { value: 'pending', label: '待审批' },
   { value: 'accepted', label: '已接受' },
   { value: 'rejected', label: '已拒绝' },
+  { value: 'withdrawn', label: '已撤回' },
 ]
 </script>
 

@@ -22,7 +22,7 @@
 | 5 | 责任人 | `assigneeId` | FK→users | 谁负责解决 |
 | 6 | 录入人 | `createdBy` | FK→users | 谁录入系统 |
 | 7 | 创建日期 | `createdAt` | DATETIME | 系统自动记录 |
-| 8 | 计划完成日 | `dueDate` | DATE (YYYY-MM-DD) | deadline |
+| 8 | 截止日 | `dueDate` | DATE (YYYY-MM-DD) | deadline |
 | 9 | 实际完成日 | `completedAt` | DATETIME | 状态变为 resolved/closed 时自动记录 |
 
 ### 第三层：状态与关闭
@@ -66,19 +66,19 @@
 | 值 | 中文 | 图标颜色 | 说明 |
 |----|------|---------|------|
 | `open` | 待处理 | ⚪ 灰 | 新建未开始 |
-| `in_progress` | 进行中 | 🟡 黄 | 正在处理 |
-| `resolved` | 已解决 | 🟢 绿 | 已完成，待确认关闭 |
-| `closed` | 已关闭 | 🔵 蓝 | 确认关闭 |
+| `in_progress` | 处理中 | 🟡 黄 | 正在处理 |
+| `resolved` | 待验收 | 🟢 绿 | 处理完成，等待确认 |
+| `closed` | 已完成 | 🔵 蓝 | 验收通过，处理结束 |
 | `cancelled` | 已取消 | ⚫ 深灰 | 不再需要处理 |
 
-**状态流转规则**（参考 IATF 16949 问题管理流程）：
+**推荐状态流转**（参考 IATF 16949 问题管理流程）：
 ```
 open → in_progress → resolved → closed
   ↓         ↓           ↓
 cancelled cancelled  cancelled
 ```
-- `resolved` 转为 `closed` 时须填写 `closeReason` 和 `closedBy`
-- `closed` 和 `cancelled` 为终态，不可再流转（未来可加 reopen）
+- `resolved` 表示处理完成但尚待确认；`closed` 表示验收通过；`cancelled` 表示无需继续处理。
+- `closed` 和 `cancelled` 是业务终态。当前快捷编辑仍允许管理员或有编辑权限的成员修正误选状态。
 
 ### IssuePriority — 优先级
 
@@ -134,7 +134,7 @@ cancelled cancelled  cancelled
 
 ## 与 Checkpoint 点检的关系
 
-**Checkpoint 不变**，仍然是 Issue 下的时间线节点。新增字段是 Issue 层面的属性元数据。
+本文原始范围是 Issue 层面的属性元数据。Checkpoint 仍是 Issue 下的时间线节点；其 v0.6.1 日期语义已独立演进为“点检日 + 可选截止日”，当前契约见[点检日期设计](点检日期设计.md)。
 
 ```
 Issue (属性元数据 — 本次新增列)
@@ -147,10 +147,9 @@ Issue (属性元数据 — 本次新增列)
 ├── severity         ← 新增
 ├── category         ← 新增 (v0.3)
 ├── detectionPhase   ← 新增 (v0.3)
-├── containment      ← 新增 (D3)
-├── rootCause        ← 新增 (D4)
-├── correctiveAction ← 新增 (D5-D6)
-└── Checkpoints (时间线节点 — 不变)
+├── extensions       ← 通用 JSONB 扩展属性（不保存附属关系）
+├── listCount        ← 固化的关联点检表数量
+└── Checkpoints (时间线节点；当前日期契约另见点检日期设计)
     ├── 2026-06-24: 已走流程到采购 ✅
     ├── 2026-06-28: 和乙方签订合同 ⏳
     └── 2026-07-05: 设备到货验收 📅
@@ -171,7 +170,7 @@ priority          ENUM     low | medium | high | critical
 severity          ENUM     fatal | major | minor | trivial
 reporterId        TEXT     提出人 FK→users
 assigneeId        TEXT     责任人 FK→users
-dueDate           TEXT     计划完成日 (YYYY-MM-DD)
+dueDate           TEXT     截止日 (YYYY-MM-DD)
 completedAt       TEXT     实际完成时间
 closeReason       ENUM     completed | cancelled | duplicate | transferred | unreproducible
 closedBy          TEXT     关闭确认人 FK→users
@@ -179,7 +178,11 @@ sortOrder         INTEGER  排序
 createdBy         TEXT     录入人
 createdAt         TEXT     创建时间
 updatedAt         TEXT     更新时间
+extensions        JSONB    通用扩展属性，NOT NULL DEFAULT '{}'
+listCount         INTEGER  关联点检表数量，NOT NULL DEFAULT 0
 ```
+
+`listCount` 是由 `issueListLinks` 触发器维护的 counter cache。列表和 Issue 详情直接读取该列，不在高频查询中逐行关联统计；备份导入与数据库修正会按关联表重新校正。`extensions` 与它保持独立，禁止把计数或附属关系塞入 JSONB。
 
 ### v0.3（已实现）
 
@@ -253,7 +256,7 @@ attachmentUrls      TEXT     附件链接（JSON 数组）
 | `function` | 关联功能 | |
 | `reporter` | 提出人 | |
 | `assignee` | 责任人 | |
-| `dueDate` | 计划完成日 | |
+| `dueDate` | 截止日 | |
 | `attention` | 关注度 | 列表级（`issueListLinks.attentionLevel`） |
 | `status` | 状态 | |
 | `createdAt` | 创建日期 | |
@@ -264,21 +267,21 @@ attachmentUrls      TEXT     附件链接（JSON 数组）
 |--------|------|------|
 | `checkpoints` | 最近点检 | 展示最近 N 条点检摘要；N 由设置中的「显示最近条数」控制 |
 
-### 8D 字段**不**纳入列设置（设计决策）
+### 8D 报告**不**纳入 Issue 列设置（0.6.1 决策）
 
-以下三个 8D 报告字段**有意不提供**为列表可选列：
+以下三个长文本已从 Issue Core 类型和编辑表单移出，保存于独立 `eightDReports` 附属表，因此**不提供**为 Issue 列表可选列：
 
 | 字段 | 8D 步骤 | 展示位置 |
 |------|---------|----------|
-| `containment` | D3 临时遏制 | Issue 详情 / 编辑弹窗 |
-| `rootCause` | D4 根本原因 | Issue 详情 / 编辑弹窗 |
-| `correctiveAction` | D5-D6 纠正措施 | Issue 详情 / 编辑弹窗 |
+| `containment` | D3 临时遏制 | 8D 报告页 / Issue 详情的关联报告 |
+| `rootCause` | D4 根本原因 | 8D 报告页 / Issue 详情的关联报告 |
+| `correctiveAction` | D5-D6 纠正措施 | 8D 报告页 / Issue 详情的关联报告 |
 
 **原因：**
 
 1. **长文本不适合表格** — 三列均为多行 textarea 内容，在列表中只能截断显示，可读性差，且会显著拉宽表格。
-2. **使用场景偏「深读/编辑」** — 列表页用于快速扫视状态、责任人、优先级等结构化字段；8D 内容适合在详情页或编辑弹窗中完整阅读与撰写。
-3. **与同类字段一致** — `description`（描述）同样未列入可选列，8D 三字段与描述同属正文类长文本。
-4. **无后端代价差异** — 即便未来加入列表列，数据已在 `SELECT i.*` 中返回，仍只是展示层问题；当前产品选择是**默认不在列表暴露**，避免误用。
+2. **使用场景偏「深读/编辑」** — 列表页用于快速扫视状态、责任人、重要度和紧急度等结构化字段；8D 内容适合在报告页或 Issue 详情的关联报告区完整阅读与撰写。
+3. **专业能力可选** — 周点检、例会、开发/测试等通用场景不应被迫携带 8D 专业字段。
+4. **核心模型稳定** — `eightDReports.relatedIssueId` 可空；报告可以独立存在，也可多份引用同一 Issue。旧 Issue 表三列只为回滚兼容保留，应用不再写入。
 
 若后续需要「列表一眼看 8D 进度」，可考虑单独增加一列 **8D 进度**（如：未填 / 部分 / 已完成），而非三列长文本——该方案尚未实现。
