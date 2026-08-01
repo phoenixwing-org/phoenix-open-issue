@@ -1,0 +1,192 @@
+{
+  "formatVersion": 1,
+  "moduleId": "phoenix-open-issue",
+  "name": "Open Issue",
+  "version": "0.6.1-admin.0",
+  "publisher": "PhoenixWing",
+  "license": "Apache-2.0",
+  "hostCompatibility": ">=0.1.0 <0.2.0",
+  "wingCompatibility": ">=0.6.0 <0.7.0",
+  "activationMode": "restart",
+  "routePrefix": "/open-issue",
+  "entrypoints": {
+    "web": "vue/phoenix-open-issue/config.ts",
+    "node": "midway/phoenix-open-issue/config.ts"
+  },
+  "routes": [
+    {
+      "id": "phoenix-open-issue-dashboard",
+      "path": "/open-issue/dashboard",
+      "title": "仪表盘",
+      "icon": "pnw:dashboard",
+      "moduleId": "phoenix-open-issue-workbench",
+      "capability": "phoenix-open-issue:dashboard:read",
+      "viewPath": "modules/phoenix-open-issue/views/dashboard.vue"
+    },
+    {
+      "id": "phoenix-open-issue-lists",
+      "path": "/open-issue/lists",
+      "title": "问题列表",
+      "icon": "pnw:list",
+      "moduleId": "phoenix-open-issue-workbench",
+      "capability": "phoenix-open-issue:list:read",
+      "viewPath": "modules/phoenix-open-issue/views/lists.vue"
+    },
+    {
+      "id": "phoenix-open-issue-list-detail",
+      "path": "/open-issue/list/:id",
+      "title": "列表详情",
+      "icon": "pnw:list",
+      "moduleId": "phoenix-open-issue-workbench",
+      "capability": "phoenix-open-issue:list:read",
+      "viewPath": "modules/phoenix-open-issue/views/list-detail.vue",
+      "isShow": false
+    },
+    {
+      "id": "phoenix-open-issue-issue-detail",
+      "path": "/open-issue/issue/:id",
+      "title": "Issue 详情",
+      "icon": "pnw:document",
+      "moduleId": "phoenix-open-issue-workbench",
+      "capability": "phoenix-open-issue:issue:read",
+      "viewPath": "modules/phoenix-open-issue/views/issue-detail.vue",
+      "isShow": false
+    },
+    {
+      "id": "phoenix-open-issue-push-history",
+      "path": "/open-issue/push-history",
+      "title": "推送历史",
+      "icon": "pnw:history",
+      "moduleId": "phoenix-open-issue-workbench",
+      "capability": "phoenix-open-issue:push:read",
+      "viewPath": "modules/phoenix-open-issue/views/push-history.vue"
+    },
+    {
+      "id": "phoenix-open-issue-eight-d-reports",
+      "path": "/open-issue/reports/8d",
+      "title": "8D 报告",
+      "icon": "pnw:report",
+      "moduleId": "phoenix-open-issue-workbench",
+      "capability": "phoenix-open-issue:report:read",
+      "viewPath": "modules/phoenix-open-issue/views/eight-d-reports.vue"
+    },
+    {
+      "id": "phoenix-open-issue-functions",
+      "path": "/open-issue/functions",
+      "title": "功能",
+      "icon": "pnw:list",
+      "moduleId": "phoenix-open-issue-management",
+      "capability": "phoenix-open-issue:function:read",
+      "viewPath": "modules/phoenix-open-issue/views/functions.vue"
+    },
+    {
+      "id": "phoenix-open-issue-test-runner",
+      "path": "/open-issue/test-runner",
+      "title": "单元测试",
+      "icon": "pnw:report",
+      "moduleId": "phoenix-open-issue-management",
+      "capability": "phoenix-open-issue:test:read",
+      "viewPath": "modules/phoenix-open-issue/views/test-runner.vue"
+    }
+  ],
+  "navigation": {
+    "preferredGroupId": "pah-group-issue",
+    "preferredGroupLabel": "ISSUE",
+    "modules": [
+      {
+        "id": "phoenix-open-issue-workbench",
+        "label": "问题工作台",
+        "icon": "pnw:folder",
+        "routeIds": [
+          "phoenix-open-issue-dashboard",
+          "phoenix-open-issue-lists",
+          "phoenix-open-issue-list-detail",
+          "phoenix-open-issue-issue-detail",
+          "phoenix-open-issue-push-history",
+          "phoenix-open-issue-eight-d-reports"
+        ]
+      },
+      {
+        "id": "phoenix-open-issue-management",
+        "label": "Open Issue 管理",
+        "icon": "pnw:folder",
+        "routeIds": [
+          "phoenix-open-issue-functions",
+          "phoenix-open-issue-test-runner"
+        ]
+      }
+    ]
+  },
+  "apiPrefix": "/admin/phoenix-open-issue/",
+  "capabilities": [
+    { "id": "phoenix-open-issue:dashboard:read", "description": "查看 Issue 仪表盘与任务摘要", "risk": "read" },
+    { "id": "phoenix-open-issue:list:read", "description": "查看可访问的问题列表", "risk": "read" },
+    { "id": "phoenix-open-issue:list:create", "description": "创建问题列表", "risk": "write" },
+    { "id": "phoenix-open-issue:list:update", "description": "更新问题列表", "risk": "write" },
+    { "id": "phoenix-open-issue:list:archive", "description": "归档或恢复问题列表", "risk": "write" },
+    { "id": "phoenix-open-issue:list:delete", "description": "删除问题列表", "risk": "admin" },
+    { "id": "phoenix-open-issue:issue:read", "description": "查看 Issue", "risk": "read" },
+    { "id": "phoenix-open-issue:issue:create", "description": "创建 Issue", "risk": "write" },
+    { "id": "phoenix-open-issue:issue:update", "description": "更新 Issue", "risk": "write" },
+    { "id": "phoenix-open-issue:issue:delete", "description": "删除 Issue", "risk": "admin" },
+    { "id": "phoenix-open-issue:checkpoint:read", "description": "查看 Issue 点检项", "risk": "read" },
+    { "id": "phoenix-open-issue:checkpoint:create", "description": "创建 Issue 点检项", "risk": "write" },
+    { "id": "phoenix-open-issue:checkpoint:update", "description": "更新 Issue 点检项", "risk": "write" },
+    { "id": "phoenix-open-issue:checkpoint:delete", "description": "作废 Issue 点检项", "risk": "write" },
+    { "id": "phoenix-open-issue:push:read", "description": "查看有权访问的 Issue 推送记录", "risk": "read" },
+    { "id": "phoenix-open-issue:push:create", "description": "发起 Issue 推送", "risk": "write" },
+    { "id": "phoenix-open-issue:push:handle", "description": "接受、拒绝或撤回 Issue 推送", "risk": "write" },
+    { "id": "phoenix-open-issue:report:read", "description": "查看 8D 报告", "risk": "read" },
+    { "id": "phoenix-open-issue:report:write", "description": "创建或修改 8D 报告", "risk": "write" },
+    { "id": "phoenix-open-issue:function:read", "description": "查看 Issue 功能简表", "risk": "read" },
+    { "id": "phoenix-open-issue:function:write", "description": "维护、导入或停用 Issue 功能简表", "risk": "admin" },
+    { "id": "phoenix-open-issue:test:read", "description": "查看 Issue 插件测试清单与结果", "risk": "read" },
+    { "id": "phoenix-open-issue:test:run", "description": "在受控开发环境运行 Issue 插件测试", "risk": "admin" },
+    { "id": "phoenix-open-issue:maintenance:read", "description": "查看 Issue 插件数据检查与修正计划", "risk": "read" },
+    { "id": "phoenix-open-issue:maintenance:run", "description": "执行 Issue 插件声明的幂等数据修正", "risk": "admin" },
+    { "id": "phoenix-open-issue:data:purge", "description": "永久清除插件业务数据", "risk": "admin" }
+  ],
+  "resourcePolicies": [
+    "phoenix-open-issue:list-membership",
+    "phoenix-open-issue:issue-readability"
+  ],
+  "auditCategories": [
+    { "id": "phoenix-open-issue.list", "description": "问题列表变更" },
+    { "id": "phoenix-open-issue.issue", "description": "Issue 变更" },
+    { "id": "phoenix-open-issue.checkpoint", "description": "点检变更" },
+    { "id": "phoenix-open-issue.function", "description": "功能简表变更" },
+    { "id": "phoenix-open-issue.push", "description": "推送与处理" }
+  ],
+  "migrations": [],
+  "healthChecks": [],
+  "hostReuse": [
+    "identity",
+    "users",
+    "departments",
+    "roles",
+    "menus",
+    "dictionary",
+    "files",
+    "tasks",
+    "audit",
+    "parameters",
+    "backup"
+  ],
+  "dataOwnership": {
+    "tables": [
+      "oip_issue_list",
+      "oip_issue_list_member",
+      "oip_issue",
+      "oip_issue_list_link",
+      "oip_checkpoint",
+      "oip_function",
+      "oip_push_record"
+    ],
+    "retainedOnUninstall": true
+  },
+  "uninstall": {
+    "retainDataByDefault": true,
+    "requiresBackup": true,
+    "purgeCapability": "phoenix-open-issue:data:purge"
+  }
+}

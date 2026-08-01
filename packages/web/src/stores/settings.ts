@@ -1,6 +1,11 @@
 import { defineStore } from 'pinia'
 import { ref, watch } from 'vue'
-import { normalizeIssueListColumns, type IssueListColumnSettings, DEFAULT_ISSUE_SORT } from '@/config/issueListColumns'
+import {
+  ISSUE_LIST_COLUMNS_VERSION,
+  upgradeIssueListColumns,
+  type IssueListColumnSettings,
+  DEFAULT_ISSUE_SORT,
+} from '@/config/issueListColumns'
 
 export const useSettingsStore = defineStore('settings', () => {
   const stored = localStorage.getItem('open-issue-settings')
@@ -10,14 +15,18 @@ export const useSettingsStore = defineStore('settings', () => {
   const maxTimelineRows = ref<number>(data.maxTimelineRows || 3)
   const checkpointTimelineOrder = ref<'desc' | 'asc'>(data.checkpointTimelineOrder === 'asc' ? 'asc' : 'desc')
   const checkpointTimelineDisplay = ref<'cards' | 'table'>(data.checkpointTimelineDisplay === 'table' ? 'table' : 'cards')
+  const issueTimelineWidth = ref<number>(Math.min(720, Math.max(360, Number(data.issueTimelineWidth) || 440)))
   const defaultViewMode = ref<string>(data.defaultViewMode || 'complex')
-  const cpYearThresholdMonths = ref<number>(data.cpYearThresholdMonths ?? 2)  // 点检日期隐藏年份的月数阈值
+  const cpYearThresholdMonths = ref<number>(data.cpYearThresholdMonths ?? 2)  // 最近点检的点检日隐藏年份阈值
   const legacySort = data.issueSort === 'createdAt:desc' ? DEFAULT_ISSUE_SORT : (data.issueSort || DEFAULT_ISSUE_SORT)
   const issueSort = ref<string>(legacySort)
   const orgIncludeChildren = ref<boolean>(data.orgIncludeChildren !== false)    // 组织架构：默认含下级
   const funcNumericSort = ref<boolean>(data.funcNumericSort !== false)           // 功能表：外部ID按数字排序，默认勾选
   const funcSearch = ref<string>(data.funcSearch || '')                          // 功能表：搜索关键词
-  const issueListColumns = ref<IssueListColumnSettings>(normalizeIssueListColumns(data.issueListColumns))
+  const issueListColumns = ref<IssueListColumnSettings>(upgradeIssueListColumns(
+    data.issueListColumns,
+    Number(data.issueListColumnsVersion) || 0,
+  ))
 
   function persist() {
     localStorage.setItem('open-issue-settings', JSON.stringify({
@@ -25,6 +34,7 @@ export const useSettingsStore = defineStore('settings', () => {
       maxTimelineRows: maxTimelineRows.value,
       checkpointTimelineOrder: checkpointTimelineOrder.value,
       checkpointTimelineDisplay: checkpointTimelineDisplay.value,
+      issueTimelineWidth: issueTimelineWidth.value,
       defaultViewMode: defaultViewMode.value,
       cpYearThresholdMonths: cpYearThresholdMonths.value,
       issueSort: issueSort.value,
@@ -32,6 +42,7 @@ export const useSettingsStore = defineStore('settings', () => {
       funcNumericSort: funcNumericSort.value,
       funcSearch: funcSearch.value,
       issueListColumns: issueListColumns.value,
+      issueListColumnsVersion: ISSUE_LIST_COLUMNS_VERSION,
     }))
   }
 
@@ -39,6 +50,7 @@ export const useSettingsStore = defineStore('settings', () => {
   watch(maxTimelineRows, persist)
   watch(checkpointTimelineOrder, persist)
   watch(checkpointTimelineDisplay, persist)
+  watch(issueTimelineWidth, persist)
   watch(defaultViewMode, persist)
   watch(cpYearThresholdMonths, persist)
   watch(issueSort, persist)
@@ -52,11 +64,11 @@ export const useSettingsStore = defineStore('settings', () => {
   }
 
   function setIssueListColumns(cols: IssueListColumnSettings) {
-    issueListColumns.value = normalizeIssueListColumns(cols)
+    issueListColumns.value = upgradeIssueListColumns(cols, ISSUE_LIST_COLUMNS_VERSION)
   }
 
   return {
-    colWidths, maxTimelineRows, checkpointTimelineOrder, checkpointTimelineDisplay, defaultViewMode, cpYearThresholdMonths, issueSort,
+    colWidths, maxTimelineRows, checkpointTimelineOrder, checkpointTimelineDisplay, issueTimelineWidth, defaultViewMode, cpYearThresholdMonths, issueSort,
     orgIncludeChildren, funcNumericSort, funcSearch, issueListColumns,
     setColWidth, setIssueListColumns,
   }

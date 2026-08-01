@@ -1,0 +1,5 @@
+vue/node_modules/
+vue/fixture-*.ts
+vue/tsconfig.fixture.json
+vue/vitest.config.ts
+**/*.test.ts

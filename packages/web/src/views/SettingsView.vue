@@ -14,7 +14,7 @@ import {
 } from '@/api/auth'
 import { exportDb, importDb, runDbRepair, type RepairTaskId, type RepairTaskResult } from '@/api/backup'
 import { importFunctions } from '@/api/functions'
-import { mapXlsxRow, parseDictTags } from '@open-issue/core'
+import { isIssueSystemDictGroup, mapXlsxRow, parseDictTags } from '@open-issue/core'
 import * as XLSX from 'xlsx'
 import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
 import PageHelpButton from "@/components/PageHelpButton.vue"
@@ -49,6 +49,7 @@ const editLabel = ref('')
 const editTags = ref('')
 
 const groups = Object.entries(DICT_GROUPS).map(([value, label]) => ({ value, label }))
+const isSystemFieldGroup = (groupName: string) => isIssueSystemDictGroup(groupName)
 
 const presetLabels: Record<string, string> = {
   automotive: '汽车默认值',
@@ -157,11 +158,13 @@ function onOpenEdit(item: DictItem) {
 async function onSaveEdit() {
   if (!editItem.value) return
   try {
-    const payload: { label: string; value?: string; tags: string } = {
+    const payload: { label: string; value?: string; tags?: string } = {
       label: editLabel.value.trim(),
-      tags: editTags.value.trim(),
     }
-    if (!isCoreItem(editItem.value)) {
+    if (!isSystemFieldGroup(editItem.value.groupName)) {
+      payload.tags = editTags.value.trim()
+    }
+    if (!isCoreItem(editItem.value) && !isSystemFieldGroup(editItem.value.groupName)) {
       payload.value = editValue.value.trim()
     }
     await updateDictItem(editItem.value.id, payload)
@@ -174,6 +177,10 @@ async function onSaveEdit() {
 }
 
 async function onToggle(item: DictItem) {
+  if (isSystemFieldGroup(item.groupName)) {
+    ElMessage.warning('重要度和紧急度是内置系统字段，只能修改显示名')
+    return
+  }
   await updateDictItem(item.id, { enabled: item.enabled ? 0 : 1 })
   ElMessage.success(item.enabled ? '已禁用' : '已启用')
   syncDictCache()
@@ -449,19 +456,19 @@ const REPAIR_TASKS: RepairTaskDef[] = [
   {
     id: 'schema',
     title: '表结构补全',
-    description: '幂等：创建缺失表/列（含第三方登录 externalIdentities、oauth 事务表、externalBindRequests 待审查表），执行迁移。可重复点击；「全部执行」会先跑此项。',
+    description: '幂等：创建缺失表/列（含 Issue 扩展属性、关联计数、点检日期、用户定向推送、8D 报告与第三方登录表），补全索引并执行迁移。可重复点击；「全部执行」会先跑此项。',
     buttonType: 'primary',
   },
   {
     id: 'checkpoints',
     title: '点检数据修正',
-    description: '幂等：补全 checkpoints 缺失列与空值默认值。',
+    description: '幂等：补全 checkpoints 缺失列与空值默认值；无截止日是合法数据，不会被自动补写。',
     buttonType: 'success',
   },
   {
     id: 'links',
     title: 'Issue 链接修正',
-    description: '幂等：为缺失的 issueListLinks 补建链接，清理重复记录。',
+    description: '幂等：为缺失的 issueListLinks 补建链接，清理重复记录，并按关联表校正 Issue.listCount。',
     buttonType: 'success',
   },
   {
@@ -486,6 +493,12 @@ const REPAIR_TASKS: RepairTaskDef[] = [
     id: 'issueNo',
     title: 'Issue 编号去重',
     description: '幂等检测；仅在有重复编号时重编。无重复时再次执行无改动。',
+    buttonType: 'success',
+  },
+  {
+    id: 'reports',
+    title: '8D 附属报告修正',
+    description: '幂等：补迁移旧 Issue 中的 8D 内容；失效的 Issue 关联会转为独立报告，不删除报告正文。',
     buttonType: 'success',
   },
   {
@@ -588,7 +601,7 @@ async function onFuncImportConfirm() {
       <!-- ═══ 数据字典 ═══ -->
       <el-tab-pane label="📚 数据字典" name="dict">
         <p style="color:#909399;font-size:0.82rem;margin-bottom:12px">
-          各分组内「值」不可重复（含严重度、问题分类等）。标签可填多个，英文逗号分隔（如 <code>automotive,general</code>）。
+          各分组内「值」不可重复。重要度和紧急度为内置四档系统字段，只能修改显示名；其他字典项可维护标签。
         </p>
         <div v-if="isSystemAdmin" style="margin-bottom:12px;display:flex;gap:8px" data-tour="settings-dict-toolbar">
           <el-button type="default" size="small" @click="onApplyPreset('automotive')">🚗 汽车默认值</el-button>
@@ -627,7 +640,7 @@ async function onFuncImportConfirm() {
               <el-table-column v-if="isSystemAdmin" label="操作" width="140">
                 <template #default="{ row }">
                   <el-button link size="small" @click="onOpenEdit(row)">编辑</el-button>
-                  <el-button link size="small" @click="onToggle(row)">{{ row.enabled ? '禁用' : '启用' }}</el-button>
+                  <el-button v-if="!isSystemFieldGroup(row.groupName)" link size="small" @click="onToggle(row)">{{ row.enabled ? '禁用' : '启用' }}</el-button>
                   <el-button v-if="!isCoreItem(row)" link size="small" type="danger" @click="onDelete(row.id)">删除</el-button>
                   <span v-else style="color:#909399;font-size:12px">内置</span>
                 </template>
@@ -665,7 +678,13 @@ async function onFuncImportConfirm() {
           <el-form label-position="top">
             <el-form-item label="分组">
               <el-select v-model="newGroup">
-                <el-option v-for="g in groups" :key="g.value" :label="g.label" :value="g.value" />
+                <el-option
+                  v-for="g in groups"
+                  :key="g.value"
+                  :label="g.label"
+                  :value="g.value"
+                  :disabled="isSystemFieldGroup(g.value)"
+                />
               </el-select>
             </el-form-item>
             <el-form-item label="值">
@@ -690,14 +709,20 @@ async function onFuncImportConfirm() {
               <el-input :model-value="groups.find(g => g.value === editItem!.groupName)?.label || editItem!.groupName" disabled />
             </el-form-item>
             <el-form-item label="值">
-              <el-input v-model="editValue" :disabled="isCoreItem(editItem)" placeholder="同分组内唯一" />
+              <el-input v-model="editValue" :disabled="isCoreItem(editItem) || isSystemFieldGroup(editItem.groupName)" placeholder="同分组内唯一" />
             </el-form-item>
             <el-form-item label="显示名">
               <el-input v-model="editLabel" />
             </el-form-item>
             <el-form-item label="标签">
-              <el-input v-model="editTags" placeholder="多个用英文逗号分隔" />
+              <el-input v-model="editTags" :disabled="isSystemFieldGroup(editItem.groupName)" placeholder="多个用英文逗号分隔" />
             </el-form-item>
+            <el-alert
+              v-if="isSystemFieldGroup(editItem.groupName)"
+              title="内置系统字段：固定值不可新增、删除、停用或改编码，仅可修改显示名。"
+              type="info"
+              :closable="false"
+            />
           </el-form>
           <template #footer>
             <el-button @click="showEdit = false">取消</el-button>
@@ -831,7 +856,7 @@ async function onFuncImportConfirm() {
             备份导出包含全部业务数据但不含密码哈希，导入后所有用户密码重置为 <code>123456</code>。迁移导出仅保留非 admin 用户的密码哈希，导入时只重置 admin。导入仅管理员可用。
           </template>
           <template v-else>
-            仅导出你可访问列表及其 Issue、点检、链接和相关推送；不包含用户、组织、字典或功能数据，且该文件不能导入数据库。
+            仅导出你可访问列表及其 Issue、点检、8D 附属报告、链接和相关推送；不包含用户、组织、字典或功能数据，且该文件不能导入数据库。
           </template>
         </p>
 

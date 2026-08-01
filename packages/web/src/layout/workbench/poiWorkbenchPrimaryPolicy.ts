@@ -6,6 +6,7 @@ export const POI_WORKBENCH_PRIMARY_POLICIES = {
   issueDetail: 'required',
   org: 'required',
   pushHistory: 'required',
+  eightDReports: 'required',
   settings: 'required',
   functions: 'required',
   testRunner: 'required',

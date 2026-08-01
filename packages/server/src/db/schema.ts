@@ -4,9 +4,13 @@ import {
   applyColumnMigrations,
   dedupeIssueListLinks,
   migrateCheckpointStatusVoided,
+  migrateCheckpointDeadline,
+  migratePushTargets,
+  migrateLegacyEightDReports,
   migrateIssueListsListType,
   migrateUserSystemRole,
   migrateIssueListLinkAttention,
+  ensureIssueExtensionsAndListCount,
   repairDictDataAndIndex,
   ensureIssueNoIndexes,
 } from './migrations.js'
@@ -79,6 +83,8 @@ export function runSchema(db: PnwDbAdapter): void {
       rootCause TEXT DEFAULT '',
       correctiveAction TEXT DEFAULT '',
       sortOrder INTEGER DEFAULT 0,
+      extensions TEXT NOT NULL DEFAULT '{}',
+      listCount INTEGER NOT NULL DEFAULT 0 CHECK(listCount >= 0),
       createdBy TEXT NOT NULL,
       createdAt TEXT DEFAULT (datetime('now')),
       updatedAt TEXT DEFAULT (datetime('now'))
@@ -91,6 +97,7 @@ export function runSchema(db: PnwDbAdapter): void {
       id TEXT PRIMARY KEY,
       issueId TEXT NOT NULL,
       checkpointDate TEXT NOT NULL,
+      deadline TEXT,
       description TEXT NOT NULL,
       status TEXT DEFAULT 'pending' CHECK(status IN ('pending','done','skipped','voided')),
       responsibleUserId TEXT,
@@ -102,11 +109,13 @@ export function runSchema(db: PnwDbAdapter): void {
     CREATE TABLE IF NOT EXISTS pushRecords (
       id TEXT PRIMARY KEY,
       fromListId TEXT NOT NULL,
-      toListId TEXT NOT NULL,
+      targetType TEXT NOT NULL DEFAULT 'list' CHECK(targetType IN ('list','user')),
+      toListId TEXT,
+      toUserId TEXT,
       issueId TEXT NOT NULL,
       pushedBy TEXT NOT NULL,
       pushedAt TEXT DEFAULT (datetime('now')),
-      status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','accepted','rejected')),
+      status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','accepted','rejected','withdrawn')),
       handledBy TEXT,
       handledAt TEXT,
       rejectReason TEXT,
@@ -125,6 +134,23 @@ export function runSchema(db: PnwDbAdapter): void {
     );
 
     CREATE UNIQUE INDEX IF NOT EXISTS idx_issueListLinks_unique ON issueListLinks(issueId, listId);
+
+    CREATE TABLE IF NOT EXISTS eightDReports (
+      id TEXT PRIMARY KEY,
+      relatedIssueId TEXT,
+      title TEXT NOT NULL,
+      containment TEXT NOT NULL DEFAULT '',
+      rootCause TEXT NOT NULL DEFAULT '',
+      correctiveAction TEXT NOT NULL DEFAULT '',
+      createdBy TEXT NOT NULL,
+      createdAt TEXT DEFAULT (datetime('now')),
+      updatedAt TEXT DEFAULT (datetime('now')),
+      isDeleted INTEGER NOT NULL DEFAULT 0,
+      deletedAt TEXT
+    );
+
+    CREATE INDEX IF NOT EXISTS idx_eightDReports_issue ON eightDReports(relatedIssueId, isDeleted);
+    CREATE INDEX IF NOT EXISTS idx_eightDReports_creator ON eightDReports(createdBy, isDeleted);
 
     CREATE TABLE IF NOT EXISTS dict (
       id TEXT PRIMARY KEY,
@@ -169,7 +195,11 @@ export function runSchema(db: PnwDbAdapter): void {
   migrateUserSystemRole(db)
   migrateIssueListsListType(db)
   migrateCheckpointStatusVoided(db)
+  migrateCheckpointDeadline(db)
+  migratePushTargets(db)
+  migrateLegacyEightDReports(db)
   migrateIssueListLinkAttention(db)
+  ensureIssueExtensionsAndListCount(db)
   const dictRepair = repairDictDataAndIndex(db)
   if (!dictRepair.indexOk) {
     console.warn(
@@ -181,5 +211,5 @@ export function runSchema(db: PnwDbAdapter): void {
 }
 
 // re-export for external use
-export { migrateUserSystemRole, migrateIssueListsListType, migrateCheckpointStatusVoided, migrateIssueListLinkAttention, dedupeDictEntries, ensureDictUniqueIndex, migrateDictTagsFormat, repairDictDataAndIndex, hasDictUniqueIndex, countDictDuplicateGroups, ensureIssueNoIndexes } from './migrations.js'
+export { migrateUserSystemRole, migrateIssueListsListType, migrateCheckpointStatusVoided, migrateCheckpointDeadline, migratePushTargets, migrateLegacyEightDReports, migrateIssueListLinkAttention, ensureIssueExtensionsAndListCount, dedupeDictEntries, ensureDictUniqueIndex, migrateDictTagsFormat, repairDictDataAndIndex, hasDictUniqueIndex, countDictDuplicateGroups, ensureIssueNoIndexes } from './migrations.js'
 export type { DictRepairResult, DictDedupeResult, DictDedupeDetail } from './migrations.js'

@@ -110,6 +110,7 @@ function logout() {
         @update:ribbon-appearance="workbenchStore.ribbonAppearance = $event"
         @update:tree-appearance="workbenchStore.treeAppearance = $event"
         @update:tab-bar-placement="workbenchStore.tabBarPlacement = $event"
+        @update:color-scheme="workbenchStore.colorScheme = $event"
         @update:layout-state="workbenchStore.layoutState = $event"
         @update:display-settings-positions="workbenchStore.settingsPositions = $event"
       >

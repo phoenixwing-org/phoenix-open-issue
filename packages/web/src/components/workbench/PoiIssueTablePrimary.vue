@@ -46,10 +46,10 @@ defineProps<{
     <el-select :model-value="status" placeholder="状态" clearable size="small" @update:model-value="onUpdateStatus">
       <el-option v-for="option in statusOptions" :key="option.value" :label="option.label" :value="option.value" />
     </el-select>
-    <el-select :model-value="priority" placeholder="优先级" clearable size="small" @update:model-value="onUpdatePriority">
+    <el-select :model-value="priority" placeholder="紧急度" clearable size="small" @update:model-value="onUpdatePriority">
       <el-option v-for="option in priorityOptions" :key="option.value" :label="option.label" :value="option.value" />
     </el-select>
-    <el-select :model-value="severity" placeholder="严重度" clearable size="small" @update:model-value="onUpdateSeverity">
+    <el-select :model-value="severity" placeholder="重要度" clearable size="small" @update:model-value="onUpdateSeverity">
       <el-option v-for="option in severityOptions" :key="option.value" :label="option.label" :value="option.value" />
     </el-select>
     <el-select :model-value="category" placeholder="分类" clearable size="small" @update:model-value="onUpdateCategory">

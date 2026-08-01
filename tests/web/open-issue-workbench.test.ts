@@ -48,6 +48,7 @@ describe('Open Issue 本地 Pnw 工作台适配', () => {
     const globalStyle = read('packages/web/src/styles/global.scss')
 
     expect(shell).toContain('usePoiColorScheme(() => workbenchStore.colorScheme)')
+    expect(shell).toContain('@update:color-scheme="workbenchStore.colorScheme = $event"')
     expect(main).toContain("element-plus/theme-chalk/dark/css-vars.css")
     expect(themeAdapter).toContain('pnwApplyColorScheme')
     expect(themeAdapter).toContain("classList.toggle('dark'")
@@ -68,7 +69,7 @@ describe('Open Issue 本地 Pnw 工作台适配', () => {
     expect(shell).not.toContain('>退出</el-button>')
   })
 
-  it('业务页面在 setup 登记真实 Primary、Secondary 与 Bottom 内容', () => {
+  it('业务页面在 setup 登记真实 Primary 与 Bottom，Issue 时间线常驻页面正文', () => {
     const registry = read('packages/web/src/layout/workbench/poiViewContributions.ts')
     const dashboard = read('packages/web/src/views/DashboardView.vue')
     const welcome = read('packages/web/src/views/WelcomeView.vue')
@@ -77,6 +78,7 @@ describe('Open Issue 本地 Pnw 工作台适配', () => {
     const issueDetail = read('packages/web/src/views/issues/IssueDetailView.vue')
     const org = read('packages/web/src/views/org/OrgTreeView.vue')
     const pushHistory = read('packages/web/src/views/push/PushHistoryView.vue')
+    const eightDReports = read('packages/web/src/views/reports/EightDReportIndexView.vue')
     const functions = read('packages/web/src/views/functions/FunctionIndexView.vue')
     const testRunner = read('packages/web/src/views/TestRunnerView.vue')
     const settings = read('packages/web/src/views/SettingsView.vue')
@@ -86,7 +88,7 @@ describe('Open Issue 本地 Pnw 工作台适配', () => {
     expect(registry).toContain('resolvePoiViewContributions')
     expect(read('packages/web/src/layout/workbench/poiWorkbenchPrimaryPolicy.ts'))
       .toContain("dashboard: 'none'")
-    for (const source of [welcome, listIndex, listDetail, issueDetail, org, pushHistory, functions, testRunner, settings]) {
+    for (const source of [welcome, listIndex, listDetail, issueDetail, org, pushHistory, eightDReports, functions, testRunner, settings]) {
       expect(source).toContain('usePoiViewContribution')
     }
     expect(dashboard).not.toContain('usePoiViewContribution')
@@ -96,9 +98,11 @@ describe('Open Issue 本地 Pnw 工作台适配', () => {
     expect(listDetail).toContain('component: PoiIssueTablePrimary')
     expect(org).toContain('component: PoiOrgPrimary')
     expect(issueDetail).toContain('component: PoiIssueDetailPrimary')
-    expect(issueDetail).toContain('secondary:')
-    expect(issueDetail).toContain('component: PoiIssueCheckpointsSecondary')
+    expect(issueDetail).not.toContain('secondary:')
+    expect(issueDetail).toContain('<IssueCheckpointTimeline')
+    expect(issueDetail).toContain('class="issue-timeline-splitter"')
     expect(pushHistory).toContain('component: PoiPushHistoryPrimary')
+    expect(eightDReports).toContain('component: PoiEightDReportsPrimary')
     expect(functions).toContain('component: PoiFunctionPrimary')
     expect(testRunner).toContain('component: PoiTestRunnerPrimary')
     expect(settings).toContain('component: PoiSettingsPrimary')
@@ -110,12 +114,12 @@ describe('Open Issue 本地 Pnw 工作台适配', () => {
     const contributionFiles = [
       'PoiDefaultPrimary.vue',
       'PoiFunctionPrimary.vue',
-      'PoiIssueCheckpointsSecondary.vue',
       'PoiIssueDetailPrimary.vue',
       'PoiIssueListPrimary.vue',
       'PoiIssueTablePrimary.vue',
       'PoiOrgPrimary.vue',
       'PoiPushHistoryPrimary.vue',
+      'PoiEightDReportsPrimary.vue',
       'PoiSettingsPrimary.vue',
       'PoiSettingsRepairBottom.vue',
       'PoiTestRunnerPrimary.vue',

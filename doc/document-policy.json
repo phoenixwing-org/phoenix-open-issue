@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "owner": "Open Issue maintainers",
-  "lastVerified": "2026-07-20",
-  "appliesTo": "0.5.x",
+  "lastVerified": "2026-07-31",
+  "appliesTo": "0.6.x",
   "rules": [
     {
       "match": "^doc/(TODO|计划|开发计划|功能表计划|待办点检)\\.md$",
@@ -27,6 +27,11 @@
       "status": "draft",
       "sourceOfTruth": "doc/current-roadmap.md",
       "reason": "尚未全部晋升为稳定产品契约的方案"
+    },
+    {
+      "match": "^doc/附属功能与Issue关联计划\\.md$",
+      "status": "current",
+      "reason": "0.6.1 已落地用户定向推送与首个 8D 可空关联样例；保留后续升级边界"
     },
     {
       "match": "^doc/第三方登录/管理员绑定与待审查计划\\.md$",

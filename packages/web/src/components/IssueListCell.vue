@@ -176,7 +176,7 @@ const row = computed(() => props.row)
     <div
       v-for="cp in ctx.getRecentCheckpoints(row.id)"
       :key="cp.id"
-      :class="['cp-mini-item', { 'cp-editable': ctx.canModifyRow(row), 'cp-overdue': isOverdue(cp.checkpointDate, cp.status).overdue }]"
+      :class="['cp-mini-item', { 'cp-editable': ctx.canModifyRow(row), 'cp-overdue': isOverdue(cp.deadline, cp.status).overdue }]"
       :title="ctx.canModifyRow(row) ? '点击编辑点检' : ''"
       @click="ctx.canModifyRow(row) && ctx.openEditCheckpoint(cp, row.title, $event)"
     >
@@ -184,7 +184,7 @@ const row = computed(() => props.row)
         class="cp-mini-icon"
         :status="cp.status"
         compact
-        :overdue="isOverdue(cp.checkpointDate, cp.status).overdue"
+        :overdue="isOverdue(cp.deadline, cp.status).overdue"
         :disabled="!ctx.canModifyRow(row)"
         @change="ctx.onUpdateCheckpointStatus(cp, $event)"
       />

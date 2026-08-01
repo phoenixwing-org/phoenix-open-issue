@@ -12,6 +12,7 @@ const PAGE_LABELS: Record<string, string> = {
   listDetail: '列表详情',
   org: '组织架构',
   pushHistory: '推送历史',
+  eightDReports: '8D 报告',
   functions: '功能表',
   settings: '设置',
   testRunner: '单元测试',
@@ -24,6 +25,7 @@ const STATIC_PAGE_PATHS: Record<string, string> = {
   lists: '/lists',
   org: '/org',
   pushHistory: '/push-history',
+  eightDReports: '/reports/8d',
   settings: '/settings',
   functions: '/functions',
   testRunner: '/test-runner',
@@ -60,7 +62,7 @@ export function useOpenIssueWorkbench() {
   const workbench = pnwCreateWorkbench({
     pagePolicy: (pageId) => {
       const base = normalizePageId(pageId).split(':')[0]
-      const singleton = new Set(['dashboard', 'lists', 'org', 'pushHistory', 'functions', 'settings', 'testRunner'])
+      const singleton = new Set(['dashboard', 'lists', 'org', 'pushHistory', 'eightDReports', 'functions', 'settings', 'testRunner'])
       return { maxTabs: singleton.has(base) ? 1 : 30, tabEnabled: true }
     },
     navLabel: pageTitle,

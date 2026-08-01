@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useDictStore } from '@/stores/dict'
 import { useAuthStore } from '@/stores/auth'
 import { useFunctionStore } from '@/stores/functions'
-import { DEFAULT_ATTENTION_LEVEL } from '@open-issue/core'
+import { DEFAULT_ATTENTION_LEVEL, ISSUE_URGENCY_DICT } from '@open-issue/core'
 import PnwDictSelect from 'phoenix-wing/components/PnwDictSelect.vue'
 import AttentionStars from '@/components/AttentionStars.vue'
 
@@ -22,7 +22,6 @@ const emit = defineEmits<{
     reporterId?: string; assigneeId?: string; dueDate?: string
     functionId?: string
     attentionLevel?: number
-    containment?: string; rootCause?: string; correctiveAction?: string
   }]
   close: []
 }>()
@@ -42,12 +41,13 @@ const reporterId = ref(props.initial?.reporterId || auth.user?.id || '')
 const assigneeId = ref(props.initial?.assigneeId || auth.user?.id || '')
 const dueDate = ref(props.initial?.dueDate || '')
 const functionId = ref(props.initial?.functionId || '')
-const containment = ref(props.initial?.containment || '')
-const rootCause = ref(props.initial?.rootCause || '')
-const correctiveAction = ref(props.initial?.correctiveAction || '')
 const attentionLevel = ref<number>(
   props.initial?._attentionLevel ?? DEFAULT_ATTENTION_LEVEL,
 )
+const urgencyOptions = computed(() => {
+  const configured = dict.getOptions('priority')
+  return configured.length ? configured : ISSUE_URGENCY_DICT
+})
 
 function submit() {
   if (!title.value.trim()) return
@@ -64,9 +64,6 @@ function submit() {
     dueDate: dueDate.value || undefined,
     functionId: functionId.value || undefined,
     ...(isEdit.value ? { attentionLevel: attentionLevel.value } : {}),
-    containment: containment.value,
-    rootCause: rootCause.value,
-    correctiveAction: correctiveAction.value,
   })
 }
 </script>
@@ -95,10 +92,10 @@ function submit() {
       </el-row>
 
       <el-row :gutter="16">
-        <!-- 严重度 & 分类 -->
+        <!-- 重要度（历史字段 severity）& 分类 -->
         <el-col :span="12">
-          <el-form-item label="严重度">
-            <PnwDictSelect v-model="severity" :items="dict.getTaggedOptions('severity') as any" placeholder="选择严重度" storage-key="issue-severity" />
+          <el-form-item label="重要度">
+            <PnwDictSelect v-model="severity" :items="dict.getTaggedOptions('severity') as any" placeholder="选择重要度" storage-key="issue-severity" />
           </el-form-item>
         </el-col>
         <el-col :span="12">
@@ -109,19 +106,18 @@ function submit() {
       </el-row>
 
       <el-row :gutter="16">
-        <!-- 发现阶段 & 优先级 -->
+        <!-- 发现阶段 & 紧急度（历史字段 priority） -->
         <el-col :span="12">
           <el-form-item label="发现阶段">
             <PnwDictSelect v-model="detectionPhase" :items="dict.getTaggedOptions('detectionPhase') as any" placeholder="选择阶段" storage-key="issue-detection" />
           </el-form-item>
         </el-col>
         <el-col :span="12">
-          <el-form-item label="优先级">
+          <el-form-item label="紧急度">
             <el-radio-group v-model="priority">
-              <el-radio value="low">低</el-radio>
-              <el-radio value="medium">中</el-radio>
-              <el-radio value="high">高</el-radio>
-              <el-radio value="critical">紧急</el-radio>
+              <el-radio v-for="option in urgencyOptions" :key="option.value" :value="option.value">
+                {{ option.label }}
+              </el-radio>
             </el-radio-group>
           </el-form-item>
         </el-col>
@@ -145,7 +141,7 @@ function submit() {
         </el-col>
       </el-row>
 
-      <el-form-item label="计划完成日">
+      <el-form-item label="截止日">
         <el-date-picker
           v-model="dueDate"
           type="date"
@@ -174,17 +170,6 @@ function submit() {
         <el-input v-model="description" type="textarea" :rows="3" placeholder="可选描述" />
       </el-form-item>
 
-      <el-divider content-position="left">8D 报告</el-divider>
-
-      <el-form-item label="D3 临时遏制措施">
-        <el-input v-model="containment" type="textarea" :rows="2" placeholder="临时围堵 / 遏制措施" />
-      </el-form-item>
-      <el-form-item label="D4 根本原因">
-        <el-input v-model="rootCause" type="textarea" :rows="2" placeholder="根因分析结论" />
-      </el-form-item>
-      <el-form-item label="D5-D6 永久纠正措施">
-        <el-input v-model="correctiveAction" type="textarea" :rows="2" placeholder="永久纠正与验证措施" />
-      </el-form-item>
     </el-form>
     <template #footer>
       <el-button @click="emit('close')">取消</el-button>

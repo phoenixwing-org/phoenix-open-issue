@@ -18,7 +18,9 @@ describe('pnwRunSchema', () => {
     expect(await db.columnNames('users')).toEqual(expect.objectContaining(new Set([
       'approved', 'disabled', 'systemRole', 'tokenVersion',
     ])))
-    expect(await db.columnNames('issues')).toContain('functionId')
+    expect(await db.columnNames('issues')).toEqual(expect.objectContaining(new Set([
+      'functionId', 'extensions', 'listCount',
+    ])))
     expect(await db.indexExists('idx_dict_group_value')).toBe(true)
     expect(await db.tableExists('externalIdentities')).toBe(true)
     expect(await db.tableExists('oauthLoginAttempts')).toBe(true)

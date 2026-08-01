@@ -1,5 +1,5 @@
 import { getAsyncDb } from '../db/connection.js'
-import { NotFoundError } from '../utils/errors.js'
+import { BadRequestError, NotFoundError } from '../utils/errors.js'
 import { generateId } from '@open-issue/core'
 import type { Checkpoint, CreateCheckpointInput, UpdateCheckpointInput } from '@open-issue/core'
 import { assertIssueReadableAsync, assertListActionAsync, getIssueOriginListIdAsync } from '../utils/access.js'
@@ -46,14 +46,16 @@ export class CheckpointService {
 
     const id = generateId()
     const now = new Date().toISOString()
+    const checkpointDate = requireDateOnly(input.checkpointDate, '点检日')
+    const deadline = optionalDateOnly(input.deadline, '截止日')
 
     const maxSort = await db.get('SELECT MAX(sortOrder) as m FROM checkpoints WHERE issueId = ?', [issueId]) as { m: number | null }
     const sortOrder = (maxSort?.m ?? 0) + 1
 
     await db.run(
-      `INSERT INTO checkpoints (id, issueId, checkpointDate, description, status, responsibleUserId, sortOrder, createdAt, updatedAt)
-       VALUES (?, ?, ?, ?, 'pending', ?, ?, ?, ?)`,
-      [id, issueId, input.checkpointDate, input.description, input.responsibleUserId ?? null, sortOrder, now, now],
+      `INSERT INTO checkpoints (id, issueId, checkpointDate, deadline, description, status, responsibleUserId, sortOrder, createdAt, updatedAt)
+       VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?, ?)`,
+      [id, issueId, checkpointDate, deadline, input.description, input.responsibleUserId ?? null, sortOrder, now, now],
     )
 
     return await db.get('SELECT * FROM checkpoints WHERE id = ?', [id]) as Checkpoint
@@ -66,14 +68,22 @@ export class CheckpointService {
 
     const listId = await getIssueOriginListIdAsync(db, cp.issueId)
     await assertListActionAsync(db, listId, userId, 'modify-issue')
+    const checkpointDate = input.checkpointDate === undefined
+      ? undefined
+      : requireDateOnly(input.checkpointDate, '点检日')
+    const deadline = optionalDateOnly(input.deadline, '截止日')
 
     await db.run(
       `UPDATE checkpoints
-       SET checkpointDate = COALESCE(?, checkpointDate), description = COALESCE(?, description),
+       SET checkpointDate = COALESCE(?, checkpointDate),
+           deadline = CASE WHEN ? = 1 THEN ? ELSE deadline END,
+           description = COALESCE(?, description),
            status = COALESCE(?, status), responsibleUserId = COALESCE(?, responsibleUserId), updatedAt = ?
        WHERE id = ?`,
       [
-        input.checkpointDate ?? null, input.description ?? null,
+        checkpointDate ?? null,
+        input.deadline !== undefined ? 1 : 0, deadline,
+        input.description ?? null,
         input.status ?? null, input.responsibleUserId ?? null,
         new Date().toISOString(), id,
       ],
@@ -95,4 +105,23 @@ export class CheckpointService {
       [new Date().toISOString(), id],
     )
   }
+}
+
+const DATE_ONLY_PATTERN = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/
+
+function requireDateOnly(value: unknown, label: string): string {
+  if (
+    typeof value !== 'string'
+    || !DATE_ONLY_PATTERN.test(value)
+    || Number.isNaN(new Date(`${value}T00:00:00Z`).getTime())
+    || new Date(`${value}T00:00:00Z`).toISOString().slice(0, 10) !== value
+  ) {
+    throw new BadRequestError(`${label}必须为 YYYY-MM-DD 格式`)
+  }
+  return value
+}
+
+function optionalDateOnly(value: unknown, label: string): string | null {
+  if (value === undefined || value === null || value === '') return null
+  return requireDateOnly(value, label)
 }

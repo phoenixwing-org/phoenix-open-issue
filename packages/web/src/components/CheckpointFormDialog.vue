@@ -9,7 +9,7 @@ const props = defineProps<{
   issueNo?: string
 }>()
 const emit = defineEmits<{
-  confirm: [data: { checkpointDate: string; description: string; responsibleUserId?: string; status?: CheckpointStatus }]
+  confirm: [data: { checkpointDate: string; deadline: string | null; description: string; responsibleUserId?: string; status?: CheckpointStatus }]
   close: []
 }>()
 
@@ -22,6 +22,7 @@ function localToday(): string {
 }
 
 const date = ref(props.initial?.checkpointDate || localToday())
+const deadline = ref(props.initial?.deadline || '')
 const desc = ref(props.initial?.description || '')
 const responsible = ref(props.initial?.responsibleUserId || '')
 const status = ref<CheckpointStatus>(props.initial?.status || 'pending')
@@ -37,6 +38,7 @@ function submit() {
   if (!desc.value.trim()) return
   emit('confirm', {
     checkpointDate: date.value,
+    deadline: deadline.value || null,
     description: desc.value,
     responsibleUserId: responsible.value || undefined,
     ...(isEdit.value ? { status: status.value } : {}),
@@ -61,16 +63,33 @@ function submit() {
       </div>
     </template>
     <el-form label-position="top" @submit.prevent="submit">
-      <el-form-item label="日期" required>
-        <el-date-picker
-          v-model="date"
-          type="date"
-          placeholder="选择日期"
-          style="width:100%"
-          value-format="YYYY-MM-DD"
-          :teleported="false"
-        />
-      </el-form-item>
+      <el-row :gutter="12">
+        <el-col :span="12">
+          <el-form-item label="点检日" required>
+            <el-date-picker
+              v-model="date"
+              type="date"
+              placeholder="选择点检日"
+              style="width:100%"
+              value-format="YYYY-MM-DD"
+              :teleported="false"
+            />
+          </el-form-item>
+        </el-col>
+        <el-col :span="12">
+          <el-form-item label="截止（可选）">
+            <el-date-picker
+              v-model="deadline"
+              type="date"
+              placeholder="无截止日"
+              clearable
+              style="width:100%"
+              value-format="YYYY-MM-DD"
+              :teleported="false"
+            />
+          </el-form-item>
+        </el-col>
+      </el-row>
       <el-form-item label="描述" required>
         <el-input v-model="desc" placeholder="如：已流程到采购" />
       </el-form-item>

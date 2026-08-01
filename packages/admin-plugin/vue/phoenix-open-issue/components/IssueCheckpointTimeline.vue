@@ -1,13 +1,13 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
-import type { Checkpoint, CheckpointStatus } from '@open-issue/core'
-import { isOverdue } from '@open-issue/core'
-import { getAllUsers } from '@/api/auth'
-import { createCheckpoint, getCheckpoints, updateCheckpoint } from '@/api/checkpoints'
-import { useSettingsStore } from '@/stores/settings'
-import CheckpointFormDialog from '@/components/CheckpointFormDialog.vue'
-import CheckpointStatusTag from '@/components/CheckpointStatusTag.vue'
+import type { Checkpoint, CheckpointStatus } from '/$/phoenix-open-issue/core'
+import { isOverdue } from '/$/phoenix-open-issue/core'
+import { getAllUsers } from '/$/phoenix-open-issue/api/auth'
+import { createCheckpoint, getCheckpoints, updateCheckpoint } from '/$/phoenix-open-issue/api/checkpoints'
+import { useSettingsStore } from '/$/phoenix-open-issue/stores/settings'
+import CheckpointFormDialog from '/$/phoenix-open-issue/components/CheckpointFormDialog.vue'
+import CheckpointStatusTag from '/$/phoenix-open-issue/components/CheckpointStatusTag.vue'
 
 const props = defineProps<{
   issueId: string
@@ -69,7 +69,7 @@ function getUserName(id: string | null): string {
 }
 
 function checkpointOverdue(checkpoint: Checkpoint): boolean {
-  return isOverdue(checkpoint.checkpointDate, checkpoint.status).overdue
+  return isOverdue(checkpoint.deadline, checkpoint.status).overdue
 }
 
 function openEdit(checkpoint: Checkpoint): void {
@@ -83,6 +83,7 @@ async function reload(): Promise<void> {
 
 async function onCreate(data: {
   checkpointDate: string
+  deadline: string | null
   description: string
   responsibleUserId?: string
 }): Promise<void> {
@@ -95,6 +96,7 @@ async function onCreate(data: {
 
 async function onEdit(data: {
   checkpointDate: string
+  deadline: string | null
   description: string
   responsibleUserId?: string
   status?: CheckpointStatus
@@ -121,13 +123,13 @@ function escapeCell(value: string): string {
 
 async function copyTimelineTable(): Promise<void> {
   const rows = sortedCheckpoints.value.map(checkpoint =>
-    `| ${checkpoint.checkpointDate} | ${statusLabel[checkpoint.status]} | ${escapeCell(checkpoint.description)} | ${escapeCell(getUserName(checkpoint.responsibleUserId))} |`,
+    `| ${checkpoint.deadline || '—'} | ${statusLabel[checkpoint.status]} | ${escapeCell(checkpoint.description)} | ${escapeCell(getUserName(checkpoint.responsibleUserId))} | ${checkpoint.checkpointDate} |`,
   )
   const text = [
     `## ${props.issueNo ?? ''} ${props.issueTitle ?? ''}`.trim(),
     '',
-    '| 日期 | 状态 | 内容 | 负责人 |',
-    '| --- | --- | --- | --- |',
+    '| 截止 | 状态 | 内容 | 负责人 | 点检日 |',
+    '| --- | --- | --- | --- | --- |',
     ...rows,
   ].join('\n')
   try {
@@ -147,9 +149,9 @@ async function copyTimelineTable(): Promise<void> {
 </script>
 
 <template>
-  <section class="poi-issue-checkpoints" data-tour="issue-checkpoints">
+  <section class="issue-checkpoint-timeline" data-tour="issue-checkpoints">
     <div class="poi-checkpoints-head">
-      <strong>点检时间线</strong>
+      <strong>点检 · 时间线</strong>
       <div class="poi-checkpoints-actions">
         <el-tooltip
           :content="settings.checkpointTimelineOrder === 'desc' ? '当前：最新优先' : '当前：最早优先'"
@@ -192,23 +194,29 @@ async function copyTimelineTable(): Promise<void> {
       <el-timeline-item
         v-for="checkpoint in sortedCheckpoints"
         :key="checkpoint.id"
-        :timestamp="checkpoint.checkpointDate"
         :color="statusColor[checkpoint.status]"
-        placement="top"
+        :hide-timestamp="true"
       >
+        <div class="checkpoint-date-row">
+          <strong>截止 {{ checkpoint.deadline || '—' }}</strong>
+          <span>点检 {{ checkpoint.checkpointDate }}</span>
+        </div>
         <div
           class="poi-checkpoint-card"
           :class="{ 'is-overdue': checkpointOverdue(checkpoint), 'is-editable': canModify }"
           @click="openEdit(checkpoint)"
         >
-          <div>
+          <div class="checkpoint-card-meta">
             <CheckpointStatusTag
               :status="checkpoint.status"
               :overdue="checkpointOverdue(checkpoint)"
               :disabled="!canModify"
               @change="onChangeStatus(checkpoint, $event)"
             />
-            <span>负责人：{{ getUserName(checkpoint.responsibleUserId) }}</span>
+            <span class="checkpoint-owner" :title="`负责人：${getUserName(checkpoint.responsibleUserId)}`">
+              <span class="checkpoint-owner-label">负责人：</span>
+              <span class="checkpoint-owner-name">{{ getUserName(checkpoint.responsibleUserId) }}</span>
+            </span>
           </div>
           <p>{{ checkpoint.description }}</p>
         </div>
@@ -216,7 +224,9 @@ async function copyTimelineTable(): Promise<void> {
     </el-timeline>
 
     <el-table v-else :data="sortedCheckpoints" size="small" class="poi-checkpoint-table">
-      <el-table-column prop="checkpointDate" label="日期" width="96" />
+      <el-table-column label="截止" width="98">
+        <template #default="{ row }">{{ row.deadline || '—' }}</template>
+      </el-table-column>
       <el-table-column label="状态" width="76">
         <template #default="{ row }">
           <CheckpointStatusTag
@@ -238,6 +248,13 @@ async function copyTimelineTable(): Promise<void> {
         <template #default="{ row }">
           <span :title="getUserName(row.responsibleUserId)">
             {{ getUserName(row.responsibleUserId) }}
+          </span>
+        </template>
+      </el-table-column>
+      <el-table-column prop="checkpointDate" label="点检日" width="98">
+        <template #default="{ row }">
+          <span class="checkpoint-date-secondary" :title="row.checkpointDate">
+            {{ row.checkpointDate }}
           </span>
         </template>
       </el-table-column>
@@ -264,7 +281,7 @@ async function copyTimelineTable(): Promise<void> {
 </template>
 
 <style scoped>
-.poi-issue-checkpoints {
+.issue-checkpoint-timeline {
   min-width: 0;
   height: 100%;
   overflow: auto;
@@ -286,8 +303,11 @@ async function copyTimelineTable(): Promise<void> {
 .poi-checkpoint-timeline {
   padding: 4px 4px 0;
 }
+.poi-checkpoint-timeline :deep(.el-timeline-item) {
+  padding-bottom: 8px;
+}
 .poi-checkpoint-card {
-  padding: 10px;
+  padding: 7px 9px;
   border: 1px solid var(--el-border-color);
   border-radius: 7px;
   background: var(--el-bg-color);
@@ -302,10 +322,45 @@ async function copyTimelineTable(): Promise<void> {
   color: var(--pnw-workbench-muted, #64748b);
   font-size: 12px;
 }
+.checkpoint-card-meta {
+  min-width: 0;
+}
+.checkpoint-owner {
+  min-width: 0;
+  margin-left: auto;
+  display: inline-grid;
+  grid-template-columns: auto 4em;
+  align-items: center;
+  text-align: left;
+}
+.checkpoint-owner-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .poi-checkpoint-card p {
-  margin: 7px 0 0;
-  line-height: 1.5;
+  margin: 4px 0 0;
+  line-height: 1.35;
   white-space: pre-wrap;
+}
+.checkpoint-date-secondary {
+  color: var(--pnw-workbench-muted, var(--el-text-color-secondary, #909399));
+  font-size: 11px;
+}
+.checkpoint-date-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+  color: var(--pnw-workbench-muted, var(--el-text-color-secondary, #909399));
+  font-size: 12px;
+}
+.checkpoint-date-row strong {
+  color: var(--el-text-color-primary, #303133);
+  font-weight: 600;
 }
 .is-editable-text {
   cursor: pointer;
