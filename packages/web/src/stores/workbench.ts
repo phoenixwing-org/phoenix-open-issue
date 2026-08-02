@@ -79,6 +79,16 @@ export const useWorkbenchStore = defineStore('workbench', () => {
     }
   }
 
+  function togglePrimary() {
+    layoutState.value = {
+      ...layoutState.value,
+      visibility: {
+        ...layoutState.value.visibility,
+        primary: !layoutState.value.visibility.primary,
+      },
+    }
+  }
+
   function openBottom() {
     layoutState.value = {
       ...layoutState.value,
@@ -111,6 +121,7 @@ export const useWorkbenchStore = defineStore('workbench', () => {
     colorScheme,
     layoutState,
     settingsPositions,
+    togglePrimary,
     closeBottom,
     openBottom,
   }

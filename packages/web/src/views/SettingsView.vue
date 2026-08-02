@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
+import { Expand, Fold } from '@element-plus/icons-vue'
 import { getAllDict, createDictItem, updateDictItem, deleteDictItem, applyDictPreset, deleteDictByTag, dedupeDict } from '@/api/dict'
 import { ElMessage } from 'element-plus';
 import { pnwPromptChoice, pnwAlert } from 'phoenix-wing'
@@ -31,6 +32,7 @@ const authStore = useAuthStore()
 const workbenchStore = useWorkbenchStore()
 const route = useRoute()
 const isSystemAdmin = computed(() => authStore.user?.systemRole === 'admin')
+const isPrimaryHidden = computed(() => !workbenchStore.layoutState.visibility.primary)
 
 const activeTab = ref(route.query.tab === 'login-methods' ? 'login-methods' : 'dict')
 
@@ -593,7 +595,27 @@ async function onFuncImportConfirm() {
 
 <template>
   <div class="page">
-    <PnwPageHeader title="设置">
+    <el-tooltip
+      :content="isPrimaryHidden ? '展开设置菜单' : '收起设置菜单'"
+      placement="right"
+    >
+      <el-button
+        class="settings-primary-toggle"
+        text
+        circle
+        :aria-label="isPrimaryHidden ? '展开设置菜单' : '收起设置菜单'"
+        :aria-expanded="!isPrimaryHidden"
+        data-tour="settings-show-menu"
+        @click="workbenchStore.togglePrimary()"
+      >
+        <el-icon>
+          <Expand v-if="isPrimaryHidden" />
+          <Fold v-else />
+        </el-icon>
+      </el-button>
+    </el-tooltip>
+
+    <PnwPageHeader class="settings-page-header" title="设置">
       <template #help><PageHelpButton page-id="settings" /></template>
     </PnwPageHeader>
 
@@ -940,8 +962,28 @@ async function onFuncImportConfirm() {
 </template>
 
 <style scoped>
+.page { position: relative; }
 .page-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
 .page-head h2 { font-size: 1.3rem; font-weight: 650; }
+.settings-primary-toggle {
+  position: absolute;
+  top: calc(8px - var(--poi-editor-padding, 24px));
+  left: calc(8px - var(--poi-editor-padding, 24px));
+  z-index: 2;
+  width: 24px;
+  height: 24px;
+  min-height: 24px;
+  padding: 0;
+  color: var(--pnw-workbench-muted, #64748b);
+  font-size: 14px;
+  transition: color .15s ease, background-color .15s ease, box-shadow .15s ease;
+}
+.settings-primary-toggle:hover,
+.settings-primary-toggle:focus-visible {
+  background: var(--pnw-control-hover-bg, rgba(59, 130, 246, .09));
+  color: var(--pnw-control-active-text, #409eff);
+  box-shadow: 0 1px 4px rgba(15, 23, 42, .12);
+}
 .repair-list { display: flex; flex-direction: column; gap: 16px; max-width: 720px; }
 .repair-item { padding: 14px 16px; border: 1px solid #ebeef5; border-radius: 8px; background: #fafafa; }
 .repair-item-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-bottom: 6px; }

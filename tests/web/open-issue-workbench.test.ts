@@ -110,6 +110,30 @@ describe('Open Issue 本地 Pnw 工作台适配', () => {
     expect(settings).toContain('component: PoiSettingsRepairBottom')
   })
 
+  it('设置页从标题旁就近切换 Primary，无需移动到 Footer', () => {
+    const settings = read('packages/web/src/views/SettingsView.vue')
+    const workbenchStore = read('packages/web/src/stores/workbench.ts')
+
+    expect(settings).toContain('const isPrimaryHidden = computed')
+    expect(settings).toContain('class="settings-page-header"')
+    expect(settings).toContain('class="settings-primary-toggle"')
+    expect(settings).toContain('data-tour="settings-show-menu"')
+    expect(settings).toContain(':aria-label="isPrimaryHidden')
+    expect(settings).toContain(':aria-expanded="!isPrimaryHidden"')
+    expect(settings).toContain('@click="workbenchStore.togglePrimary()"')
+    expect(settings).toContain('展开设置菜单')
+    expect(settings).toContain('收起设置菜单')
+    expect(settings).toContain('position: absolute')
+    expect(settings).toContain('width: 24px')
+    expect(settings).toContain('height: 24px')
+    expect(settings).toContain('top: calc(8px - var(--poi-editor-padding, 24px))')
+    expect(settings).toContain('left: calc(8px - var(--poi-editor-padding, 24px))')
+    expect(settings).not.toContain('.settings-page-header :deep(.pnw-head-left)')
+    expect(workbenchStore).toContain('function togglePrimary()')
+    expect(workbenchStore).toContain('primary: !layoutState.value.visibility.primary')
+    expect(workbenchStore).toContain('togglePrimary,')
+  })
+
   it('贡献组件不复制 Wing 的窄屏断点', () => {
     const contributionFiles = [
       'PoiDefaultPrimary.vue',

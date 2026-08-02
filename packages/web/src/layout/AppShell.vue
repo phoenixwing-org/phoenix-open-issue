@@ -206,10 +206,11 @@ function logout() {
 }
 
 .open-issue-editor {
+  --poi-editor-padding: 24px;
   width: 100%;
   height: 100%;
   overflow: auto;
-  padding: 24px;
+  padding: var(--poi-editor-padding);
   box-sizing: border-box;
 }
 
