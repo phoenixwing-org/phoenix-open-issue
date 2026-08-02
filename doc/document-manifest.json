@@ -245,6 +245,13 @@
       "lastVerified": "2026-07-31"
     },
     {
+      "path": "doc/admin-plugin-rectification/设置能力迁移边界.md",
+      "status": "current",
+      "owner": "Open Issue maintainers",
+      "appliesTo": "0.6.x",
+      "lastVerified": "2026-07-31"
+    },
+    {
       "path": "doc/admin-plugin-rectification/现状与偏差.md",
       "status": "current",
       "owner": "Open Issue maintainers",
@@ -343,6 +350,13 @@
     },
     {
       "path": "doc/phoenix-wing依赖配置.md",
+      "status": "current",
+      "owner": "Open Issue maintainers",
+      "appliesTo": "0.6.x",
+      "lastVerified": "2026-07-31"
+    },
+    {
+      "path": "doc/PhoenixAdmin插件部署.md",
       "status": "current",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",

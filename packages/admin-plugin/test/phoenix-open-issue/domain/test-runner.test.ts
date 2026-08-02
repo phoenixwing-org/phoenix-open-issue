@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   countDeclaredTestCases,
   summarizeVitestOutput,
-} from "../../midway/phoenix-open-issue/domain/test-runner";
+} from "../../../midway/phoenix-open-issue/domain/test-runner";
 
 describe("Open Issue 受控测试运行器算法", () => {
   it("只统计 it/test 调用，不依赖测试框架运行时", () => {

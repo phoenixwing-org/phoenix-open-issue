@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   functionNaturalKey,
+  normalizeFunctionEnabledFilter,
+  normalizeFunctionEnabledValue,
   normalizeFunctionImportRows,
   normalizeFunctionInput,
   normalizeFunctionUpdate,
-} from "../../midway/phoenix-open-issue/domain/function";
+} from "../../../midway/phoenix-open-issue/domain/function";
 
 describe("Open Issue 功能简表领域算法", () => {
   it("保留 legacy 字段并规范空白与可选值", () => {
@@ -66,5 +68,14 @@ describe("Open Issue 功能简表领域算法", () => {
     expect(functionNaturalKey({ platform: "A", externalId: "12" })).not.toBe(
       functionNaturalKey({ platform: "B", externalId: "12" })
     );
+  });
+
+  it("状态筛选默认只显示启用项并允许显式恢复停用项", () => {
+    expect(normalizeFunctionEnabledFilter(undefined)).toBe(1);
+    expect(normalizeFunctionEnabledFilter("disabled")).toBe(0);
+    expect(normalizeFunctionEnabledFilter("all")).toBe("all");
+    expect(normalizeFunctionEnabledValue(true)).toBe(1);
+    expect(normalizeFunctionEnabledValue(false)).toBe(0);
+    expect(() => normalizeFunctionEnabledValue("all")).toThrow("功能状态");
   });
 });

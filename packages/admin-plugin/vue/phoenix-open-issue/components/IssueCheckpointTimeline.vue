@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { DocumentCopy, Plus, Sort } from '@element-plus/icons-vue'
 import type { Checkpoint, CheckpointStatus } from '/$/phoenix-open-issue/core'
 import { isOverdue } from '/$/phoenix-open-issue/core'
 import { getAllUsers } from '/$/phoenix-open-issue/api/auth'

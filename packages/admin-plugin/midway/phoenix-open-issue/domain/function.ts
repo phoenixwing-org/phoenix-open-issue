@@ -9,6 +9,8 @@ export interface OpenIssueFunctionInput {
 
 export type OpenIssueFunctionUpdate = Partial<OpenIssueFunctionInput>;
 
+export type OpenIssueFunctionEnabledFilter = 0 | 1 | "all";
+
 function record(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value))
     throw new Error("功能数据无效");
@@ -80,4 +82,21 @@ export function functionNaturalKey(
   value: Pick<OpenIssueFunctionInput, "platform" | "externalId">
 ): string {
   return `${value.platform}\u0000${value.externalId}`;
+}
+
+export function normalizeFunctionEnabledFilter(
+  value: unknown
+): OpenIssueFunctionEnabledFilter {
+  if (value === undefined || value === null || value === "" || value === 1 || value === "1" || value === true || value === "enabled")
+    return 1;
+  if (value === 0 || value === "0" || value === false || value === "disabled")
+    return 0;
+  if (value === "all") return "all";
+  throw new Error("功能状态筛选无效");
+}
+
+export function normalizeFunctionEnabledValue(value: unknown): 0 | 1 {
+  const result = normalizeFunctionEnabledFilter(value);
+  if (result === "all") throw new Error("功能状态无效");
+  return result;
 }

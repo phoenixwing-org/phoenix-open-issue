@@ -5,11 +5,11 @@ import {
   normalizeIssueIds,
   normalizeIssueUpdateInput,
   normalizeNewIssueInput,
-} from '../../midway/phoenix-open-issue/domain/issue';
+} from '../../../midway/phoenix-open-issue/domain/issue';
 import {
   normalizeCheckpointUpdateInput,
   normalizeNewCheckpointInput,
-} from '../../midway/phoenix-open-issue/domain/checkpoint';
+} from '../../../midway/phoenix-open-issue/domain/checkpoint';
 
 describe('Issue 插件后端领域算法', () => {
   it('规范化创建数据并保持 legacy 默认值', () => {

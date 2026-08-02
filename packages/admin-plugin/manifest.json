@@ -1,5 +1,5 @@
 {
-  "formatVersion": 1,
+  "formatVersion": 2,
   "moduleId": "phoenix-open-issue",
   "name": "Open Issue",
   "version": "0.6.1-admin.0",
@@ -87,6 +87,15 @@
       "moduleId": "phoenix-open-issue-management",
       "capability": "phoenix-open-issue:test:read",
       "viewPath": "modules/phoenix-open-issue/views/test-runner.vue"
+    },
+    {
+      "id": "phoenix-open-issue-maintenance",
+      "path": "/open-issue/maintenance",
+      "title": "维护",
+      "icon": "pnw:report",
+      "moduleId": "phoenix-open-issue-management",
+      "capability": "phoenix-open-issue:maintenance:read",
+      "viewPath": "modules/phoenix-open-issue/views/maintenance.vue"
     }
   ],
   "navigation": {
@@ -112,7 +121,8 @@
         "icon": "pnw:folder",
         "routeIds": [
           "phoenix-open-issue-functions",
-          "phoenix-open-issue-test-runner"
+          "phoenix-open-issue-test-runner",
+          "phoenix-open-issue-maintenance"
         ]
       }
     ]
@@ -157,7 +167,18 @@
     { "id": "phoenix-open-issue.function", "description": "功能简表变更" },
     { "id": "phoenix-open-issue.push", "description": "推送与处理" }
   ],
-  "migrations": [],
+  "migrations": [
+    {
+      "id": "phoenix-open-issue-bootstrap",
+      "version": 1,
+      "checksum": "sha256:e6612af156e3a7f06c0cf3a094416967c79e42383284acb0e60000574a6b8676",
+      "description": "初始化 Open Issue PostgreSQL 业务表与索引",
+      "artifact": {
+        "format": "sql",
+        "path": "migrations/0001-bootstrap.sql"
+      }
+    }
+  ],
   "healthChecks": [],
   "hostReuse": [
     "identity",
@@ -180,7 +201,8 @@
       "oip_issue_list_link",
       "oip_checkpoint",
       "oip_function",
-      "oip_push_record"
+      "oip_push_record",
+      "oip_eight_d_report"
     ],
     "retainedOnUninstall": true
   },

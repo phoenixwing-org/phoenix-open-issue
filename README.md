@@ -52,6 +52,15 @@ pnpm dev              # 一键启动 core + server + web（首次启动自动创
 
 > CLI 强制重填：`pnpm seed`（或 `pnpm seed force` 清空后重填）
 
+## Phoenix Admin 插件部署
+
+Open Issue 同时保留独立 Web 与 Phoenix Admin 插件源码。插件部署分为两种模式：
+
+- **开发模式**：用 `pnpm admin-plugin:mount-dev-host` 将 Vue/Node 模块以软链接挂载到本机 Host，并通过各 Host 的 `.git/info/exclude` 保持产品源码不进入框架仓；
+- **正式安装模式**：交付冻结的不可变制品，通过 Pah 完成 manifest 校验、迁移 dry-run、可信备份、受控安装和启用，禁止使用开发链接或 TypeORM `synchronize`。
+
+命令、目录、卸载和正式发布门禁见 [Phoenix Admin 插件部署](doc/PhoenixAdmin插件部署.md)。
+
 
 
 ## 项目结构
@@ -138,6 +147,7 @@ pnpm seed            # CLI 重新填充演示数据（force 追加可清空）
 | [Linux 测试部署](doc/Linux测试部署.md)               | 构建、配置、systemd 与升级检查 |
 | [SQLite/PG 双数据库计划](doc/v0.4-PG双数据库适配计划.md) | PnwDbAdapter、迁移与双库测试方案 |
 | [PostgreSQL 部署与迁移](doc/PostgreSQL部署与迁移.md) | Linux 配置、SQLite JSON 迁移、校验与回滚 |
+| [Phoenix Admin 插件部署](doc/PhoenixAdmin插件部署.md) | 开发 Link 挂载与正式 Pah 安装流程 |
 | [多人权限与列表筛选加固](doc/多人权限与列表筛选加固.md) | 系统/列表权限矩阵、筛选分页、认证和回归测试 |
 | [Issue 扩展能力：定向推送与附属关联](doc/附属功能与Issue关联计划.md) | 用户定向推送、8D 可空关联、权限与迁移边界 |
 

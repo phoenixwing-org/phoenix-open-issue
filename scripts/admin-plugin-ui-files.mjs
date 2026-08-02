@@ -10,6 +10,7 @@ export const ISSUE_UI_FILE_MAPPINGS = [
   ['packages/web/src/views/reports/EightDReportIndexView.vue', 'views/eight-d-reports.vue'],
   ['packages/web/src/views/functions/FunctionIndexView.vue', 'views/functions.vue'],
   ['packages/web/src/views/TestRunnerView.vue', 'views/test-runner.vue'],
+  ['packages/web/src/views/SettingsView.vue', 'views/maintenance.vue'],
 
   ['packages/web/src/components/AttentionStars.vue', 'components/AttentionStars.vue'],
   ['packages/web/src/components/CheckpointFormDialog.vue', 'components/CheckpointFormDialog.vue'],
@@ -31,6 +32,7 @@ export const ISSUE_UI_FILE_MAPPINGS = [
   ['packages/web/src/components/workbench/PoiPushHistoryPrimary.vue', 'components/workbench/PoiPushHistoryPrimary.vue'],
   ['packages/web/src/components/workbench/PoiFunctionPrimary.vue', 'components/workbench/PoiFunctionPrimary.vue'],
   ['packages/web/src/components/workbench/PoiTestRunnerPrimary.vue', 'components/workbench/PoiTestRunnerPrimary.vue'],
+  ['packages/web/src/components/workbench/PoiSettingsRepairBottom.vue', 'components/workbench/PoiSettingsRepairBottom.vue'],
 
   ['packages/web/src/api/auth.ts', 'api/auth.ts'],
   ['packages/web/src/api/checkpoints.ts', 'api/checkpoints.ts'],
@@ -63,3 +65,34 @@ export const ISSUE_CORE_TARGET_ROOT = `${ADMIN_PLUGIN_VUE_ROOT}/core`
 export const ISSUE_UI_FIDELITY_MAPPINGS = ISSUE_UI_FILE_MAPPINGS.filter(
   ([source]) => source.endsWith('.vue'),
 )
+
+/**
+ * 迁移期允许的最小产品修正。每项必须声明理由和 UI 结构指纹；保真门禁只会
+ * 放行这些已审计差异，其余 template/style 偏差仍直接失败。
+ */
+export const ISSUE_UI_INTENTIONAL_DELTAS = new Map([
+  ['views/functions.vue', {
+    reason: '修复 legacy 停用后无法发现和恢复的生命周期缺口',
+    requiredUi: [
+      'prop="enabled" label="状态"',
+      "row.enabled ? '启用' : '停用'",
+      '@click="onEnable(row)"',
+    ],
+  }],
+  ['components/workbench/PoiFunctionPrimary.vue', {
+    reason: '为 legacy Function 简表补充启用/停用/全部状态筛选',
+    requiredUi: [
+      ':model-value="statusFilter"',
+      'aria-label="功能状态"',
+      '<el-option label="停用" value="disabled" />',
+    ],
+  }],
+  ['views/maintenance.vue', {
+    reason: '将 legacy 混合设置页拆为插件自有维护页，Host 账号/登录/字典/备份不重复实现',
+    requiredUi: [
+      'title="Open Issue 维护"',
+      'data-tour="settings-repair"',
+      "task.id === 'all' ? '▶ 全部执行' : '执行修正'",
+    ],
+  }],
+])

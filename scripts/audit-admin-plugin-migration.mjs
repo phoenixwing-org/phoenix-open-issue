@@ -34,7 +34,7 @@ const HOST_ADAPTER_FILES = [
 ]
 
 function isCountedSource(file) {
-  return /\.(?:ts|vue|json|mjs)$/.test(file)
+  return /\.(?:ts|vue|json|mjs|sql)$/.test(file)
 }
 
 async function listFiles(relativeRoot) {
@@ -99,7 +99,7 @@ function auditPack() {
     installedBytes: pack.unpackedSize,
     entryCount: pack.entryCount,
     bundledDependencies: pack.bundled?.length ?? 0,
-    note: '源码交付包 dry-run；Midway 业务后端和正式构建产物尚未完成。',
+    note: '源码交付包 dry-run；包含 Vue、Midway、manifest 与版本化 SQL，不等同于 Host 正式构建产物。',
   }
 }
 
@@ -119,6 +119,7 @@ const pluginAlgorithmFiles = [
 const inheritedTestFiles = coreSourceFiles.filter(file => file.endsWith('.test.ts'))
 const pluginFiles = (await listFiles('packages/admin-plugin')).filter(isCountedSource)
 const pluginTestFiles = pluginFiles.filter(file => file.endsWith('.test.ts'))
+const pluginMigrationFiles = pluginFiles.filter(file => file.endsWith('.sql'))
 
 if (pluginFiles.some(file => file.split(path.sep).includes('node_modules'))) {
   throw new Error('审计源码范围不得包含 node_modules')
@@ -137,7 +138,7 @@ const metrics = {
   ui: {
     source: await summarize(uiSourceFiles),
     target: await summarize(uiTargetFiles),
-    fidelityGate: 'template/style 逐文件完全一致',
+    fidelityGate: 'template/style 逐文件严格一致；声明的最小产品修正需通过结构指纹',
   },
   algorithms: {
     inherited: await summarize(inheritedAlgorithmFiles),
@@ -155,10 +156,21 @@ const metrics = {
   },
   platformShellNotMigrated: await summarize(PLATFORM_SHELL_FILES),
   hostAdapters: await summarize(HOST_ADAPTER_FILES),
+  migrations: await summarize(pluginMigrationFiles),
   pluginSourcePackage: await summarize(pluginFiles),
   delivery: {
     ...auditPack(),
-    frontendIncrementalChunkBytes: null,
+    frontendProductionEvidence: {
+      hostCommit: '1a0d5ae',
+      routeEntryFiles: 18,
+      routeEntryRawBytes: 186774,
+      routeEntryGzipBytes: 64000,
+      fullDistRawFiles: 38,
+      fullDistRawBytes: 293515,
+      fullDistGzipFiles: 27,
+      fullDistGzipBytes: 101339,
+      brotliBytes: null,
+    },
   },
 }
 
@@ -182,12 +194,14 @@ if (asJson) {
     row('插件当前全部单元测试', metrics.tests.plugin),
     row('未迁移的平台壳', metrics.platformShellNotMigrated),
     row('新增 Host adapter', metrics.hostAdapters),
+    row('生产 DDL migration', metrics.migrations),
     row('当前插件源码包', metrics.pluginSourcePackage),
     '',
     `继承的算法测试用例：${metrics.tests.inherited.testCases}`,
     `插件当前全部测试用例：${metrics.tests.plugin.testCases}`,
     `源码交付包：${metrics.delivery.compressedPackageBytes} bytes（解包 ${metrics.delivery.installedBytes} bytes，${metrics.delivery.entryCount} 项，bundled dependencies ${metrics.delivery.bundledDependencies}）`,
+    `前端路由入口：${metrics.delivery.frontendProductionEvidence.routeEntryRawBytes} raw / ${metrics.delivery.frontendProductionEvidence.routeEntryGzipBytes} gzip bytes；完整 dist 增量：${metrics.delivery.frontendProductionEvidence.fullDistRawBytes} raw / ${metrics.delivery.frontendProductionEvidence.fullDistGzipBytes} gzip bytes（Host ${metrics.delivery.frontendProductionEvidence.hostCommit}，无 brotli 产物）`,
     '',
-    '> 行数是可复算的规模指标，不直接代表质量或收益；正式交付尺寸需在构建可安装包后补测。',
+    '> 行数是规模指标，不直接代表质量；源码 pack 与 Host production dist 增量采用不同口径，不能相加或互相替代。',
   ].join('\n'))
 }

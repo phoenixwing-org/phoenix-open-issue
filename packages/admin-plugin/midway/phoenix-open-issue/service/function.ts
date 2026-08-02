@@ -5,6 +5,8 @@ import { CoolCommException } from "@cool-midway/core";
 import { DataSource, Repository } from "typeorm";
 import {
   functionNaturalKey,
+  normalizeFunctionEnabledFilter,
+  normalizeFunctionEnabledValue,
   normalizeFunctionImportRows,
   normalizeFunctionInput,
   normalizeFunctionUpdate,
@@ -37,9 +39,16 @@ export class OpenIssueFunctionService {
   }
 
   async list(query: Record<string, unknown>) {
-    const builder = this.repository
-      .createQueryBuilder("func")
-      .where("func.enabled = 1");
+    let enabled;
+    try {
+      enabled = normalizeFunctionEnabledFilter(query.enabled);
+    } catch (error) {
+      this.failInput(error);
+    }
+    const builder = this.repository.createQueryBuilder("func");
+    if (enabled !== "all") {
+      builder.where("func.enabled = :enabled", { enabled });
+    }
     if (typeof query.search === "string" && query.search.trim()) {
       builder.andWhere(
         "(func.functionName ILIKE :search OR func.platform ILIKE :search OR func.externalId ILIKE :search)",
@@ -151,6 +160,20 @@ export class OpenIssueFunctionService {
     item.enabled = 0;
     item.updatedAt = new Date().toISOString();
     await this.repository.save(item);
+  }
+
+  async setEnabled(id: string, value: unknown) {
+    this.assertAdmin();
+    const item = await this.get(id);
+    let enabled;
+    try {
+      enabled = normalizeFunctionEnabledValue(value);
+    } catch (error) {
+      this.failInput(error);
+    }
+    item.enabled = enabled;
+    item.updatedAt = new Date().toISOString();
+    return this.repository.save(item);
   }
 
   async import(value: unknown) {

@@ -96,11 +96,18 @@ export class OpenIssueTestRunnerService {
       }
     }
     return Promise.all(
-      files.sort().map(async (file) => ({
-        filePath: path.relative(root, file),
-        packageName: file.includes("/midway/") ? "midway" : "core",
-        caseCount: countDeclaredTestCases(await readFile(file, "utf8")),
-      }))
+      files.sort().map(async (file) => {
+        const filePath = path.relative(root, file).split(path.sep).join("/");
+        return {
+          filePath,
+          packageName: filePath.startsWith(
+            "packages/admin-plugin/test/phoenix-open-issue/domain/"
+          )
+            ? "domain"
+            : "core",
+          caseCount: countDeclaredTestCases(await readFile(file, "utf8")),
+        };
+      })
     );
   }
 

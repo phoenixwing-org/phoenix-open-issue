@@ -3,7 +3,7 @@ import {
   normalizeRepairTask,
   planCheckpointRepair,
   planIssueLinkRepair,
-} from '../../midway/phoenix-open-issue/domain/maintenance';
+} from '../../../midway/phoenix-open-issue/domain/maintenance';
 
 describe('Issue 数据修正领域算法', () => {
   it('只接受插件声明的修正任务', () => {

@@ -12,15 +12,15 @@
 - [x] 8D 报告列表和 Issue 内 8D 弹层原样迁移；
 - [x] 仪表盘和任务中心原样迁移；
 - [x] 通过 Pah manifest 为仪表盘、推送历史和 8D 报告登记动态路由/菜单，不再依赖旧开发桥；
-- [ ] 迁移 Midway Controller、Service、Entity、migration，让上述页面接入真实 API；
-- [ ] 用真实数据完成点检新增/编辑/状态切换、推送接受/拒绝/撤回和 8D 增删改回归。
+- [x] 迁移 Midway Controller、Service、Entity 与 manifest v2 SQL migration，让上述页面接入真实 API；
+- [ ] 用真实数据完成点检编辑/状态切换和推送接受/拒绝/撤回；8D 增删改及 Issue 关联已完成临时数据回归并清理。
 
 ## 附属入口
 
 - [x] 原样迁移功能简表，保留筛选、排序、增改停用、XLSX 导入、JSON 导出和 Issue 关联；
 - [x] 将功能数据迁入插件表 `oip_function`，不归入 Host 设置；
 - [x] 迁移 Open Issue 单元测试页面，执行端改为固定插件测试集、开发环境/管理员限制、目录白名单、锁、超时和输出上限；Host 任务/文件报告仍待平台接口；
-- [ ] 恢复插件维护入口中的 Issue 字典和数据库修正；
+- [x] 恢复插件维护入口中的 Issue 数据库修正；Issue 字典继续复用 Host namespaced 字典，不复制设置页；
 - [x] 数据库修正先完成 `checkpoints` / `links` 的纯规划算法与管理员 Midway API；拒绝 schema、Host 用户和 SQLite 任务；
 - [ ] 密码、登录方式、用户和组织改为 Host 入口，不复制旧设置实现；
 - [ ] 按《附属入口迁移归属》完成 legacy/Admin 双开点检。
@@ -52,7 +52,7 @@
 
 ## Host 业务副本清理
 
-- [ ] Midway Controller、Service、Entity、migration 和产品测试迁回插件包；
+- [x] Midway Controller、Service、Entity、migration 和产品测试迁回插件包；
 - [x] Host 从插件 manifest 注册业务路由、菜单、能力码与 API namespace；
 - [x] 删除 Phoenix Admin Vue 的临时桥、Open Issue 设置页和 `OpenIssuePrototypeManifest.ts`；
 - [x] 删除 Phoenix Admin Node 的 `src/modules/open-issue`，验证 Pah 离开任何内置业务模块仍可独立工作；
@@ -64,7 +64,7 @@
 
 - [x] 增加可复算的文件数、行数、源码字节和测试用例统计脚本；
 - [x] 固定 UI、算法、测试、Host adapter、未迁移平台壳的统计口径；
-- [ ] 前端正式构建后记录增量 chunk 与 gzip/brotli；
-- [ ] 后端正式构建后记录插件包压缩/安装体积；
+- [x] 前端受控挂载 production build 通过；9 个路由入口含 CSS 为 186,774 bytes raw / 64,000 bytes gzip，同一 Host 无插件基线的完整 dist 增量为 293,515 / 101,339 bytes；当前构建未生成 brotli；
+- [x] 后端隔离 production build 通过并记录源码包压缩/解包体积、dist descriptor/SQL 大小与 SHA；
 - [ ] Issue API 闭环后发布最终审计报告；
-- [ ] Function、Bom3 使用同一模板，比较第二、第三个插件的专用适配代码是否下降。
+- [x] Function、BOM 使用同一 Skill 与审计模板：Function 已到 55% 并完成双库恢复演练，BOM 首只读纵切 75% 并量化避免复制 45 文件/5,876 行 Host 壳层。

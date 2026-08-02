@@ -20,6 +20,10 @@ export function deleteFunction(id: string) {
   return request.delete(`/function/${id}`)
 }
 
+export function setFunctionEnabled(id: string, enabled: boolean) {
+  return request.patch(`/function/${id}/enabled`, { enabled })
+}
+
 export function importFunctions(rows: Record<string, any>[]) {
   return request.post('/functions/import', { rows })
 }

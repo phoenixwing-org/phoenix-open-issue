@@ -23,12 +23,14 @@ const isSystemAdmin = computed(() => auth.user?.systemRole === 'admin')
 // ── 列表 ──
 const sortField = ref('')
 const sortDir = ref('')
+const statusFilter = ref<'enabled' | 'disabled' | 'all'>('enabled')
 
 onMounted(() => doLoad())
 
 async function doLoad() {
   const params: Record<string, any> = {}
   if (settings.funcSearch) params.search = settings.funcSearch
+  params.enabled = statusFilter.value
   if (sortField.value) params.sort = `${sortField.value}:${sortDir.value || 'asc'}`
   if (settings.funcNumericSort && sortField.value === 'externalId') params.numericSort = '1'
   await store.load(params)
@@ -61,16 +63,23 @@ function updateNumericSort(value: string | number | boolean): void {
   void doLoad()
 }
 
+function updateStatusFilter(value: string): void {
+  statusFilter.value = value === 'disabled' || value === 'all' ? value : 'enabled'
+  void doLoad()
+}
+
 usePoiViewContribution(() => route.fullPath, {
   primary: {
     component: PoiFunctionPrimary,
     props: computed(() => ({
       search: settings.funcSearch,
       numericSort: settings.funcNumericSort,
+      statusFilter: statusFilter.value,
       itemCount: store.items.length,
       isAdmin: isSystemAdmin.value,
       onUpdateSearch: updateSearch,
       onUpdateNumericSort: updateNumericSort,
+      onUpdateStatusFilter: updateStatusFilter,
       onRefresh: doLoad,
       onCreate: openCreate,
     })),
@@ -100,7 +109,7 @@ async function onSubmit() {
     ElMessage.success('已创建')
   }
   showForm.value = false
-  store.refresh()
+  await doLoad()
 }
 
 async function onDelete(row: any) {
@@ -112,7 +121,19 @@ async function onDelete(row: any) {
   if (r.choiceId !== 'delete') return
   await api.deleteFunction(row.id)
   ElMessage.success('已停用')
-  store.refresh()
+  await doLoad()
+}
+
+async function onEnable(row: any) {
+  const r = await pnwPromptChoice({
+    title: '确认启用',
+    message: `确定重新启用功能「${row.functionName}」？`,
+    choices: [{ id: 'enable', label: '启用', variant: 'primary' }, { id: 'cancel', label: '取消' }],
+  })
+  if (r.choiceId !== 'enable') return
+  await api.setFunctionEnabled(row.id, true)
+  ElMessage.success('已启用')
+  await doLoad()
 }
 
 // ── 导入 ──
@@ -146,7 +167,7 @@ async function onConfirmImport() {
     ElMessage.success(`导入完成：新增 ${data.imported} 条，更新 ${data.updated} 条`)
     showImport.value = false
     importPreview.value = []
-    store.refresh()
+    await doLoad()
   } finally {
     importing.value = false
   }
@@ -194,10 +215,16 @@ async function onExport() {
       <el-table-column prop="clientGroup" label="客户群体" width="120" />
       <el-table-column prop="developGroup" label="开发组" width="120" />
       <el-table-column prop="createdAt" label="创建时间" width="160" />
+      <el-table-column prop="enabled" label="状态" width="80" align="center">
+        <template #default="{ row }">
+          <el-tag :type="row.enabled ? 'success' : 'info'" size="small">{{ row.enabled ? '启用' : '停用' }}</el-tag>
+        </template>
+      </el-table-column>
       <el-table-column v-if="isSystemAdmin" label="操作" width="140" align="center" fixed="right">
         <template #default="{ row }">
           <el-button link size="small" @click="openEdit(row)">编辑</el-button>
-          <el-button link size="small" type="warning" @click="onDelete(row)">停用</el-button>
+          <el-button v-if="row.enabled" link size="small" type="warning" @click="onDelete(row)">停用</el-button>
+          <el-button v-else link size="small" type="success" @click="onEnable(row)">启用</el-button>
         </template>
       </el-table-column>
     </el-table>

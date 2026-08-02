@@ -6,7 +6,7 @@ import {
   normalizeIssueListMemberRole,
   normalizeIssueListUpdateInput,
   normalizeNewIssueListInput,
-} from '../../midway/phoenix-open-issue/domain/issue-list';
+} from '../../../midway/phoenix-open-issue/domain/issue-list';
 
 describe('Issue 列表领域算法', () => {
   it('规范化创建输入且不带入独立版数据库字段', () => {

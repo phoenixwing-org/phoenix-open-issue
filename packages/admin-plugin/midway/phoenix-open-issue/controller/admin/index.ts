@@ -13,10 +13,12 @@ import {
 } from "@midwayjs/core";
 import { BaseController, CoolController } from "@cool-midway/core";
 import { OpenIssueCheckpointService } from "../../service/checkpoint";
+import { OpenIssueEightDReportService } from "../../service/eight-d-report";
 import { OpenIssueFunctionService } from "../../service/function";
 import { OpenIssueService } from "../../service/issue";
 import { OpenIssueListService } from "../../service/issue-list";
 import { OpenIssueMaintenanceService } from "../../service/maintenance";
+import { OpenIssuePushService } from "../../service/push";
 import { OpenIssueTestRunnerService } from "../../service/test-runner";
 
 @Provide()
@@ -32,10 +34,16 @@ export class OpenIssueAdminController extends BaseController {
   openIssueCheckpointService: OpenIssueCheckpointService;
 
   @Inject()
+  openIssueEightDReportService: OpenIssueEightDReportService;
+
+  @Inject()
   openIssueFunctionService: OpenIssueFunctionService;
 
   @Inject()
   openIssueMaintenanceService: OpenIssueMaintenanceService;
+
+  @Inject()
+  openIssuePushService: OpenIssuePushService;
 
   @Inject()
   openIssueTestRunnerService: OpenIssueTestRunnerService;
@@ -240,7 +248,8 @@ export class OpenIssueAdminController extends BaseController {
     @Query("search") search: unknown,
     @Query("platform") platform: unknown,
     @Query("sort") sort: unknown,
-    @Query("numericSort") numericSort: unknown
+    @Query("numericSort") numericSort: unknown,
+    @Query("enabled") enabled: unknown
   ) {
     return this.ok(
       await this.openIssueFunctionService.list({
@@ -248,6 +257,7 @@ export class OpenIssueAdminController extends BaseController {
         platform,
         sort,
         numericSort,
+        enabled,
       })
     );
   }
@@ -281,6 +291,122 @@ export class OpenIssueAdminController extends BaseController {
   async deleteFunction(@Param("id") id: string) {
     await this.openIssueFunctionService.delete(id);
     return this.ok();
+  }
+
+  @Patch("/function/:id/enabled", { summary: "启用或停用功能" })
+  async setFunctionEnabled(
+    @Param("id") id: string,
+    @Body("enabled") enabled: unknown
+  ) {
+    return this.ok(await this.openIssueFunctionService.setEnabled(id, enabled));
+  }
+
+  @Get("/eight-d-reports", { summary: "查询可访问的 8D 报告" })
+  async eightDReports() {
+    return this.ok(await this.openIssueEightDReportService.list());
+  }
+
+  @Get("/eight-d-reports/issue-options", {
+    summary: "查询可关联 8D 报告的 Issue",
+  })
+  async eightDReportIssueOptions() {
+    return this.ok(await this.openIssueEightDReportService.issueOptions());
+  }
+
+  @Get("/issue/:id/eight-d-reports", { summary: "查询 Issue 的 8D 报告" })
+  async issueEightDReports(@Param("id") id: string) {
+    return this.ok(await this.openIssueEightDReportService.byIssue(id));
+  }
+
+  @Get("/eight-d-report/:id", { summary: "查询 8D 报告详情" })
+  async getEightDReport(@Param("id") id: string) {
+    return this.ok(await this.openIssueEightDReportService.get(id));
+  }
+
+  @Post("/eight-d-report", { summary: "创建 8D 报告" })
+  async createEightDReport(@Body(ALL) input: unknown) {
+    return this.ok(await this.openIssueEightDReportService.create(input));
+  }
+
+  @Put("/eight-d-report/:id", { summary: "更新 8D 报告" })
+  async updateEightDReport(
+    @Param("id") id: string,
+    @Body(ALL) input: unknown
+  ) {
+    return this.ok(await this.openIssueEightDReportService.update(id, input));
+  }
+
+  @Del("/eight-d-report/:id", { summary: "软删除 8D 报告" })
+  async deleteEightDReport(@Param("id") id: string) {
+    await this.openIssueEightDReportService.delete(id);
+    return this.ok();
+  }
+
+  @Get("/push/preview", { summary: "预检 Issue 列表推送" })
+  async previewPush(
+    @Query("fromListId") fromListId: string,
+    @Query("toListId") toListId: string
+  ) {
+    return this.ok(
+      await this.openIssuePushService.preview(fromListId, toListId)
+    );
+  }
+
+  @Post("/push", { summary: "发起 Issue 推送" })
+  async pushIssues(@Body(ALL) input: unknown) {
+    return this.ok(await this.openIssuePushService.push(input));
+  }
+
+  @Get("/push/history", { summary: "查询我的可见推送历史" })
+  async pushHistory() {
+    return this.ok(await this.openIssuePushService.history());
+  }
+
+  @Get("/list/:id/push-history", { summary: "查询列表推送历史" })
+  async listPushHistory(@Param("id") id: string) {
+    return this.ok(await this.openIssuePushService.listHistory(id));
+  }
+
+  @Get("/list/:id/incoming-pushes", { summary: "查询列表待处理推送" })
+  async incomingPushes(@Param("id") id: string) {
+    return this.ok(await this.openIssuePushService.incoming(id));
+  }
+
+  @Get("/push/:id/target-lists", {
+    summary: "查询用户推送可接受到的列表",
+  })
+  async pushTargetLists(@Param("id") id: string) {
+    return this.ok(await this.openIssuePushService.targetLists(id));
+  }
+
+  @Patch("/push/:id/handle", { summary: "接受或拒绝推送" })
+  async handlePush(
+    @Param("id") id: string,
+    @Body("action") action: unknown,
+    @Body("rejectReason") rejectReason: unknown,
+    @Body("toListId") toListId: unknown
+  ) {
+    return this.ok(
+      await this.openIssuePushService.handle(
+        id,
+        action,
+        rejectReason,
+        toListId
+      )
+    );
+  }
+
+  @Patch("/push/:id/withdraw", { summary: "撤回待处理推送" })
+  async withdrawPush(@Param("id") id: string) {
+    return this.ok(await this.openIssuePushService.withdraw(id));
+  }
+
+  @Get("/dashboard/tasks", { summary: "查询 Open Issue 待办中心" })
+  async dashboardTasks(
+    @Query("tab") tab: unknown,
+    @Query("limit") limit: unknown
+  ) {
+    return this.ok(await this.openIssuePushService.dashboard(tab, limit));
   }
 
   @Get("/maintenance/repair-tasks", {
