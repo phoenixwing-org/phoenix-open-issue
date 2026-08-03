@@ -31,7 +31,7 @@ const showIssueModal = ref(false)
 const modalIssueId = ref('')
 import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
 import PageHelpButton from "@/components/PageHelpButton.vue"
-import { canPerformListAction, DEFAULT_ATTENTION_LEVEL, ISSUE_URGENCY_DICT } from '@open-issue/core'
+import { canPerformListAction, DEFAULT_ATTENTION_LEVEL, ISSUE_IMPORTANCE_DICT, ISSUE_URGENCY_DICT } from '@open-issue/core'
 import type { Checkpoint } from '@open-issue/core'
 import IssueFormDialog from '@/components/IssueFormDialog.vue'
 import IssueQuickEditDialog from '@/components/IssueQuickEditDialog.vue'
@@ -102,10 +102,13 @@ const severityTag: Record<string, string | undefined> = {
   fatal: 'danger', major: 'warning', minor: 'info', trivial: undefined,
 }
 
+const severityLabel = computed<Record<string, string>>(() => Object.fromEntries(
+  ISSUE_IMPORTANCE_DICT.map(item => [item.value, dict.getLabel('severity', item.value)]),
+))
 const priorityLabel = computed<Record<string, string>>(() => Object.fromEntries(
   ISSUE_URGENCY_DICT.map(item => [
     item.value,
-    dict.labelIndex[`priority:${item.value}`] || item.label,
+    dict.getLabel('priority', item.value),
   ]),
 ))
 const priorityTag: Record<string, string | undefined> = { low: 'info', medium: 'warning', high: 'danger', critical: undefined }
@@ -642,6 +645,7 @@ provide('issueListCellCtx', reactive({
   dict,
   userMap,
   severityTag,
+  get severityLabel() { return severityLabel.value },
   get priorityLabel() { return priorityLabel.value },
   priorityTag,
   statusLabel,

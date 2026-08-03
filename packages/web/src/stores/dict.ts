@@ -1,7 +1,13 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
 import * as api from '@/api/dict'
-import { hasDictTag, type DictItem } from '@open-issue/core'
+import {
+  hasDictTag,
+  getIssueBuiltinDictLabel,
+  ISSUE_IMPORTANCE_DICT,
+  ISSUE_URGENCY_DICT,
+  type DictItem,
+} from '@open-issue/core'
 
 /** 已知数据字典分组 */
 export const DICT_GROUPS = {
@@ -21,6 +27,30 @@ export type DictOption = { value: string; label: string }
 export type DictTaggedOption = DictOption & { tags: string }
 
 const GROUP_COLORS = ['#409EFF', '#67C23A', '#E6A23C', '#909399', '#F56C6C', '#9B59B6', '#1ABC9C', '#3498DB', '#E74C3C']
+const POI_DICT_CACHE_STORAGE_KEY = 'open-issue:dict-cache:v1'
+const POI_SYSTEM_DICTS = {
+  severity: ISSUE_IMPORTANCE_DICT,
+  priority: ISSUE_URGENCY_DICT,
+} as const
+
+function poiReadPersistedDictItems(): DictItem[] {
+  try {
+    const payload = JSON.parse(localStorage.getItem(POI_DICT_CACHE_STORAGE_KEY) || 'null') as { items?: unknown } | null
+    if (!Array.isArray(payload?.items)) return []
+    return payload.items.filter((item): item is DictItem => Boolean(
+      item && typeof item === 'object'
+      && typeof (item as DictItem).groupName === 'string'
+      && typeof (item as DictItem).value === 'string'
+      && typeof (item as DictItem).label === 'string',
+    ))
+  } catch {
+    return []
+  }
+}
+
+function poiPersistDictItems(items: DictItem[]) {
+  localStorage.setItem(POI_DICT_CACHE_STORAGE_KEY, JSON.stringify({ items }))
+}
 
 export const useDictStore = defineStore('dict', () => {
   const items = ref<DictItem[]>([])
@@ -32,16 +62,22 @@ export const useDictStore = defineStore('dict', () => {
   const loading = ref(false)
 
   let loadPromise: Promise<void> | null = null
+  let refreshedForCurrentSession = false
 
   function rebuildCache() {
     const groups: Record<string, DictItem[]> = {}
     const labels: Record<string, string> = {}
 
     for (const item of items.value) {
-      labels[`${item.groupName}:${item.value}`] = item.label
+      const fallbackLabel = getIssueBuiltinDictLabel(item.groupName, item.value)
+      // 旧站导入可能把协议 value（minor / project）原样写进 label；这不是用户翻译。
+      const label = fallbackLabel && (!item.label.trim() || item.label.trim() === item.value)
+        ? fallbackLabel
+        : item.label
+      labels[`${item.groupName}:${item.value}`] = label
       if (!item.enabled) continue
       if (!groups[item.groupName]) groups[item.groupName] = []
-      groups[item.groupName].push(item)
+      groups[item.groupName].push({ ...item, label })
     }
 
     for (const g of Object.keys(groups)) {
@@ -54,7 +90,7 @@ export const useDictStore = defineStore('dict', () => {
 
   async function load(force = false) {
     if (loaded.value && !force) return
-    if (loadPromise && !force) return loadPromise
+    if (loadPromise) return loadPromise
 
     loadPromise = (async () => {
       loading.value = true
@@ -62,7 +98,9 @@ export const useDictStore = defineStore('dict', () => {
         const res = await api.getAllDict()
         items.value = res.data
         rebuildCache()
+        poiPersistDictItems(items.value)
         loaded.value = true
+        refreshedForCurrentSession = true
       } catch { /* ignore */ }
       finally {
         loading.value = false
@@ -73,7 +111,11 @@ export const useDictStore = defineStore('dict', () => {
     return loadPromise
   }
 
-  const ensureLoaded = load
+  async function ensureLoaded() {
+    if (!loaded.value) return load()
+    // 先显示持久化字典，再在每次应用启动的首个已登录路由刷新一次。
+    if (!refreshedForCurrentSession) return load(true)
+  }
 
   function clear() {
     items.value = []
@@ -81,6 +123,8 @@ export const useDictStore = defineStore('dict', () => {
     labelIndex.value = {}
     loaded.value = false
     loadPromise = null
+    refreshedForCurrentSession = false
+    localStorage.removeItem(POI_DICT_CACHE_STORAGE_KEY)
   }
 
   function getGroup(groupName: string): DictItem[] {
@@ -89,14 +133,21 @@ export const useDictStore = defineStore('dict', () => {
 
   function getLabel(groupName: string, value: string | null | undefined): string {
     if (!value) return ''
-    return labelIndex.value[`${groupName}:${value}`] || value
+    const label = labelIndex.value[`${groupName}:${value}`]
+    if (label) return label
+    return getIssueBuiltinDictLabel(groupName, value) || value
   }
 
   function getOptions(groupName: string): DictOption[] {
+    const systemItems = POI_SYSTEM_DICTS[groupName as keyof typeof POI_SYSTEM_DICTS]
+    if (systemItems) return systemItems.map(item => ({ value: item.value, label: getLabel(groupName, item.value) }))
     return getGroup(groupName).map(i => ({ value: i.value, label: i.label }))
   }
 
   function getTaggedOptions(groupName: string): DictTaggedOption[] {
+    if (POI_SYSTEM_DICTS[groupName as keyof typeof POI_SYSTEM_DICTS]) {
+      return getOptions(groupName).map(item => ({ ...item, tags: ',core,general,' }))
+    }
     return getGroup(groupName).map(i => ({ value: i.value, label: i.label, tags: i.tags }))
   }
 
@@ -141,6 +192,13 @@ export const useDictStore = defineStore('dict', () => {
     }
     return result
   })
+
+  const persistedItems = poiReadPersistedDictItems()
+  if (persistedItems.length) {
+    items.value = persistedItems
+    rebuildCache()
+    loaded.value = true
+  }
 
   return {
     items,

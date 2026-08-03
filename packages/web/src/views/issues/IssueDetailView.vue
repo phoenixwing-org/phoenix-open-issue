@@ -59,11 +59,11 @@ const severityTag: Record<string, string | undefined> = { fatal: 'danger', major
 const dimensionLabels = computed(() => ({
   importance: Object.fromEntries(ISSUE_IMPORTANCE_DICT.map(item => [
     item.value,
-    dict.labelIndex[`severity:${item.value}`] || item.label,
+    dict.getLabel('severity', item.value),
   ])) as Record<string, string>,
   urgency: Object.fromEntries(ISSUE_URGENCY_DICT.map(item => [
     item.value,
-    dict.labelIndex[`priority:${item.value}`] || item.label,
+    dict.getLabel('priority', item.value),
   ])) as Record<string, string>,
 }))
 const has8d = computed(() => reports.value.length > 0)

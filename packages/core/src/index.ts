@@ -23,7 +23,9 @@ export {
 export {
   ISSUE_IMPORTANCE_DICT,
   ISSUE_URGENCY_DICT,
+  ISSUE_BUILTIN_DICTS,
   ISSUE_SYSTEM_DICT_GROUPS,
+  getIssueBuiltinDictLabel,
   isIssueSystemDictGroup,
 } from './types/dict.js'
 

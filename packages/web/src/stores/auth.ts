@@ -39,6 +39,8 @@ export const useAuthStore = defineStore('auth', () => {
     user.value = data.user
     localStorage.setItem('token', data.token)
     localStorage.setItem('user', JSON.stringify(data.user))
+    // 字典是非敏感显示元数据：先恢复持久化值，再在登录成功后更新为服务端最新值。
+    void useDictStore().refresh()
   }
 
   async function register(data: { username: string; password: string; displayName?: string; orgUnitId?: string }) {

@@ -14,6 +14,7 @@ const ctx = inject<{
   dict: { getLabel: (g: string, v: string) => string }
   userMap: Record<string, string>
   severityTag: Record<string, string | undefined>
+  severityLabel: Record<string, string>
   priorityLabel: Record<string, string>
   priorityTag: Record<string, string | undefined>
   statusLabel: Record<string, string>
@@ -54,7 +55,7 @@ const row = computed(() => props.row)
     size="small"
     effect="dark"
     @click="ctx.canModifyRow(row) && ctx.openQuickEdit(row, 'severity', $event)"
-  >{{ ctx.dict.getLabel('severity', row.severity) || row.severity }}</el-tag>
+  >{{ ctx.severityLabel[row.severity] || row.severity }}</el-tag>
 
   <!-- priority -->
   <el-tag
