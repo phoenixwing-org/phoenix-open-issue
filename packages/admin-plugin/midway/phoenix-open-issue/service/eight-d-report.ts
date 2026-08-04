@@ -44,7 +44,7 @@ export class OpenIssueEightDReportService {
   }
 
   private async canModify(report: OpenIssueEightDReportEntity): Promise<boolean> {
-    if (this.access.isSystemAdmin()) return true;
+    if (this.access.isHostRoot()) return true;
     if (!report.relatedIssueId)
       return report.createdBy === this.access.actorId();
     try {
@@ -99,7 +99,7 @@ export class OpenIssueEightDReportService {
   }
 
   private async isReadable(report: OpenIssueEightDReportEntity) {
-    if (this.access.isSystemAdmin()) return true;
+    if (this.access.isHostRoot()) return true;
     if (!report.relatedIssueId)
       return report.createdBy === this.access.actorId();
     try {

@@ -56,6 +56,7 @@ const fakeProvider = new FakeProvider()
 beforeAll(async () => {
   tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'open-issue-external-auth-'))
   process.env.DB_DRIVER = 'sqlite'
+  process.env.ALLOW_LEGACY_SQLITE = 'true'
   process.env.DB_PATH = path.join(tempDir, 'external-auth.sqlite')
   process.env.SERVE_STATIC = 'false'
   process.env.NODE_ENV = 'test'

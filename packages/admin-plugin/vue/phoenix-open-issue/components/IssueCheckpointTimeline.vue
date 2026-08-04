@@ -9,12 +9,14 @@ import { createCheckpoint, getCheckpoints, updateCheckpoint } from '/$/phoenix-o
 import { useSettingsStore } from '/$/phoenix-open-issue/stores/settings'
 import CheckpointFormDialog from '/$/phoenix-open-issue/components/CheckpointFormDialog.vue'
 import CheckpointStatusTag from '/$/phoenix-open-issue/components/CheckpointStatusTag.vue'
+import { useIssueCapabilities } from '/$/phoenix-open-issue/composables/useIssueCapabilities'
 
 const props = defineProps<{
   issueId: string
   issueTitle?: string
   issueNo?: string
-  canModify: boolean
+  canCreate: boolean
+  canUpdate: boolean
 }>()
 
 const emit = defineEmits<{
@@ -22,6 +24,8 @@ const emit = defineEmits<{
 }>()
 
 const settings = useSettingsStore()
+const capabilities = useIssueCapabilities()
+const canRead = computed(() => capabilities.can('phoenix-open-issue:checkpoint:read'))
 const checkpoints = ref<Checkpoint[]>([])
 const allUsers = ref<any[]>([])
 const showCreate = ref(false)
@@ -34,10 +38,10 @@ const statusLabel: Record<string, string> = {
   voided: '已作废',
 }
 const statusColor: Record<string, string> = {
-  pending: '#909399',
-  done: '#67c23a',
-  skipped: '#e6a23c',
-  voided: '#f56c6c',
+  pending: 'var(--el-text-color-secondary, #909399)',
+  done: 'var(--el-color-success, #67c23a)',
+  skipped: 'var(--el-color-warning, #e6a23c)',
+  voided: 'var(--el-color-danger, #f56c6c)',
 }
 
 const activeUsers = computed(() => allUsers.value.filter((user: any) => !user.disabled))
@@ -53,9 +57,16 @@ const sortedCheckpoints = computed(() => {
 watch(
   () => props.issueId,
   async () => {
+    if (!canRead.value) {
+      checkpoints.value = []
+      allUsers.value = []
+      return
+    }
     const [checkpointResponse, usersResponse] = await Promise.all([
       getCheckpoints(props.issueId),
-      getAllUsers({ includeDisabled: true }),
+      capabilities.has('base:sys:user:list')
+        ? getAllUsers({ includeDisabled: true })
+        : Promise.resolve({ data: [] }),
     ])
     checkpoints.value = checkpointResponse.data
     allUsers.value = usersResponse.data
@@ -74,10 +85,11 @@ function checkpointOverdue(checkpoint: Checkpoint): boolean {
 }
 
 function openEdit(checkpoint: Checkpoint): void {
-  if (props.canModify) editCheckpoint.value = checkpoint
+  if (props.canUpdate) editCheckpoint.value = checkpoint
 }
 
 async function reload(): Promise<void> {
+  if (!canRead.value) return
   const response = await getCheckpoints(props.issueId)
   checkpoints.value = response.data
 }
@@ -88,6 +100,7 @@ async function onCreate(data: {
   description: string
   responsibleUserId?: string
 }): Promise<void> {
+  if (!props.canCreate) return
   await createCheckpoint(props.issueId, data)
   showCreate.value = false
   ElMessage.success('点检项已添加')
@@ -102,7 +115,7 @@ async function onEdit(data: {
   responsibleUserId?: string
   status?: CheckpointStatus
 }): Promise<void> {
-  if (!editCheckpoint.value) return
+  if (!props.canUpdate || !editCheckpoint.value) return
   await updateCheckpoint(editCheckpoint.value.id, data)
   editCheckpoint.value = null
   ElMessage.success('点检已更新')
@@ -111,7 +124,7 @@ async function onEdit(data: {
 }
 
 async function onChangeStatus(checkpoint: Checkpoint, status: CheckpointStatus): Promise<void> {
-  if (!props.canModify || checkpoint.status === status) return
+  if (!props.canUpdate || checkpoint.status === status) return
   await updateCheckpoint(checkpoint.id, { status })
   ElMessage.success(`点检已更新为${statusLabel[status]}`)
   await reload()
@@ -151,6 +164,14 @@ async function copyTimelineTable(): Promise<void> {
 
 <template>
   <section class="issue-checkpoint-timeline" data-tour="issue-checkpoints">
+    <el-alert
+      v-if="!canRead"
+      title="当前 Cool 角色未授予点检读取权限"
+      type="warning"
+      :closable="false"
+      show-icon
+    />
+    <template v-else>
     <div class="poi-checkpoints-head">
       <strong>点检 · 时间线</strong>
       <div class="poi-checkpoints-actions">
@@ -172,7 +193,7 @@ async function copyTimelineTable(): Promise<void> {
             <el-icon><DocumentCopy /></el-icon>
           </el-button>
         </el-tooltip>
-        <el-tooltip v-if="canModify" content="添加点检" placement="top">
+        <el-tooltip v-if="canCreate" content="添加点检" placement="top">
           <el-button size="small" type="success" circle aria-label="添加点检" @click="showCreate = true">
             <el-icon><Plus /></el-icon>
           </el-button>
@@ -204,14 +225,14 @@ async function copyTimelineTable(): Promise<void> {
         </div>
         <div
           class="poi-checkpoint-card"
-          :class="{ 'is-overdue': checkpointOverdue(checkpoint), 'is-editable': canModify }"
+          :class="{ 'is-overdue': checkpointOverdue(checkpoint), 'is-editable': canUpdate }"
           @click="openEdit(checkpoint)"
         >
           <div class="checkpoint-card-meta">
             <CheckpointStatusTag
               :status="checkpoint.status"
               :overdue="checkpointOverdue(checkpoint)"
-              :disabled="!canModify"
+              :disabled="!canUpdate"
               @change="onChangeStatus(checkpoint, $event)"
             />
             <span class="checkpoint-owner" :title="`负责人：${getUserName(checkpoint.responsibleUserId)}`">
@@ -233,14 +254,14 @@ async function copyTimelineTable(): Promise<void> {
           <CheckpointStatusTag
             :status="row.status"
             :overdue="checkpointOverdue(row)"
-            :disabled="!canModify"
+            :disabled="!canUpdate"
             @change="onChangeStatus(row, $event)"
           />
         </template>
       </el-table-column>
       <el-table-column prop="description" label="内容" min-width="120" show-overflow-tooltip>
         <template #default="{ row }">
-          <span :class="{ 'is-editable-text': canModify }" @click="openEdit(row)">
+          <span :class="{ 'is-editable-text': canUpdate }" @click="openEdit(row)">
             {{ row.description }}
           </span>
         </template>
@@ -278,6 +299,7 @@ async function copyTimelineTable(): Promise<void> {
       @confirm="onEdit"
       @close="editCheckpoint = null"
     />
+    </template>
   </section>
 </template>
 

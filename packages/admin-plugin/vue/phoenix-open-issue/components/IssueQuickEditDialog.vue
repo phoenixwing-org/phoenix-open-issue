@@ -270,10 +270,10 @@ function submit() {
   content: '';
 }
 
-.quick-choice-option.is-level-1 { --dimension-color: #67c23a; }
-.quick-choice-option.is-level-2 { --dimension-color: #409eff; }
-.quick-choice-option.is-level-3 { --dimension-color: #e6a23c; }
-.quick-choice-option.is-level-4 { --dimension-color: #f56c6c; }
+.quick-choice-option.is-level-1 { --dimension-color: var(--el-color-success, #67c23a); }
+.quick-choice-option.is-level-2 { --dimension-color: var(--el-color-primary, #409eff); }
+.quick-choice-option.is-level-3 { --dimension-color: var(--el-color-warning, #e6a23c); }
+.quick-choice-option.is-level-4 { --dimension-color: var(--el-color-danger, #f56c6c); }
 
 .quick-choice-option[class*='is-level-'] .quick-choice-indicator {
   border-color: var(--dimension-color);
@@ -305,13 +305,13 @@ function submit() {
   height: 3px;
   flex: 1;
   border-radius: 99px;
-  background: linear-gradient(90deg, #67c23a, #409eff, #e6a23c, #f56c6c);
+  background: linear-gradient(90deg, var(--el-color-success, #67c23a), var(--el-color-primary, #409eff), var(--el-color-warning, #e6a23c), var(--el-color-danger, #f56c6c));
 }
 
 .attention-hint {
   margin: 6px 0 0;
   font-size: 0.78rem;
-  color: #909399;
+  color: var(--el-text-color-secondary, #909399);
   line-height: 1.4;
 }
 

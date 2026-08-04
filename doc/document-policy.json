@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "owner": "Open Issue maintainers",
-  "lastVerified": "2026-07-31",
+  "lastVerified": "2026-08-03",
   "appliesTo": "0.6.x",
   "rules": [
     {
@@ -23,10 +23,52 @@
       "reason": "完成态 v0.4 实施与验收证据"
     },
     {
+      "match": "^doc/(点检日期设计|附属功能与Issue关联计划|CHANGELOG)\\.md$",
+      "status": "archived",
+      "sourceOfTruth": "doc/current-roadmap.md",
+      "reason": "已落地功能的设计、迁移和版本历史，只作追溯证据，不作为当前运行手册"
+    },
+    {
       "match": "^doc/(列表成员与负责人|第三方登录/实施清单)\\.md$",
       "status": "draft",
       "sourceOfTruth": "doc/current-roadmap.md",
       "reason": "尚未全部晋升为稳定产品契约的方案"
+    },
+    {
+      "match": "^doc/admin-plugin-rectification/(设置能力迁移边界|SQLite清理执行草案)\\.md$",
+      "status": "draft",
+      "sourceOfTruth": "doc/admin-plugin-rectification/TODO.md",
+      "reason": "整改代码已开始，但真实数据库、权限、备份恢复与全仓清理证据尚未闭环"
+    },
+    {
+      "match": "^doc/admin-plugin-rectification/.*\\.md$",
+      "status": "draft",
+      "sourceOfTruth": "doc/admin-plugin-rectification/TODO.md",
+      "reason": "Admin 插件整改仍在进行，执行记录和边界说明不是已发布运行契约"
+    },
+    {
+      "match": "^doc/(Linux测试部署|架构设计)\\.md$",
+      "status": "archived",
+      "sourceOfTruth": "README.md",
+      "reason": "旧 standalone SQLite 部署与架构快照，仅保留历史恢复证据"
+    },
+    {
+      "match": "^scripts/migrate-rebuild-db\\.md$",
+      "status": "archived",
+      "sourceOfTruth": "doc/admin-plugin-rectification/SQLite清理执行草案.md",
+      "reason": "better-sqlite3 到 node-sqlite3-wasm 的历史恢复说明，不是当前运行手册"
+    },
+    {
+      "match": "^doc/PostgreSQL部署与迁移\\.md$",
+      "status": "draft",
+      "sourceOfTruth": "doc/admin-plugin-rectification/SQLite清理执行草案.md",
+      "reason": "legacy SQLite 到 PostgreSQL 的过渡导入方案尚未完成真实双库演练"
+    },
+    {
+      "match": "^doc/PhoenixAdmin插件改造计划\\.md$",
+      "status": "draft",
+      "sourceOfTruth": "doc/admin-plugin-rectification/TODO.md",
+      "reason": "双产品线早期方案已被当前 Admin 插件整改边界取代"
     },
     {
       "match": "^doc/附属功能与Issue关联计划\\.md$",
@@ -35,8 +77,9 @@
     },
     {
       "match": "^doc/第三方登录/管理员绑定与待审查计划\\.md$",
-      "status": "current",
-      "reason": "飞书二期管理员绑定+待审查已落地；本文为设计与验收归档"
+      "status": "archived",
+      "sourceOfTruth": "doc/current-roadmap.md",
+      "reason": "飞书二期已落地；本文仅保留实现与验收历史"
     },
     {
       "match": "^.*\\.md$",

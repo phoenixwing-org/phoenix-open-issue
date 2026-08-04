@@ -1,0 +1,27 @@
+{
+  "compilerOptions": {
+    "target": "es2022",
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "esModuleInterop": true,
+    "noEmit": true,
+    "noImplicitThis": true,
+    "noUnusedLocals": false,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "baseUrl": "../../../../phoenix-admin-node",
+    "paths": {
+      "@cool-midway/*": ["node_modules/@cool-midway/*"],
+      "@midwayjs/*": ["node_modules/@midwayjs/*"],
+      "typeorm": ["node_modules/typeorm"]
+    },
+    "typeRoots": [
+      "../../../../phoenix-admin-node/typings",
+      "../../../../phoenix-admin-node/node_modules/@types"
+    ]
+  },
+  "include": ["phoenix-open-issue/**/*.ts"],
+  "exclude": ["phoenix-open-issue/migrations"]
+}

@@ -42,10 +42,10 @@ export function canHandlePush(
   userId: string,
   push: { targetType?: 'list' | 'user'; toListId: string | null; toUserId?: string | null; status: string },
   targetListMembers: MemberLike[] = [],
-  isSystemAdmin = false,
+  hostRoot = false,
 ): boolean {
   if (push.status !== 'pending') return false
-  if (isSystemAdmin) return true
+  if (hostRoot) return true
   if (push.targetType === 'user') return push.toUserId === userId
   const member = targetListMembers.find(m => m.userId === userId)
   return member?.role === 'owner' || member?.role === 'admin'

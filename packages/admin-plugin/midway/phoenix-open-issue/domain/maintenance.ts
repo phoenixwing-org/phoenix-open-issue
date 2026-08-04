@@ -1,4 +1,8 @@
-export const OPEN_ISSUE_REPAIR_TASKS = ['checkpoints', 'links'] as const;
+export const OPEN_ISSUE_REPAIR_TASKS = [
+  'checkpoints',
+  'links',
+  'list-org-references',
+] as const;
 
 export type OpenIssueRepairTask =
   | (typeof OPEN_ISSUE_REPAIR_TASKS)[number]
@@ -19,6 +23,12 @@ export interface CheckpointRepairPatch {
   deadline?: null;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface CheckpointRepairChange {
+  id: string;
+  before: CheckpointRepairCandidate;
+  patch: CheckpointRepairPatch;
 }
 
 export interface IssueRepairCandidate {
@@ -45,6 +55,7 @@ export interface MissingIssueLink {
 
 export interface IssueListCountRepair {
   issueId: string;
+  before: number;
   listCount: number;
 }
 
@@ -52,6 +63,16 @@ export interface IssueLinkRepairPlan {
   missing: MissingIssueLink[];
   duplicateIds: string[];
   listCounts: IssueListCountRepair[];
+}
+
+export interface IssueListOrgReferenceCandidate {
+  id: string;
+  orgUnitId: string | null | undefined;
+}
+
+export interface IssueListOrgReferenceRepair {
+  id: string;
+  beforeOrgUnitId: string;
 }
 
 export function normalizeRepairTask(value: unknown): OpenIssueRepairTask {
@@ -79,6 +100,20 @@ export function planCheckpointRepair(
   if (!row.createdAt?.trim()) patch.createdAt = createdAt;
   if (!row.updatedAt?.trim()) patch.updatedAt = createdAt;
   return patch;
+}
+
+export function planCheckpointRepairs(
+  rows: readonly CheckpointRepairCandidate[],
+  now: string
+): CheckpointRepairChange[] {
+  return [...rows]
+    .sort((left, right) => left.id.localeCompare(right.id))
+    .map(row => ({
+      id: row.id,
+      before: { ...row },
+      patch: planCheckpointRepair(row, now),
+    }))
+    .filter(change => Object.keys(change.patch).length > 0);
 }
 
 function linkKey(issueId: string, listId: string): string {
@@ -128,7 +163,22 @@ export function planIssueLinkRepair(
       current: issue.listCount,
     }))
     .filter(item => item.current !== item.listCount)
-    .map(({ issueId, listCount }) => ({ issueId, listCount }));
+    .map(({ issueId, listCount, current }) => ({
+      issueId,
+      before: current,
+      listCount,
+    }));
 
   return { missing, duplicateIds, listCounts };
+}
+
+export function planIssueListOrgReferenceRepair(
+  rows: readonly IssueListOrgReferenceCandidate[]
+): IssueListOrgReferenceRepair[] {
+  return rows
+    .flatMap(row => {
+      const orgUnitId = row.orgUnitId?.trim();
+      return orgUnitId ? [{ id: row.id, beforeOrgUnitId: orgUnitId }] : [];
+    })
+    .sort((left, right) => left.id.localeCompare(right.id));
 }

@@ -37,8 +37,8 @@ function clear() {
       :max="5"
       :disabled="readonly"
       clearable
-      :void-color="modelValue === 0 ? '#dcdfe6' : '#c0c4cc'"
-      :colors="['#f7ba2a', '#f7ba2a', '#f7ba2a']"
+      :void-color="modelValue === 0 ? 'var(--el-border-color, #dcdfe6)' : 'var(--el-text-color-placeholder, #c0c4cc)'"
+      :colors="['var(--el-color-warning, #e6a23c)', 'var(--el-color-warning, #e6a23c)', 'var(--el-color-warning, #e6a23c)']"
     />
     <span v-if="showLabel" class="attention-label">{{ label }}</span>
     <button
@@ -59,19 +59,19 @@ function clear() {
 }
 .attention-label {
   font-size: 0.82rem;
-  color: #909399;
+  color: var(--el-text-color-secondary, #909399);
 }
 .attention-clear {
   border: none;
   background: none;
   padding: 0;
   font-size: 0.78rem;
-  color: #909399;
+  color: var(--el-text-color-secondary, #909399);
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 2px;
 }
-.attention-clear:hover { color: #409eff; }
+.attention-clear:hover { color: var(--el-color-primary, #409eff); }
 .attention-stars.readonly { cursor: inherit; }
 .size-small :deep(.el-rate) { height: auto; }
 .size-small :deep(.el-rate__icon) { font-size: 14px; margin-right: 2px; }

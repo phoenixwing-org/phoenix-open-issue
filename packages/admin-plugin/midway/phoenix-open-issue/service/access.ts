@@ -33,7 +33,7 @@ export class OpenIssueAccessService {
     return String(value);
   }
 
-  isSystemAdmin(): boolean {
+  isHostRoot(): boolean {
     return this.ctx.admin?.username === 'admin';
   }
 
@@ -59,7 +59,7 @@ export class OpenIssueAccessService {
 
   async assertListReadable(listId: string): Promise<string | null> {
     const role = await this.roleFor(listId);
-    if (!this.isSystemAdmin() && !role)
+    if (!this.isHostRoot() && !role)
       throw new CoolCommException('无权查看此列表', 403);
     return role;
   }
@@ -67,7 +67,7 @@ export class OpenIssueAccessService {
   async assertIssueCreatable(listId: string): Promise<string | null> {
     const role = await this.assertListReadable(listId);
     if (
-      !this.isSystemAdmin() &&
+      !this.isHostRoot() &&
       !['owner', 'admin', 'editor', 'reporter'].includes(role ?? '')
     ) {
       throw new CoolCommException('无权创建 Issue', 403);
@@ -77,7 +77,7 @@ export class OpenIssueAccessService {
 
   async assertListModifiable(listId: string): Promise<string | null> {
     const role = await this.assertListReadable(listId);
-    if (!canModifyIssue(role, this.isSystemAdmin()))
+    if (!canModifyIssue(role, this.isHostRoot()))
       throw new CoolCommException('无权修改 Issue', 403);
     return role;
   }
@@ -90,7 +90,7 @@ export class OpenIssueAccessService {
 
   async assertIssueReadable(id: string): Promise<OpenIssueEntity> {
     const issue = await this.requiredIssue(id);
-    if (this.isSystemAdmin()) return issue;
+    if (this.isHostRoot()) return issue;
     const links = await this.linkRepository.find({ where: { issueId: id } });
     const linkedListIds = links.map(link => link.listId);
     const listIds = (

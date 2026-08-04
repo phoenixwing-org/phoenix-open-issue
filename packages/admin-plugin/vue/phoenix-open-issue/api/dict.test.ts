@@ -54,4 +54,40 @@ describe('COOL 字典适配', () => {
       tags: 'core',
     }))
   })
+
+  it('Host name 等于协议 value 时保留内置中文', () => {
+    const items = toIssueDictItems({
+      [HOST_DICT_KEY_BY_ISSUE_GROUP.severity]: [
+        { id: 10, name: 'minor', value: 'minor' },
+      ],
+      [HOST_DICT_KEY_BY_ISSUE_GROUP.listType]: [
+        { id: 11, name: 'project', value: 'project' },
+        { id: 12, name: ' monthly ', value: 'monthly' },
+        { id: 13, name: '   ', value: 'custom' },
+      ],
+    })
+
+    expect(items).toEqual(expect.arrayContaining([
+      expect.objectContaining({ groupName: 'severity', value: 'minor', label: '一般' }),
+      expect.objectContaining({ groupName: 'listType', value: 'project', label: '项目' }),
+      expect.objectContaining({ groupName: 'listType', value: 'monthly', label: '月度' }),
+      expect.objectContaining({ groupName: 'listType', value: 'custom', label: '自定义' }),
+    ]))
+  })
+
+  it('Host 提供有效自定义 name 时覆盖内置中文', () => {
+    const items = toIssueDictItems({
+      [HOST_DICT_KEY_BY_ISSUE_GROUP.severity]: [
+        { id: 14, name: '中等影响', value: 'minor' },
+      ],
+      [HOST_DICT_KEY_BY_ISSUE_GROUP.listType]: [
+        { id: 15, name: '月度专项', value: 'monthly' },
+      ],
+    })
+
+    expect(items).toEqual(expect.arrayContaining([
+      expect.objectContaining({ groupName: 'severity', value: 'minor', label: '中等影响' }),
+      expect.objectContaining({ groupName: 'listType', value: 'monthly', label: '月度专项' }),
+    ]))
+  })
 })

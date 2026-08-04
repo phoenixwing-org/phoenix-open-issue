@@ -9,7 +9,17 @@
 - `midway/phoenix-open-issue/pah-plugin.artifacts.json` 让 Pah 在受控构建产物中自动发现同版本 SQL，不要求插件导入 Host 内部类
 - `test/phoenix-open-issue/domain` 保存后端纯领域单元测试；不放入 Midway 运行时模块，也不冒充数据库集成测试
 
-Host 需提供插件声明的 peer dependencies。当前 UI 原样保留页面导引，因此除 Vue、Pinia、Element Plus、Phoenix Wing 外，还需要 `driver.js@^1.6.0`；这不是插件自己的第二套框架运行时。
+Host 只需提供插件声明的 peer dependencies。页面导引依赖的 `driver.js@1.6.0` 是 build-only 输入；插件交付包内包含带来源版本、字节大小、SHA-256、MIT license 和 `externalImports=0` 证明的 browser runtime ESM/CSS，Host 不安装 `driver.js`，也不添加产品 alias。
+
+## 受控单元测试
+
+维护页固定展示 17 个测试文件、101 条用例，不接受命令、目录或文件路径输入。可执行清单的 config/test SHA-256 与 Vitest 版本范围只保存在源码侧 `test/phoenix-open-issue/controlled-test-suite.json`，不进入生产包。
+
+开发或受控内网运行时，Open Issue 只消费 Dev Hub 通过 `PHOENIX_DEV_HUB_CONTROLLED_TOOL_PROFILE` 注入的 schema 1 Profile，并复核 Vitest package 身份、realpath containment、pnpm lock identity/integrity、lockfile/entrypoint/package 三组 SHA，以及声明中的 config/test SHA。执行固定为 `process.execPath + Profile entrypoint + 17 个声明路径`，`shell: false`；不会搜索 PATH、调用 pnpm/npx、联网安装或读取页面输入。无 Profile、坏 Profile、外部启动和 production 均 fail-closed，但读取权限用户仍可看到固定清单与非敏感 `reasonCode`。
+
+## 工作台输出
+
+维护页的刷新、dry-run、repair 和受控测试过程只通过 Host `usePahWorkbenchOutput()` 追加到工作台实例级全局 Output。插件不贡献 Bottom，不创建输出 singleton、频道或结构化日志系统，也不会 replace/clear 其他 View 的全局输出。任务表、测试清单、修正审计 ledger、执行确认和可交互测试报告继续留在 View；Output 不写入请求体、绝对路径、完整业务快照或审计数据。
 
 ## 开发挂载与正式安装
 

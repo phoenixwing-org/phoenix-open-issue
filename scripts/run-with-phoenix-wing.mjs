@@ -15,7 +15,7 @@ if (!checkOnly && separator < 0) {
   process.exit(2)
 }
 const wing = resolveOpenIssueLocalWingRoot(openIssueRoot)
-console.log(`[Wing][LOCAL] ${wing.root} (${wing.version})`)
+console.log(`[Wing][LOCAL] ${wing.root} (${wing.version}@${wing.commit})`)
 
 if (checkOnly) process.exit(0)
 

@@ -2,11 +2,11 @@
   "formatVersion": 2,
   "moduleId": "phoenix-open-issue",
   "name": "Open Issue",
-  "version": "0.6.1-admin.0",
+  "version": "0.6.2-admin.0",
   "publisher": "PhoenixWing",
   "license": "Apache-2.0",
   "hostCompatibility": ">=0.1.0 <0.2.0",
-  "wingCompatibility": ">=0.6.0 <0.7.0",
+  "wingCompatibility": ">=0.6.2 <0.7.0",
   "activationMode": "restart",
   "routePrefix": "/open-issue",
   "entrypoints": {
@@ -82,11 +82,12 @@
     {
       "id": "phoenix-open-issue-test-runner",
       "path": "/open-issue/test-runner",
-      "title": "单元测试",
+      "title": "维护 · 单元测试",
       "icon": "pnw:report",
       "moduleId": "phoenix-open-issue-management",
       "capability": "phoenix-open-issue:test:read",
-      "viewPath": "modules/phoenix-open-issue/views/test-runner.vue"
+      "viewPath": "modules/phoenix-open-issue/views/maintenance.vue",
+      "isShow": false
     },
     {
       "id": "phoenix-open-issue-maintenance",
@@ -99,8 +100,8 @@
     }
   ],
   "navigation": {
-    "preferredGroupId": "pah-group-issue",
-    "preferredGroupLabel": "ISSUE",
+    "preferredGroupId": "pah-group-business",
+    "preferredGroupLabel": "业务",
     "modules": [
       {
         "id": "phoenix-open-issue-workbench",
@@ -129,31 +130,249 @@
   },
   "apiPrefix": "/admin/phoenix-open-issue/",
   "capabilities": [
-    { "id": "phoenix-open-issue:dashboard:read", "description": "查看 Issue 仪表盘与任务摘要", "risk": "read" },
-    { "id": "phoenix-open-issue:list:read", "description": "查看可访问的问题列表", "risk": "read" },
-    { "id": "phoenix-open-issue:list:create", "description": "创建问题列表", "risk": "write" },
-    { "id": "phoenix-open-issue:list:update", "description": "更新问题列表", "risk": "write" },
-    { "id": "phoenix-open-issue:list:archive", "description": "归档或恢复问题列表", "risk": "write" },
-    { "id": "phoenix-open-issue:list:delete", "description": "删除问题列表", "risk": "admin" },
-    { "id": "phoenix-open-issue:issue:read", "description": "查看 Issue", "risk": "read" },
-    { "id": "phoenix-open-issue:issue:create", "description": "创建 Issue", "risk": "write" },
-    { "id": "phoenix-open-issue:issue:update", "description": "更新 Issue", "risk": "write" },
-    { "id": "phoenix-open-issue:issue:delete", "description": "删除 Issue", "risk": "admin" },
-    { "id": "phoenix-open-issue:checkpoint:read", "description": "查看 Issue 点检项", "risk": "read" },
-    { "id": "phoenix-open-issue:checkpoint:create", "description": "创建 Issue 点检项", "risk": "write" },
-    { "id": "phoenix-open-issue:checkpoint:update", "description": "更新 Issue 点检项", "risk": "write" },
-    { "id": "phoenix-open-issue:checkpoint:delete", "description": "作废 Issue 点检项", "risk": "write" },
-    { "id": "phoenix-open-issue:push:read", "description": "查看有权访问的 Issue 推送记录", "risk": "read" },
-    { "id": "phoenix-open-issue:push:create", "description": "发起 Issue 推送", "risk": "write" },
-    { "id": "phoenix-open-issue:push:handle", "description": "接受、拒绝或撤回 Issue 推送", "risk": "write" },
-    { "id": "phoenix-open-issue:report:read", "description": "查看 8D 报告", "risk": "read" },
-    { "id": "phoenix-open-issue:report:write", "description": "创建或修改 8D 报告", "risk": "write" },
-    { "id": "phoenix-open-issue:function:read", "description": "查看 Issue 功能简表", "risk": "read" },
-    { "id": "phoenix-open-issue:function:write", "description": "维护、导入或停用 Issue 功能简表", "risk": "admin" },
-    { "id": "phoenix-open-issue:test:read", "description": "查看 Issue 插件测试清单与结果", "risk": "read" },
-    { "id": "phoenix-open-issue:test:run", "description": "在受控开发环境运行 Issue 插件测试", "risk": "admin" },
-    { "id": "phoenix-open-issue:maintenance:read", "description": "查看 Issue 插件数据检查与修正计划", "risk": "read" },
-    { "id": "phoenix-open-issue:maintenance:run", "description": "执行 Issue 插件声明的幂等数据修正", "risk": "admin" },
+    {
+      "id": "phoenix-open-issue:dashboard:read",
+      "description": "查看 Issue 仪表盘与任务摘要",
+      "risk": "read",
+      "endpoints": [
+        { "method": "GET", "path": "/admin/phoenix-open-issue/dashboard/tasks" }
+      ]
+    },
+    {
+      "id": "phoenix-open-issue:list:read",
+      "description": "查看可访问的问题列表",
+      "risk": "read",
+      "endpoints": [
+        { "method": "GET", "path": "/admin/phoenix-open-issue/lists" },
+        { "method": "GET", "path": "/admin/phoenix-open-issue/lists/archived" },
+        { "method": "GET", "path": "/admin/phoenix-open-issue/list/:id" },
+        { "method": "GET", "path": "/admin/phoenix-open-issue/list/:id/members" }
+      ]
+    },
+    {
+      "id": "phoenix-open-issue:list:admin",
+      "description": "跨成员范围查看和恢复问题列表",
+      "risk": "admin",
+      "endpoints": [
+        { "method": "GET", "path": "/admin/phoenix-open-issue/lists/all" },
+        { "method": "GET", "path": "/admin/phoenix-open-issue/lists/deleted" },
+        { "method": "PATCH", "path": "/admin/phoenix-open-issue/list/:id/restore" }
+      ]
+    },
+    {
+      "id": "phoenix-open-issue:list:create",
+      "description": "创建问题列表",
+      "risk": "write",
+      "endpoints": [
+        { "method": "POST", "path": "/admin/phoenix-open-issue/list" }
+      ]
+    },
+    {
+      "id": "phoenix-open-issue:list:update",
+      "description": "更新问题列表与成员",
+      "risk": "write",
+      "endpoints": [
+        { "method": "PUT", "path": "/admin/phoenix-open-issue/list/:id" },
+        { "method": "POST", "path": "/admin/phoenix-open-issue/list/:id/member" },
+        { "method": "DELETE", "path": "/admin/phoenix-open-issue/list/:id/member/:userId" },
+        { "method": "PATCH", "path": "/admin/phoenix-open-issue/list/:id/member/:userId/role" },
+        { "method": "PATCH", "path": "/admin/phoenix-open-issue/list/:id/transfer-owner" }
+      ]
+    },
+    {
+      "id": "phoenix-open-issue:list:archive",
+      "description": "归档或恢复问题列表",
+      "risk": "write",
+      "endpoints": [
+        { "method": "PATCH", "path": "/admin/phoenix-open-issue/list/:id/archive" }
+      ]
+    },
+    {
+      "id": "phoenix-open-issue:list:delete",
+      "description": "删除问题列表",
+      "risk": "admin",
+      "endpoints": [
+        { "method": "DELETE", "path": "/admin/phoenix-open-issue/list/:id" }
+      ]
+    },
+    {
+      "id": "phoenix-open-issue:issue:read",
+      "description": "查看 Issue",
+      "risk": "read",
+      "endpoints": [
+        { "method": "GET", "path": "/admin/phoenix-open-issue/list/:id/issues" },
+        { "method": "GET", "path": "/admin/phoenix-open-issue/issue/:id" }
+      ]
+    },
+    {
+      "id": "phoenix-open-issue:issue:create",
+      "description": "创建 Issue",
+      "risk": "write",
+      "endpoints": [
+        { "method": "POST", "path": "/admin/phoenix-open-issue/list/:id/issue" }
+      ]
+    },
+    {
+      "id": "phoenix-open-issue:issue:update",
+      "description": "更新 Issue",
+      "risk": "write",
+      "endpoints": [
+        { "method": "PUT", "path": "/admin/phoenix-open-issue/issue/:id" },
+        { "method": "PATCH", "path": "/admin/phoenix-open-issue/issue/:id/status" },
+        { "method": "PUT", "path": "/admin/phoenix-open-issue/list/:id/issue/reorder" },
+        { "method": "PATCH", "path": "/admin/phoenix-open-issue/list/:id/issue/:issueId/attention" }
+      ]
+    },
+    {
+      "id": "phoenix-open-issue:issue:delete",
+      "description": "删除 Issue",
+      "risk": "admin",
+      "endpoints": [
+        { "method": "DELETE", "path": "/admin/phoenix-open-issue/issue/:id" }
+      ]
+    },
+    {
+      "id": "phoenix-open-issue:checkpoint:read",
+      "description": "查看 Issue 点检项",
+      "risk": "read",
+      "endpoints": [
+        { "method": "GET", "path": "/admin/phoenix-open-issue/issue/:id/checkpoints" },
+        { "method": "GET", "path": "/admin/phoenix-open-issue/list/:id/checkpoints" }
+      ]
+    },
+    {
+      "id": "phoenix-open-issue:checkpoint:create",
+      "description": "创建 Issue 点检项",
+      "risk": "write",
+      "endpoints": [
+        { "method": "POST", "path": "/admin/phoenix-open-issue/issue/:id/checkpoint" }
+      ]
+    },
+    {
+      "id": "phoenix-open-issue:checkpoint:update",
+      "description": "更新 Issue 点检项",
+      "risk": "write",
+      "endpoints": [
+        { "method": "PUT", "path": "/admin/phoenix-open-issue/checkpoint/:id" }
+      ]
+    },
+    {
+      "id": "phoenix-open-issue:checkpoint:delete",
+      "description": "作废 Issue 点检项",
+      "risk": "write",
+      "endpoints": [
+        { "method": "DELETE", "path": "/admin/phoenix-open-issue/checkpoint/:id" }
+      ]
+    },
+    {
+      "id": "phoenix-open-issue:push:read",
+      "description": "查看有权访问的 Issue 推送记录",
+      "risk": "read",
+      "endpoints": [
+        { "method": "GET", "path": "/admin/phoenix-open-issue/push/preview" },
+        { "method": "GET", "path": "/admin/phoenix-open-issue/push/history" },
+        { "method": "GET", "path": "/admin/phoenix-open-issue/list/:id/push-history" },
+        { "method": "GET", "path": "/admin/phoenix-open-issue/list/:id/incoming-pushes" },
+        { "method": "GET", "path": "/admin/phoenix-open-issue/push/:id/target-lists" }
+      ]
+    },
+    {
+      "id": "phoenix-open-issue:push:create",
+      "description": "发起 Issue 推送",
+      "risk": "write",
+      "endpoints": [
+        { "method": "POST", "path": "/admin/phoenix-open-issue/push" }
+      ]
+    },
+    {
+      "id": "phoenix-open-issue:push:handle",
+      "description": "接受、拒绝或撤回 Issue 推送",
+      "risk": "write",
+      "endpoints": [
+        { "method": "PATCH", "path": "/admin/phoenix-open-issue/push/:id/handle" },
+        { "method": "PATCH", "path": "/admin/phoenix-open-issue/push/:id/withdraw" }
+      ]
+    },
+    {
+      "id": "phoenix-open-issue:report:read",
+      "description": "查看 8D 报告",
+      "risk": "read",
+      "endpoints": [
+        { "method": "GET", "path": "/admin/phoenix-open-issue/eight-d-reports" },
+        { "method": "GET", "path": "/admin/phoenix-open-issue/eight-d-reports/issue-options" },
+        { "method": "GET", "path": "/admin/phoenix-open-issue/issue/:id/eight-d-reports" },
+        { "method": "GET", "path": "/admin/phoenix-open-issue/eight-d-report/:id" }
+      ]
+    },
+    {
+      "id": "phoenix-open-issue:report:write",
+      "description": "创建或修改 8D 报告",
+      "risk": "write",
+      "endpoints": [
+        { "method": "POST", "path": "/admin/phoenix-open-issue/eight-d-report" },
+        { "method": "PUT", "path": "/admin/phoenix-open-issue/eight-d-report/:id" },
+        { "method": "DELETE", "path": "/admin/phoenix-open-issue/eight-d-report/:id" }
+      ]
+    },
+    {
+      "id": "phoenix-open-issue:function:read",
+      "description": "查看 Issue 功能简表",
+      "risk": "read",
+      "endpoints": [
+        { "method": "GET", "path": "/admin/phoenix-open-issue/functions" },
+        { "method": "GET", "path": "/admin/phoenix-open-issue/functions/export" },
+        { "method": "GET", "path": "/admin/phoenix-open-issue/function/:id" }
+      ]
+    },
+    {
+      "id": "phoenix-open-issue:function:write",
+      "description": "维护、导入或停用 Issue 功能简表",
+      "risk": "admin",
+      "endpoints": [
+        { "method": "POST", "path": "/admin/phoenix-open-issue/functions" },
+        { "method": "POST", "path": "/admin/phoenix-open-issue/functions/import" },
+        { "method": "PUT", "path": "/admin/phoenix-open-issue/function/:id" },
+        { "method": "DELETE", "path": "/admin/phoenix-open-issue/function/:id" },
+        { "method": "PATCH", "path": "/admin/phoenix-open-issue/function/:id/enabled" }
+      ]
+    },
+    {
+      "id": "phoenix-open-issue:test:read",
+      "description": "查看 Issue 插件测试清单与结果",
+      "risk": "read",
+      "endpoints": [
+        { "method": "GET", "path": "/admin/phoenix-open-issue/test/files" },
+        { "method": "GET", "path": "/admin/phoenix-open-issue/test/status" }
+      ]
+    },
+    {
+      "id": "phoenix-open-issue:test:run",
+      "description": "在受控开发环境运行 Issue 插件测试",
+      "risk": "admin",
+      "endpoints": [
+        { "method": "POST", "path": "/admin/phoenix-open-issue/test/run" }
+      ]
+    },
+    {
+      "id": "phoenix-open-issue:maintenance:read",
+      "description": "查看 Issue 插件数据检查与修正计划",
+      "risk": "read",
+      "endpoints": [
+        { "method": "GET", "path": "/admin/phoenix-open-issue/maintenance/repair-tasks" },
+        { "method": "GET", "path": "/admin/phoenix-open-issue/maintenance/repair-plan" },
+        { "method": "GET", "path": "/admin/phoenix-open-issue/maintenance/repair-ledger" }
+      ]
+    },
+    {
+      "id": "phoenix-open-issue:maintenance:run",
+      "description": "执行 Issue 插件声明的幂等数据修正",
+      "risk": "admin",
+      "endpoints": [
+        { "method": "POST", "path": "/admin/phoenix-open-issue/maintenance/repair" },
+        { "method": "POST", "path": "/admin/phoenix-open-issue/maintenance/legacy-import/plan" },
+        { "method": "POST", "path": "/admin/phoenix-open-issue/maintenance/legacy-import/execute" }
+      ]
+    },
     { "id": "phoenix-open-issue:data:purge", "description": "永久清除插件业务数据", "risk": "admin" }
   ],
   "resourcePolicies": [
@@ -165,7 +384,135 @@
     { "id": "phoenix-open-issue.issue", "description": "Issue 变更" },
     { "id": "phoenix-open-issue.checkpoint", "description": "点检变更" },
     { "id": "phoenix-open-issue.function", "description": "功能简表变更" },
-    { "id": "phoenix-open-issue.push", "description": "推送与处理" }
+    { "id": "phoenix-open-issue.push", "description": "推送与处理" },
+    { "id": "phoenix-open-issue.maintenance", "description": "数据修正 dry-run 与执行" },
+    { "id": "phoenix-open-issue.dictionary", "description": "产品字典安装与 reconcile" }
+  ],
+  "dictionaryContributions": [
+    {
+      "id": "phoenix-open-issue-issue-category",
+      "typeKey": "phoenix-open-issue.issueCategory",
+      "typeName": "Open Issue · 问题分类",
+      "policyVersion": 1,
+      "retainOnUninstall": true,
+      "installPresets": ["automotive"],
+      "items": [
+        { "value": "appearance", "name": "外观", "orderNum": 0, "itemClass": "default", "presets": ["automotive"], "customizable": ["name", "orderNum"] },
+        { "value": "dimension", "name": "尺寸", "orderNum": 1, "itemClass": "default", "presets": ["automotive"], "customizable": ["name", "orderNum"] },
+        { "value": "function", "name": "功能", "orderNum": 2, "itemClass": "default", "presets": ["automotive"], "customizable": ["name", "orderNum"] },
+        { "value": "process", "name": "过程", "orderNum": 3, "itemClass": "default", "presets": ["automotive"], "customizable": ["name", "orderNum"] },
+        { "value": "safety", "name": "安全", "orderNum": 4, "itemClass": "default", "presets": ["automotive", "software"], "customizable": ["name", "orderNum"] },
+        { "value": "other", "name": "其他", "orderNum": 5, "itemClass": "default", "presets": ["automotive", "software"], "customizable": ["name", "orderNum"] },
+        { "value": "ui", "name": "界面", "orderNum": 10, "itemClass": "default", "presets": ["software"], "customizable": ["name", "orderNum"] },
+        { "value": "logic", "name": "业务逻辑", "orderNum": 11, "itemClass": "default", "presets": ["software"], "customizable": ["name", "orderNum"] },
+        { "value": "performance", "name": "性能", "orderNum": 12, "itemClass": "default", "presets": ["software"], "customizable": ["name", "orderNum"] },
+        { "value": "security", "name": "安全", "orderNum": 13, "itemClass": "default", "presets": ["software"], "customizable": ["name", "orderNum"] },
+        { "value": "data", "name": "数据", "orderNum": 14, "itemClass": "default", "presets": ["software"], "customizable": ["name", "orderNum"] },
+        { "value": "integration", "name": "集成接口", "orderNum": 15, "itemClass": "default", "presets": ["software"], "customizable": ["name", "orderNum"] },
+        { "value": "compatibility", "name": "兼容性", "orderNum": 16, "itemClass": "default", "presets": ["software"], "customizable": ["name", "orderNum"] },
+        { "value": "algorithm", "name": "算法", "orderNum": 17, "itemClass": "default", "presets": ["software"], "customizable": ["name", "orderNum"] },
+        { "value": "simulation", "name": "仿真模拟", "orderNum": 18, "itemClass": "default", "presets": ["software"], "customizable": ["name", "orderNum"] },
+        { "value": "build", "name": "构建部署", "orderNum": 19, "itemClass": "default", "presets": ["software"], "customizable": ["name", "orderNum"] }
+      ]
+    },
+    {
+      "id": "phoenix-open-issue-detection-phase",
+      "typeKey": "phoenix-open-issue.detectionPhase",
+      "typeName": "Open Issue · 发现阶段",
+      "policyVersion": 1,
+      "retainOnUninstall": true,
+      "installPresets": ["automotive"],
+      "items": [
+        { "value": "incoming", "name": "来料检验", "orderNum": 0, "itemClass": "default", "presets": ["automotive"], "customizable": ["name", "orderNum"] },
+        { "value": "in_process", "name": "过程检验", "orderNum": 1, "itemClass": "default", "presets": ["automotive"], "customizable": ["name", "orderNum"] },
+        { "value": "final", "name": "终检", "orderNum": 2, "itemClass": "default", "presets": ["automotive"], "customizable": ["name", "orderNum"] },
+        { "value": "customer", "name": "客户反馈", "orderNum": 3, "itemClass": "default", "presets": ["automotive"], "customizable": ["name", "orderNum"] },
+        { "value": "audit", "name": "审核发现", "orderNum": 4, "itemClass": "default", "presets": ["automotive"], "customizable": ["name", "orderNum"] },
+        { "value": "supplier", "name": "供应商端", "orderNum": 5, "itemClass": "default", "presets": ["automotive"], "customizable": ["name", "orderNum"] },
+        { "value": "code_review", "name": "代码评审", "orderNum": 10, "itemClass": "default", "presets": ["software"], "customizable": ["name", "orderNum"] },
+        { "value": "static_analysis", "name": "静态分析", "orderNum": 11, "itemClass": "default", "presets": ["software"], "customizable": ["name", "orderNum"] },
+        { "value": "unit_test", "name": "单元测试", "orderNum": 12, "itemClass": "default", "presets": ["software"], "customizable": ["name", "orderNum"] },
+        { "value": "integration_test", "name": "集成测试", "orderNum": 13, "itemClass": "default", "presets": ["software"], "customizable": ["name", "orderNum"] },
+        { "value": "system_test", "name": "系统测试", "orderNum": 14, "itemClass": "default", "presets": ["software"], "customizable": ["name", "orderNum"] },
+        { "value": "uat", "name": "用户验收", "orderNum": 15, "itemClass": "default", "presets": ["software"], "customizable": ["name", "orderNum"] },
+        { "value": "production", "name": "生产环境", "orderNum": 16, "itemClass": "default", "presets": ["software"], "customizable": ["name", "orderNum"] },
+        { "value": "post_market", "name": "售后反馈", "orderNum": 17, "itemClass": "default", "presets": ["software"], "customizable": ["name", "orderNum"] }
+      ]
+    },
+    {
+      "id": "phoenix-open-issue-org-unit-type",
+      "typeKey": "phoenix-open-issue.orgUnitType",
+      "typeName": "Open Issue · legacy 组织类型",
+      "policyVersion": 1,
+      "retainOnUninstall": true,
+      "installPresets": ["automotive"],
+      "items": [
+        { "value": "group", "name": "小组", "orderNum": 0, "itemClass": "transitional", "presets": ["automotive", "software"], "customizable": ["name", "orderNum"] },
+        { "value": "department", "name": "科室", "orderNum": 1, "itemClass": "transitional", "presets": ["automotive", "software"], "customizable": ["name", "orderNum"] },
+        { "value": "division", "name": "部", "orderNum": 2, "itemClass": "transitional", "presets": ["automotive", "software"], "customizable": ["name", "orderNum"] },
+        { "value": "squad", "name": "敏捷小队", "orderNum": 3, "itemClass": "transitional", "presets": ["software"], "customizable": ["name", "orderNum"] }
+      ]
+    },
+    {
+      "id": "phoenix-open-issue-severity",
+      "typeKey": "phoenix-open-issue.severity",
+      "typeName": "Open Issue · 重要度",
+      "policyVersion": 1,
+      "retainOnUninstall": true,
+      "items": [
+        { "value": "trivial", "name": "较低", "orderNum": 0, "itemClass": "core", "customizable": ["name"] },
+        { "value": "minor", "name": "一般", "orderNum": 1, "itemClass": "core", "customizable": ["name"] },
+        { "value": "major", "name": "重要", "orderNum": 2, "itemClass": "core", "customizable": ["name"] },
+        { "value": "fatal", "name": "关键", "orderNum": 3, "itemClass": "core", "customizable": ["name"] }
+      ]
+    },
+    {
+      "id": "phoenix-open-issue-priority",
+      "typeKey": "phoenix-open-issue.priority",
+      "typeName": "Open Issue · 紧急度",
+      "policyVersion": 1,
+      "retainOnUninstall": true,
+      "items": [
+        { "value": "low", "name": "可延后", "orderNum": 0, "itemClass": "core", "customizable": ["name"] },
+        { "value": "medium", "name": "正常", "orderNum": 1, "itemClass": "core", "customizable": ["name"] },
+        { "value": "high", "name": "尽快", "orderNum": 2, "itemClass": "core", "customizable": ["name"] },
+        { "value": "critical", "name": "立即", "orderNum": 3, "itemClass": "core", "customizable": ["name"] }
+      ]
+    },
+    {
+      "id": "phoenix-open-issue-close-reason",
+      "typeKey": "phoenix-open-issue.closeReason",
+      "typeName": "Open Issue · 关闭理由",
+      "policyVersion": 1,
+      "retainOnUninstall": true,
+      "installPresets": ["automotive"],
+      "items": [
+        { "value": "completed", "name": "已完成", "orderNum": 0, "itemClass": "default", "presets": ["automotive", "software"], "customizable": ["name", "orderNum"] },
+        { "value": "cancelled", "name": "已取消", "orderNum": 1, "itemClass": "default", "presets": ["automotive", "software"], "customizable": ["name", "orderNum"] },
+        { "value": "duplicate", "name": "重复", "orderNum": 2, "itemClass": "default", "presets": ["automotive", "software"], "customizable": ["name", "orderNum"] },
+        { "value": "transferred", "name": "已转交", "orderNum": 3, "itemClass": "default", "presets": ["automotive", "software"], "customizable": ["name", "orderNum"] },
+        { "value": "unreproducible", "name": "不可复现", "orderNum": 4, "itemClass": "default", "presets": ["automotive", "software"], "customizable": ["name", "orderNum"] },
+        { "value": "wont_fix", "name": "不予修复", "orderNum": 5, "itemClass": "default", "presets": ["software"], "customizable": ["name", "orderNum"] }
+      ]
+    },
+    {
+      "id": "phoenix-open-issue-list-type",
+      "typeKey": "phoenix-open-issue.listType",
+      "typeName": "Open Issue · 点检表类型",
+      "policyVersion": 1,
+      "retainOnUninstall": true,
+      "items": [
+        { "value": "yearly", "name": "年度", "orderNum": 0, "itemClass": "core", "customizable": ["name"] },
+        { "value": "monthly", "name": "月度", "orderNum": 1, "itemClass": "core", "customizable": ["name"] },
+        { "value": "project", "name": "项目", "orderNum": 2, "itemClass": "core", "customizable": ["name"] },
+        { "value": "custom", "name": "自定义", "orderNum": 3, "itemClass": "core", "customizable": ["name"] },
+        { "value": "personal", "name": "个人", "orderNum": 4, "itemClass": "default", "customizable": ["name", "orderNum"] },
+        { "value": "group", "name": "小组", "orderNum": 5, "itemClass": "default", "customizable": ["name", "orderNum"] },
+        { "value": "department", "name": "科室", "orderNum": 6, "itemClass": "default", "customizable": ["name", "orderNum"] },
+        { "value": "division", "name": "部门", "orderNum": 7, "itemClass": "default", "customizable": ["name", "orderNum"] },
+        { "value": "company", "name": "公司", "orderNum": 8, "itemClass": "default", "customizable": ["name", "orderNum"] }
+      ]
+    }
   ],
   "migrations": [
     {
@@ -176,6 +523,16 @@
       "artifact": {
         "format": "sql",
         "path": "migrations/0001-bootstrap.sql"
+      }
+    },
+    {
+      "id": "phoenix-open-issue-repair-ledger",
+      "version": 2,
+      "checksum": "sha256:3b5e7b42a1f1d858538751bdb1c84fdc37d1373e91a5f95e0aa7b2af013d7d5e",
+      "description": "增加 Open Issue dry-run 修正审计 ledger",
+      "artifact": {
+        "format": "sql",
+        "path": "migrations/0002-repair-ledger.sql"
       }
     }
   ],
@@ -202,7 +559,8 @@
       "oip_checkpoint",
       "oip_function",
       "oip_push_record",
-      "oip_eight_d_report"
+      "oip_eight_d_report",
+      "oip_repair_ledger"
     ],
     "retainedOnUninstall": true
   },

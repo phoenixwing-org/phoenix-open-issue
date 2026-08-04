@@ -22,7 +22,7 @@ import { getAllUsers } from '/$/phoenix-open-issue/api/auth'
 import { createCheckpoint, getCheckpointsByList, updateCheckpoint } from '/$/phoenix-open-issue/api/checkpoints'
 import { getIncomingPushes, handlePush } from '/$/phoenix-open-issue/api/push'
 import { ElMessage } from 'element-plus';
-import { Edit, MoreFilled, Plus, Promotion, Search, Setting, User } from '@element-plus/icons-vue'
+import { Edit, MoreFilled, Plus, Promotion, Search, User } from '@element-plus/icons-vue'
 import { pnwPromptChoice, pnwPromptInput, pnwPropGroup, pnwPropEnum, pnwPropBool, pnwPropSheet } from 'phoenix-wing'
 import PnwAppModalOverlay from 'phoenix-wing/components/PnwAppModalOverlay.vue'
 import PnwSidebarBlock from 'phoenix-wing/layout/PnwSidebarBlock.vue'
@@ -30,8 +30,8 @@ import IssueDetailView from '/$/phoenix-open-issue/views/issue-detail.vue'
 
 const showIssueModal = ref(false)
 const modalIssueId = ref('')
-import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
 import PageHelpButton from "/$/phoenix-open-issue/components/PageHelpButton.vue"
+import PoiCompactEditorView from '/$/phoenix-open-issue/components/workbench/PoiCompactEditorView.vue'
 import { canPerformListAction, DEFAULT_ATTENTION_LEVEL, ISSUE_URGENCY_DICT } from '/$/phoenix-open-issue/core'
 import type { Checkpoint } from '/$/phoenix-open-issue/core'
 import IssueFormDialog from '/$/phoenix-open-issue/components/IssueFormDialog.vue'
@@ -46,12 +46,15 @@ import PushDialog from '/$/phoenix-open-issue/views/push/PushDialog.vue'
 import { useAuthStore } from '/$/phoenix-open-issue/stores/auth'
 import PoiIssueTablePrimary from '/$/phoenix-open-issue/components/workbench/PoiIssueTablePrimary.vue'
 import { usePoiViewContribution } from '/$/phoenix-open-issue/layout/workbench/poiViewContributions'
+import { useIssueCapabilities } from '/$/phoenix-open-issue/composables/useIssueCapabilities'
+import type { IssueHostCapability, ListAction } from '/$/phoenix-open-issue/core'
 
 const route = useRoute()
 const router = useRouter()
 const listStore = useIssueListStore()
 const issueStore = useIssueStore()
 const auth = useAuthStore()
+const capabilities = useIssueCapabilities()
 const updateTabTitle = inject<(pageId: string, title: string) => void>('updateTabTitle', () => {})
 
 const listId = computed(() => route.params.id as string)
@@ -134,25 +137,48 @@ const myMemberRole = computed(() => {
   if (!uid) return null
   return members.value.find(m => m.userId === uid)?.role ?? null
 })
-const canDo = (action: Parameters<typeof canPerformListAction>[2]) =>
-  canPerformListAction(auth.user ?? undefined, myMemberRole.value as any, action)
+const actionCapabilities: Record<ListAction, IssueHostCapability> = {
+  read: 'phoenix-open-issue:list:read',
+  'manage-list': 'phoenix-open-issue:list:update',
+  'delete-list': 'phoenix-open-issue:list:delete',
+  'manage-members': 'phoenix-open-issue:list:update',
+  'create-issue': 'phoenix-open-issue:issue:create',
+  'modify-issue': 'phoenix-open-issue:issue:update',
+  push: 'phoenix-open-issue:push:create',
+  'handle-push': 'phoenix-open-issue:push:handle',
+}
+const canDo = (action: ListAction) =>
+  capabilities.can(actionCapabilities[action]) &&
+  canPerformListAction(
+    { hostRoot: auth.isHostRoot },
+    myMemberRole.value as any,
+    action,
+  )
 const canManageMembers = computed(() => canDo('manage-members'))
-const canGrantOwner = computed(() => canManageMembers.value)
-const isOwner = computed(() => canManageMembers.value && (auth.user?.systemRole === 'admin' || myMemberRole.value === 'owner'))
+const isOwner = computed(() => canManageMembers.value && (auth.isHostRoot || myMemberRole.value === 'owner'))
+const canGrantOwner = computed(() => isOwner.value && capabilities.has('base:sys:user:list'))
 const canEditList = computed(() => canDo('manage-list'))
 const canCreateIssue = computed(() => canDo('create-issue'))
 const canHandlePush = computed(() => canDo('handle-push'))
 
 function canModifyRow(row: any) {
-  return Boolean(row?._canModify)
+  return capabilities.can('phoenix-open-issue:issue:update') && Boolean(row?._canModify)
 }
 
 function canAdjustAttention(row: any) {
-  return Boolean(row?._canSetAttention)
+  return capabilities.can('phoenix-open-issue:issue:update') && Boolean(row?._canSetAttention)
 }
 
 function canPushRow(row: any) {
-  return Boolean(row?._canPush)
+  return capabilities.can('phoenix-open-issue:push:create') && Boolean(row?._canPush)
+}
+
+function canCreateCheckpointFor(row: any) {
+  return capabilities.can('phoenix-open-issue:checkpoint:create') && Boolean(row?._canModify)
+}
+
+function canUpdateCheckpointFor(row: any) {
+  return capabilities.can('phoenix-open-issue:checkpoint:update') && Boolean(row?._canModify)
 }
 
 const primaryOwnerName = computed(() => {
@@ -203,17 +229,23 @@ onMounted(scheduleRefreshListView)
 onActivated(scheduleRefreshListView)
 
 async function loadData(targetListId = listId.value) {
-  const tasks: Promise<any>[] = [
-    issueStore.fetchIssues(targetListId, {
+  const tasks: Promise<any>[] = [loadMembers(targetListId), loadAllUsers()]
+  if (capabilities.can('phoenix-open-issue:issue:read')) {
+    tasks.push(issueStore.fetchIssues(targetListId, {
       sort: settings.issueSort,
-    }),
-    loadMembers(targetListId),
-    loadAllUsers(),
-  ]
-  if (viewMode.value === 'timeline') {
+    }))
+  } else {
+    issueStore.issues = []
+    issueStore.total = 0
+  }
+  if (viewMode.value === 'timeline' && capabilities.can('phoenix-open-issue:checkpoint:read')) {
     tasks.push(loadCheckpoints(targetListId))
   }
-  tasks.push(loadIncomingPushes(targetListId))
+  if (capabilities.can('phoenix-open-issue:push:read')) {
+    tasks.push(loadIncomingPushes(targetListId))
+  } else {
+    incomingPushes.value = []
+  }
   await Promise.all(tasks)
 }
 
@@ -272,6 +304,10 @@ async function loadMembers(targetListId = listId.value) {
 }
 
 async function loadAllUsers() {
+  if (!capabilities.has('base:sys:user:list')) {
+    allUsers.value = []
+    return
+  }
   const res = await getAllUsers({ includeDisabled: true })
   allUsers.value = res.data
 }
@@ -352,6 +388,7 @@ usePoiViewContribution(() => route.fullPath, {
   primary: {
     component: PoiIssueTablePrimary,
     props: computed(() => ({
+      viewKey: `phoenix-open-issue-list-detail:${listId.value}`,
       searchText: searchText.value,
       showUnwatchedOnly: showUnwatchedOnly.value,
       status: statusFilter.value,
@@ -363,12 +400,19 @@ usePoiViewContribution(() => route.fullPath, {
       severityOptions: dict.getOptions('severity'),
       categoryOptions: dict.getOptions('issueCategory'),
       hasActiveFilters: hasActiveFilters.value,
+      viewMode: viewMode.value,
+      maxTimelineRows: settings.maxTimelineRows,
+      checkpointYearThresholdMonths: settings.cpYearThresholdMonths,
       onUpdateSearch: (value: string) => { searchText.value = value },
       onUpdateUnwatched: (value: string | number | boolean) => { showUnwatchedOnly.value = Boolean(value) },
       onUpdateStatus: (value: string) => { statusFilter.value = value },
       onUpdatePriority: (value: string) => { priorityFilter.value = value },
       onUpdateSeverity: (value: string) => { severityFilter.value = value },
       onUpdateCategory: (value: string) => { categoryFilter.value = value },
+      onUpdateViewMode: (value: 'simple' | 'complex' | 'timeline') => { viewMode.value = value },
+      onUpdateMaxTimelineRows: (value: number) => { settings.maxTimelineRows = value },
+      onUpdateCheckpointYearThreshold: (value: number) => { settings.cpYearThresholdMonths = value },
+      onOpenColumnSettings: () => { showColumnSettings.value = true },
       onClear: clearFilters,
     })),
   },
@@ -442,13 +486,13 @@ async function onQuickEditConfirm(value: string | number | null) {
 
 function openEditCheckpoint(cp: Checkpoint, issueTitle: string, e?: Event) {
   e?.stopPropagation()
-  if (!canModifyRow(issueStore.issues.find(issue => issue.id === cp.issueId))) return
+  if (!canUpdateCheckpointFor(issueStore.issues.find(issue => issue.id === cp.issueId))) return
   editCheckpoint.value = { cp, issueTitle }
 }
 
 function openCreateCheckpoint(row: { id: string; title: string; issueNo?: string }, e?: Event) {
   e?.stopPropagation()
-  if (!canModifyRow(row)) return
+  if (!canCreateCheckpointFor(row)) return
   createCheckpointFor.value = { id: row.id, title: row.title, issueNo: row.issueNo }
 }
 
@@ -458,7 +502,7 @@ async function onCreateCheckpoint(data: {
   description: string
   responsibleUserId?: string
 }) {
-  if (!createCheckpointFor.value) return
+  if (!createCheckpointFor.value || !capabilities.can('phoenix-open-issue:checkpoint:create')) return
   await createCheckpoint(createCheckpointFor.value.id, data)
   createCheckpointFor.value = null
   ElMessage.success('点检项已添加')
@@ -472,7 +516,7 @@ async function onEditCheckpoint(data: {
   responsibleUserId?: string
   status?: Checkpoint['status']
 }) {
-  if (!editCheckpoint.value) return
+  if (!editCheckpoint.value || !capabilities.can('phoenix-open-issue:checkpoint:update')) return
   await updateCheckpoint(editCheckpoint.value.cp.id, data)
   editCheckpoint.value = null
   ElMessage.success('点检已更新')
@@ -480,7 +524,7 @@ async function onEditCheckpoint(data: {
 }
 
 async function onUpdateCheckpointStatus(cp: Checkpoint, status: Checkpoint['status']) {
-  if (!canModifyRow(issueStore.issues.find(issue => issue.id === cp.issueId))) return
+  if (!canUpdateCheckpointFor(issueStore.issues.find(issue => issue.id === cp.issueId))) return
   if (cp.status === status) return
   await updateCheckpoint(cp.id, { status })
   ElMessage.success('点检状态已更新')
@@ -492,6 +536,7 @@ async function onCheckpointCreated() {
 }
 
 async function onCreateIssue(data: any) {
+  if (!canCreateIssue.value) return
   await issueStore.createIssue(listId.value, data)
   showCreateIssue.value = false
   ElMessage.success('Issue 创建成功')
@@ -499,6 +544,7 @@ async function onCreateIssue(data: any) {
 }
 
 async function onEditList(data: { name: string; listType: string; description?: string; ownerId?: string }) {
+  if (!canEditList.value) return
   await listStore.updateList(listId.value, data)
   showEditList.value = false
   ElMessage.success('列表已更新')
@@ -512,6 +558,8 @@ function onPushIssue(row: any) {
 }
 
 async function onVoidIssue(id: string, title: string) {
+  const row = issueStore.issues.find(issue => issue.id === id)
+  if (!canAdjustAttention(row)) return
   const r = await pnwPromptChoice({
     title: '设为不关注',
     message: `在本列表将 Issue「${title}」设为不关注？（其他列表不受影响，数据保留）`,
@@ -523,6 +571,8 @@ async function onVoidIssue(id: string, title: string) {
 }
 
 async function onRestoreAttention(id: string) {
+  const row = issueStore.issues.find(issue => issue.id === id)
+  if (!canAdjustAttention(row)) return
   await issueStore.setAttentionLevel(listId.value, id, DEFAULT_ATTENTION_LEVEL)
   loadData()
 }
@@ -677,41 +727,26 @@ provide('issueListCellCtx', reactive({
 </script>
 
 <template>
-  <div class="page">
-    <PnwPageHeader :title="currentList?.name || '列表详情'" :subtitle="headerSubtitle">
-      <template #actions>
-        <el-button @click="showMembers = true" data-tour="list-members"><el-icon><User /></el-icon> 成员 ({{ members.length }})</el-button>
-        <el-button v-if="canEditList" @click="showEditList = true" data-tour="list-edit"><el-icon><Edit /></el-icon> 编辑</el-button>
-        <el-button v-if="canCreateIssue" type="primary" @click="showCreateIssue = true" data-tour="list-create-issue"><el-icon><Plus /></el-icon> 新建 Issue</el-button>
-      </template>
-      <template #help><PageHelpButton page-id="listDetail" /></template>
-    </PnwPageHeader>
+  <PoiCompactEditorView
+    :title="currentList?.name || '列表详情'"
+    :subtitle="headerSubtitle"
+    content-aria-label="Open Issue 列表详情"
+  >
+    <template #actions>
+      <el-button @click="showMembers = true" data-tour="list-members"><el-icon><User /></el-icon> 成员 ({{ members.length }})</el-button>
+      <el-button v-if="canEditList" @click="showEditList = true" data-tour="list-edit"><el-icon><Edit /></el-icon> 编辑</el-button>
+      <el-button v-if="canCreateIssue" type="primary" @click="showCreateIssue = true" data-tour="list-create-issue"><el-icon><Plus /></el-icon> 新建 Issue</el-button>
+    </template>
+    <template #help><PageHelpButton page-id="listDetail" /></template>
 
-    <div class="filters">
-      <span v-if="viewMode === 'timeline'" style="font-size:0.8rem;color:#909399;display:inline-flex;align-items:center;gap:4px">
-        显示最近
-        <el-select :model-value="settings.maxTimelineRows" @update:model-value="settings.maxTimelineRows = $event" size="small" style="width:65px">
-          <el-option v-for="n in [1,2,3,4,5,6,7,8,9,10]" :key="n" :label="String(n)" :value="n" />
-        </el-select>
-        条 · 日期简化
-        <el-select :model-value="settings.cpYearThresholdMonths" @update:model-value="settings.cpYearThresholdMonths = $event" size="small" style="width:70px">
-          <el-option :label="'当月'" :value="0" />
-          <el-option :label="'2个月'" :value="2" />
-          <el-option :label="'3个月'" :value="3" />
-          <el-option :label="'半年'" :value="6" />
-          <el-option :label="'全年'" :value="12" />
-          <el-option :label="'不简化'" :value="-1" />
-        </el-select>
-      </span>
-      <el-radio-group v-model="viewMode" size="small" class="view-toggle" data-tour="list-view-toggle">
-        <el-radio-button value="simple">📋 简单</el-radio-button>
-        <el-radio-button value="complex">📋📋 复杂</el-radio-button>
-        <el-radio-button value="timeline">📋📋📋 跟踪</el-radio-button>
-      </el-radio-group>
-      <el-button size="small" @click="showColumnSettings = true" title="配置各视图的显示列与顺序" data-tour="list-columns">
-        <el-icon><Setting /></el-icon> 列设置
-      </el-button>
-    </div>
+    <el-alert
+      v-if="!capabilities.can('phoenix-open-issue:issue:read')"
+      title="当前 Cool 角色可查看列表，但未授予 Issue 读取权限"
+      type="warning"
+      :closable="false"
+      show-icon
+      class="permission-note"
+    />
 
     <!-- 推送收件箱 -->
     <el-alert
@@ -810,7 +845,7 @@ provide('issueListCellCtx', reactive({
               <el-icon><Promotion /></el-icon>
             </el-button>
             <el-dropdown
-              v-if="canModifyRow(row) || canAdjustAttention(row)"
+              v-if="canCreateCheckpointFor(row) || canAdjustAttention(row)"
               @command="(cmd: string) => {
                 if (cmd === 'void') onVoidIssue(row.id, row.title)
                 else if (cmd === 'unvoid') onRestoreAttention(row.id)
@@ -824,12 +859,12 @@ provide('issueListCellCtx', reactive({
               </el-button>
               <template #dropdown>
                 <el-dropdown-menu>
-                  <el-dropdown-item v-if="canModifyRow(row)" command="checkpoint">添加点检</el-dropdown-item>
+                  <el-dropdown-item v-if="canCreateCheckpointFor(row)" command="checkpoint">添加点检</el-dropdown-item>
                   <template v-if="canAdjustAttention(row) && isUnwatched(row)">
-                    <el-dropdown-item command="unvoid" style="color:#67c23a">🔄 恢复默认(三星)</el-dropdown-item>
+                    <el-dropdown-item command="unvoid" class="attention-restore-action">🔄 恢复默认(三星)</el-dropdown-item>
                   </template>
                   <template v-else-if="canAdjustAttention(row)">
-                    <el-dropdown-item command="void" style="color:#e6a23c">⊘ 设为不关注</el-dropdown-item>
+                    <el-dropdown-item command="void" class="attention-disable-action">⊘ 设为不关注</el-dropdown-item>
                   </template>
                 </el-dropdown-menu>
               </template>
@@ -934,37 +969,11 @@ provide('issueListCellCtx', reactive({
         @close="showIssueModal = false"
       />
     </PnwAppModalOverlay>
-  </div>
+  </PoiCompactEditorView>
 </template>
 
 <style scoped>
-.page-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 12px;
-}
-.page-head h2 {
-  font-size: 1.3rem;
-  font-weight: 650;
-}
-.list-desc {
-  color: #909399;
-  font-size: 0.85rem;
-  margin-top: 2px;
-}
-.head-actions {
-  display: flex;
-  gap: 8px;
-  flex-shrink: 0;
-}
-.filters {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  flex-wrap: wrap;
-  margin-bottom: 12px;
-}
+.permission-note { margin-bottom: 12px; }
 .pagination-bar {
   display: flex;
   justify-content: space-between;
@@ -974,7 +983,7 @@ provide('issueListCellCtx', reactive({
   margin-top: 12px;
 }
 .pagination-summary {
-  color: #909399;
+  color: var(--el-text-color-secondary, #909399);
   font-size: 0.8rem;
   white-space: nowrap;
 }
@@ -983,7 +992,7 @@ provide('issueListCellCtx', reactive({
   border-radius: 2px;
 }
 .cell-link:hover {
-  color: #409eff;
+  color: var(--el-color-primary, #409eff);
   text-decoration: underline;
   text-underline-offset: 2px;
 }
@@ -1024,15 +1033,15 @@ provide('issueListCellCtx', reactive({
   box-sizing: border-box;
   border: 1px solid transparent;
   border-radius: 5px;
-  color: #606266;
+  color: var(--el-text-color-regular, #606266);
   font-variant-numeric: tabular-nums;
 }
 .issue-row-index.is-pushed {
   position: relative;
-  background: #d9ecff;
-  border: 2px solid #409eff;
-  box-shadow: inset 3px 0 0 #1677ff, 0 0 0 1px rgba(64, 158, 255, 0.16);
-  color: #1677ff;
+  background: var(--el-color-primary-light-9, #ecf5ff);
+  border: 2px solid var(--el-color-primary, #409eff);
+  box-shadow: inset 3px 0 0 var(--el-color-primary, #409eff), 0 0 0 1px var(--el-color-primary-light-5, #79bbff);
+  color: var(--el-color-primary, #409eff);
   font-weight: 700;
 }
 .issue-row-index.is-pushed::after {
@@ -1042,8 +1051,8 @@ provide('issueListCellCtx', reactive({
   width: 8px;
   height: 8px;
   content: '';
-  background: #1677ff;
-  border: 2px solid #fff;
+  background: var(--el-color-primary, #409eff);
+  border: 2px solid var(--el-bg-color, #fff);
   border-radius: 50%;
 }
 .row-actions {
@@ -1055,10 +1064,6 @@ provide('issueListCellCtx', reactive({
   padding: 0 2px;
 }
 .row-action-btn { width: 28px; height: 28px; margin: 0; padding: 0; }
-.view-toggle {
-  margin-left: 12px;
-  flex-shrink: 0;
-}
 
 /* ── 推送收件箱 ── */
 .push-inbox {
@@ -1077,7 +1082,7 @@ provide('issueListCellCtx', reactive({
   font-size: 0.85rem;
 }
 .push-inbox-meta {
-  color: #909399;
+  color: var(--el-text-color-secondary, #909399);
   font-size: 0.75rem;
   margin-left: 12px;
 }
@@ -1087,14 +1092,11 @@ provide('issueListCellCtx', reactive({
   flex-shrink: 0;
 }
 
-@media (max-width: 768px) {
-  .page-head { flex-direction: column; align-items: flex-start; gap: 8px; }
-  .head-actions { flex-wrap: wrap; }
-  .filters { flex-wrap: wrap; }
-}
 /* 不关注行 */
-:deep(.row-unwatched) { opacity: 0.45; background: #fafafa; }
-:deep(.row-attention-high) { background: #fff7f0; }
+:deep(.row-unwatched) { opacity: 0.45; background: var(--el-fill-color-lighter, #fafafa); }
+:deep(.row-attention-high) { background: var(--el-color-warning-light-9, #fdf6ec); }
+.attention-restore-action { color: var(--el-color-success, #67c23a); }
+.attention-disable-action { color: var(--el-color-warning, #e6a23c); }
 
 </style>
 <style>
@@ -1103,11 +1105,7 @@ provide('issueListCellCtx', reactive({
   max-height: min(92vh, 980px);
   padding: 0;
 }
-.pnw-modal-panel.issue-detail-modal .page {
-  padding: 24px;
-}
 @media (max-width: 720px) {
   .pnw-modal-panel.issue-detail-modal { width: calc(100vw - 24px); }
-  .pnw-modal-panel.issue-detail-modal .page { padding: 16px; }
 }
 </style>

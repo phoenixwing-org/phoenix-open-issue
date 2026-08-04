@@ -59,8 +59,7 @@ export function normalizePushAction(value: unknown):
 export function normalizeDashboardScope(value: unknown):
   | "summary"
   | "incoming"
-  | "outgoing"
-  | "admin" {
+  | "outgoing" {
   if (
     value === undefined ||
     value === null ||
@@ -68,7 +67,7 @@ export function normalizeDashboardScope(value: unknown):
     value === "summary"
   )
     return "summary";
-  if (value === "incoming" || value === "outgoing" || value === "admin")
+  if (value === "incoming" || value === "outgoing")
     return value;
   throw new Error("无效的待办中心 Tab");
 }

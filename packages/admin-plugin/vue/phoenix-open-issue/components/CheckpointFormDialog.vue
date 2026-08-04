@@ -121,9 +121,9 @@ function submit() {
   min-width: 0;
   margin-top: 2px;
   padding: 7px 9px;
-  color: #1d4f91;
-  background: #ecf5ff;
-  border-left: 3px solid #409eff;
+  color: var(--el-color-primary, #409eff);
+  background: var(--el-color-primary-light-9, #ecf5ff);
+  border-left: 3px solid var(--el-color-primary, #409eff);
   border-radius: 4px;
   font-size: 0.86rem;
 }

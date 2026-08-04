@@ -3,10 +3,11 @@ import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { getMyPushHistory, getPushTargetLists, handlePush, withdrawPush } from '/$/phoenix-open-issue/api/push'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Refresh } from '@element-plus/icons-vue'
 import { pnwPromptInput } from 'phoenix-wing'
-import PnwPageHeader from 'phoenix-wing/layout/PnwPageHeader.vue'
 import PageHelpButton from '/$/phoenix-open-issue/components/PageHelpButton.vue'
 import PoiPushHistoryPrimary from '/$/phoenix-open-issue/components/workbench/PoiPushHistoryPrimary.vue'
+import PoiCompactEditorView from '/$/phoenix-open-issue/components/workbench/PoiCompactEditorView.vue'
 import { usePoiViewContribution } from '/$/phoenix-open-issue/layout/workbench/poiViewContributions'
 import type { PushRecord, PushTargetListOption } from '/$/phoenix-open-issue/core'
 
@@ -127,21 +128,23 @@ usePoiViewContribution(() => route.fullPath, {
   primary: {
     component: PoiPushHistoryPrimary,
     props: computed(() => ({
+      viewKey: 'phoenix-open-issue-push-history',
       status: statusFilter.value,
       counts: statusCounts.value,
-      loading: loading.value,
       onSelectStatus: (status: PushStatusFilter) => { statusFilter.value = status },
-      onRefresh: load,
     })),
   },
 })
 </script>
 
 <template>
-  <div class="page">
-    <PnwPageHeader title="推送历史">
-      <template #help><PageHelpButton page-id="pushHistory" /></template>
-    </PnwPageHeader>
+  <PoiCompactEditorView title="推送历史" content-aria-label="Open Issue 推送历史">
+    <template #actions>
+      <el-button size="small" :loading="loading" @click="load">
+        <el-icon><Refresh /></el-icon> 刷新
+      </el-button>
+    </template>
+    <template #help><PageHelpButton page-id="pushHistory" /></template>
 
     <el-table :data="filteredRecords" v-loading="loading" stripe size="small" data-tour="push-table">
       <el-table-column label="时间" width="140">
@@ -205,7 +208,7 @@ usePoiViewContribution(() => route.fullPath, {
         <el-button type="primary" :disabled="!acceptDialog.toListId" :loading="acceptDialog.submitting" @click="confirmAccept">确认接受</el-button>
       </template>
     </el-dialog>
-  </div>
+  </PoiCompactEditorView>
 </template>
 
 <style scoped>

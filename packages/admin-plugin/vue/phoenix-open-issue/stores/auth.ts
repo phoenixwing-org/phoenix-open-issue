@@ -15,6 +15,7 @@ export const useAuthStore = defineStore('phoenix-open-issue-auth', () => {
 
   const token = computed(() => hostUser.token ?? '')
   const user = computed(() => toIssueUser(hostUser.info))
+  const isHostRoot = computed(() => hostUser.info?.username === 'admin')
   const isLoggedIn = computed(() => Boolean(token.value && user.value))
 
   async function fetchMe() {
@@ -27,5 +28,5 @@ export const useAuthStore = defineStore('phoenix-open-issue-auth', () => {
     await hostUser.logout()
   }
 
-  return { token, user, isLoggedIn, fetchMe, logout }
+  return { token, user, isHostRoot, isLoggedIn, fetchMe, logout }
 })

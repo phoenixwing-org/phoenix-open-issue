@@ -107,9 +107,9 @@ export function normalizeIssueListUpdateInput(
 
 export function canManageIssueList(
   role: IssueListMemberRole | null | undefined,
-  systemAdmin: boolean
+  hostRoot: boolean
 ): boolean {
-  return systemAdmin || role === 'owner' || role === 'admin';
+  return hostRoot || role === 'owner' || role === 'admin';
 }
 
 export function normalizeIssueListMemberRole(

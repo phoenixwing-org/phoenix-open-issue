@@ -1,4 +1,4 @@
-import type { DriveStep } from "driver.js";
+import type { DriveStep } from "../runtime/driver.js.mjs";
 
 /** 各页帮助内容 */
 export type PageHelpContent = {

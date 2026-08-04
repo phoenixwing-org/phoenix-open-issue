@@ -1,12 +1,16 @@
 import request from './request'
 
 export interface TestFileInfo {
+  id: string
   filePath: string
-  packageName: string
+  packageName: 'domain' | 'service' | 'contract' | 'core'
   caseCount: number
 }
 
 export interface TestRunSummary {
+  filesTotal: number
+  filesPassed: number
+  filesFailed: number
   total: number
   passed: number
   failed: number
@@ -22,16 +26,31 @@ export interface TestRunResult {
   ranAt: string
   runId: string
   message?: string
+  profileFingerprint: string
+  declarationFingerprint: string
 }
 
 export interface TestStatus {
   running: boolean
   available: boolean
+  reasonCode: string | null
+  profileFingerprint: string
+  declarationFingerprint: string | null
+  fileCount: number
+  caseCount: number
   lastResult: TestRunResult | null
 }
 
 export function getTestFiles() {
-  return request.get<{ files: TestFileInfo[]; available: boolean }>('/test/files')
+  return request.get<{
+    files: TestFileInfo[]
+    fileCount: number
+    caseCount: number
+    available: boolean
+    reasonCode: string | null
+    profileFingerprint: string
+    declarationFingerprint: string | null
+  }>('/test/files')
 }
 
 export function getTestStatus() {

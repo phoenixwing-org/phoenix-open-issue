@@ -5,7 +5,7 @@ import { useIssueStore } from '/$/phoenix-open-issue/stores/issues'
 import { useSettingsStore } from '/$/phoenix-open-issue/stores/settings'
 import { getAllUsers } from '/$/phoenix-open-issue/api/auth'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { DocumentAdd, Edit, FullScreen, Promotion } from '@element-plus/icons-vue'
+import { Edit, FullScreen, Promotion } from '@element-plus/icons-vue'
 import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
 import PageHelpButton from "/$/phoenix-open-issue/components/PageHelpButton.vue"
 import IssueFormDialog from '/$/phoenix-open-issue/components/IssueFormDialog.vue'
@@ -18,6 +18,7 @@ import { createEightDReport, deleteEightDReport, getIssueEightDReports, updateEi
 import { usePoiViewContribution } from '/$/phoenix-open-issue/layout/workbench/poiViewContributions'
 import { ISSUE_IMPORTANCE_DICT, ISSUE_URGENCY_DICT } from '/$/phoenix-open-issue/core'
 import type { EightDReport, EightDReportInput, EightDReportIssueOption } from '/$/phoenix-open-issue/core'
+import { useIssueCapabilities } from '/$/phoenix-open-issue/composables/useIssueCapabilities'
 
 const dict = useDictStore()
 
@@ -27,6 +28,7 @@ const route = useRoute()
 const router = useRouter()
 const issueStore = useIssueStore()
 const settings = useSettingsStore()
+const capabilities = useIssueCapabilities()
 const issueId = props.issueId || (route.params.id as string)
 const updateTabTitle = inject<(pageId: string, title: string) => void>('updateTabTitle', () => {})
 
@@ -48,8 +50,26 @@ interface ReportView extends EightDReport {
 }
 const reports = ref<ReportView[]>([])
 const allUsers = ref<any[]>([])
-const canModify = computed(() => Boolean((issueStore.currentIssue as any)?._canModify))
-const canPush = computed(() => Boolean((issueStore.currentIssue as any)?._canPush))
+const hasIssueWriteAccess = computed(() => Boolean((issueStore.currentIssue as any)?._canModify))
+const canModify = computed(() =>
+  hasIssueWriteAccess.value && capabilities.can('phoenix-open-issue:issue:update'),
+)
+const canPush = computed(() =>
+  Boolean((issueStore.currentIssue as any)?._canPush) &&
+  capabilities.can('phoenix-open-issue:push:create'),
+)
+const canWriteReports = computed(() =>
+  hasIssueWriteAccess.value && capabilities.can('phoenix-open-issue:report:write'),
+)
+const canReadCheckpoints = computed(() => capabilities.can('phoenix-open-issue:checkpoint:read'))
+const canCreateCheckpoint = computed(() =>
+  canReadCheckpoints.value && hasIssueWriteAccess.value &&
+  capabilities.can('phoenix-open-issue:checkpoint:create'),
+)
+const canUpdateCheckpoint = computed(() =>
+  canReadCheckpoints.value && hasIssueWriteAccess.value &&
+  capabilities.can('phoenix-open-issue:checkpoint:update'),
+)
 
 type TagType = 'primary' | 'success' | 'warning' | 'danger' | 'info'
 
@@ -82,19 +102,14 @@ function goBack() {
 const issuePrimaryContributionProps = computed(() => {
   const issue = issueStore.currentIssue
   return {
+    viewKey: `phoenix-open-issue-issue-detail:${issueId}`,
     issueNo: issue?.issueNo ?? '',
-    title: issue?.title ?? '',
     status: issue ? statusLabel[issue.status] ?? issue.status : '',
     priority: issue ? dimensionLabels.value.urgency[issue.priority] ?? issue.priority : '',
     severity: issue ? dimensionLabels.value.importance[issue.severity] ?? issue.severity : '',
     listCount: issue?.listCount ?? 0,
-    canModify: canModify.value,
-    canPush: canPush.value,
     has8d: has8d.value,
     hasDescription: hasDescription.value,
-    onBack: goBack,
-    onEdit: () => { showEdit.value = true },
-    onPush: () => { showPush.value = true },
     onNavigateSection: scrollToIssueSection,
   }
 })
@@ -152,8 +167,12 @@ onBeforeUnmount(() => stopTimelineResize?.())
 onMounted(async () => {
   const [, usersResponse, reportsResponse] = await Promise.all([
     issueStore.fetchIssue(issueId),
-    getAllUsers({ includeDisabled: true }),
-    getIssueEightDReports(issueId).catch(() => null),
+    capabilities.has('base:sys:user:list')
+      ? getAllUsers({ includeDisabled: true })
+      : Promise.resolve({ data: [] }),
+    capabilities.can('phoenix-open-issue:report:read')
+      ? getIssueEightDReports(issueId).catch(() => null)
+      : Promise.resolve(null),
   ])
   allUsers.value = usersResponse.data
   if (reportsResponse) reports.value = reportsResponse.data
@@ -180,6 +199,7 @@ function formatDate(d: string | null): string {
 }
 
 async function onEditIssue(data: any) {
+  if (!canModify.value) return
   await issueStore.updateIssue(issueId, data)
   showEdit.value = false
   ElMessage.success('Issue 已更新')
@@ -197,16 +217,19 @@ async function reloadReports() {
 }
 
 function openCreateReport() {
+  if (!canWriteReports.value) return
   editingReport.value = null
   showReportDialog.value = true
 }
 
 function openEditReport(report: ReportView) {
+  if (!canWriteReports.value || !report._canModify) return
   editingReport.value = report
   showReportDialog.value = true
 }
 
 async function saveReport(data: EightDReportInput) {
+  if (!canWriteReports.value) return
   if (editingReport.value) await updateEightDReport(editingReport.value.id, data)
   else await createEightDReport({ ...data, relatedIssueId: issueId })
   showReportDialog.value = false
@@ -215,6 +238,7 @@ async function saveReport(data: EightDReportInput) {
 }
 
 async function removeReport(report: ReportView) {
+  if (!canWriteReports.value || !report._canModify) return
   try {
     await ElMessageBox.confirm(`确定删除“${report.title}”吗？`, '删除 8D 报告', { type: 'warning' })
     await deleteEightDReport(report.id)
@@ -235,9 +259,6 @@ async function removeReport(report: ReportView) {
           </el-button>
           <el-button v-if="issueStore.currentIssue && canModify" size="small" type="primary" plain @click="showEdit = true">
             <el-icon><Edit /></el-icon> 编辑
-          </el-button>
-          <el-button v-if="issueStore.currentIssue && canModify" size="small" plain @click="openCreateReport">
-            <el-icon><DocumentAdd /></el-icon> 8D 报告
           </el-button>
           <el-tooltip v-if="issueStore.currentIssue && canPush" content="推送到其他列表" placement="bottom">
             <el-button
@@ -350,17 +371,17 @@ async function removeReport(report: ReportView) {
       </el-descriptions>
 
       <!-- 独立附属功能：关联只引用 Issue，不占用 Issue 主表字段。 -->
-      <section v-if="reports.length || canModify" id="issue-8d" class="report-section" data-tour="issue-8d">
+      <section v-if="reports.length || canWriteReports" id="issue-8d" class="report-section" data-tour="issue-8d">
         <div class="section-heading">
           <div><h3>8D 报告</h3><small>附属记录 · {{ reports.length }} 份</small></div>
-          <el-button v-if="canModify" size="small" type="primary" plain @click="openCreateReport">新建报告</el-button>
+          <el-button v-if="canWriteReports" size="small" type="primary" plain @click="openCreateReport">新建报告</el-button>
         </div>
         <el-empty v-if="!reports.length" description="尚未关联 8D 报告" :image-size="52" />
         <el-card v-for="report in reports" :key="report.id" shadow="never" class="report-card">
           <template #header>
             <div class="report-card-head">
               <div><strong>{{ report.title }}</strong><small>更新于 {{ report.updatedAt.slice(0, 10) }} · {{ report.creatorName || '未知用户' }}</small></div>
-              <span v-if="report._canModify">
+              <span v-if="report._canModify && canWriteReports">
                 <el-button link type="primary" @click="openEditReport(report)">编辑</el-button>
                 <el-button link type="danger" @click="removeReport(report)">删除</el-button>
               </span>
@@ -396,7 +417,8 @@ async function removeReport(report: ReportView) {
         :issue-id="issueId"
         :issue-title="issueStore.currentIssue.title"
         :issue-no="issueStore.currentIssue.issueNo"
-        :can-modify="canModify"
+        :can-create="canCreateCheckpoint"
+        :can-update="canUpdateCheckpoint"
         @checkpoint-created="emit('checkpoint-created')"
       />
     </div>
@@ -457,7 +479,7 @@ async function removeReport(report: ReportView) {
   padding: 0;
   display: grid; place-items: center;
   background: transparent;
-  color: #909399;
+  color: var(--el-text-color-secondary, #909399);
   border: 1px solid transparent;
   border-radius: 6px;
   cursor: pointer;
@@ -465,8 +487,8 @@ async function removeReport(report: ReportView) {
   transition: background 0.15s, color 0.15s;
 }
 .hdr-btn-close:hover {
-  background: #f0f0f0;
-  color: #606266;
+  background: var(--el-fill-color-light, #f5f7fa);
+  color: var(--el-text-color-regular, #606266);
 }
 .header-right { display: flex; align-items: center; gap: 6px; }
 .issue-workspace {
@@ -503,12 +525,12 @@ async function removeReport(report: ReportView) {
   min-width: 0;
 }
 .detail-meta { display: flex; gap: 12px; align-items: center; margin-top: 8px; }
-.issue-no { font-family: monospace; font-size: 1rem; color: #409eff; font-weight: 600; }
-.meta-time { font-size: 0.8rem; color: #c0c4cc; }
+.issue-no { font-family: monospace; font-size: 1rem; color: var(--el-color-primary, #409eff); font-weight: 600; }
+.meta-time { font-size: 0.8rem; color: var(--el-text-color-placeholder, #c0c4cc); }
 .detail-desc-block { margin-top: 16px; }
-.detail-desc { margin-top: 16px; padding: 12px 16px; background: #fff; border-radius: 8px; border: 1px solid #ebeef5; }
-.detail-desc h4 { font-size: 0.85rem; color: #909399; margin-bottom: 6px; }
-.detail-desc p { font-size: 0.9rem; color: #606266; line-height: 1.6; }
+.detail-desc { margin-top: 16px; padding: 12px 16px; background: var(--el-bg-color, #fff); border-radius: 8px; border: 1px solid var(--el-border-color-lighter, #ebeef5); }
+.detail-desc h4 { font-size: 0.85rem; color: var(--el-text-color-secondary, #909399); margin-bottom: 6px; }
+.detail-desc p { font-size: 0.9rem; color: var(--el-text-color-regular, #606266); line-height: 1.6; }
 .report-section { margin-top:16px; }
 .section-heading, .report-card-head { display:flex; align-items:center; justify-content:space-between; gap:12px; }
 .section-heading { margin-bottom:10px; }
@@ -529,5 +551,5 @@ async function removeReport(report: ReportView) {
     border-top: 1px solid var(--el-border-color-lighter, #ebeef5);
   }
 }
-.page { padding: 16px; }
+.page { box-sizing: border-box; padding: 16px; color: var(--el-text-color-primary, #253047); background: var(--el-bg-color-page, #f5f7fa); }
 </style>

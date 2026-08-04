@@ -2,12 +2,15 @@ import { describe, expect, it } from 'vitest';
 import {
   normalizeRepairTask,
   planCheckpointRepair,
+  planCheckpointRepairs,
   planIssueLinkRepair,
+  planIssueListOrgReferenceRepair,
 } from '../../../midway/phoenix-open-issue/domain/maintenance';
 
 describe('Issue 数据修正领域算法', () => {
   it('只接受插件声明的修正任务', () => {
     expect(normalizeRepairTask('checkpoints')).toBe('checkpoints');
+    expect(normalizeRepairTask('list-org-references')).toBe('list-org-references');
     expect(normalizeRepairTask('all')).toBe('all');
     expect(() => normalizeRepairTask('schema')).toThrow('任务无效');
     expect(() => normalizeRepairTask('users')).toThrow('任务无效');
@@ -49,6 +52,39 @@ describe('Issue 数据修正领域算法', () => {
         '2026-08-02T00:00:00.000Z'
       )
     ).toEqual({});
+  });
+
+  it('批量 dry-run 按稳定 ID 排序并保留 before 值', () => {
+    expect(
+      planCheckpointRepairs(
+        [
+          {
+            id: 'cp-b',
+            status: '',
+            sortOrder: 1,
+            deadline: null,
+            createdAt: '2026-08-01T00:00:00.000Z',
+            updatedAt: '2026-08-01T00:00:00.000Z',
+          },
+          {
+            id: 'cp-a',
+            status: 'pending',
+            sortOrder: null,
+            deadline: null,
+            createdAt: '2026-08-01T00:00:00.000Z',
+            updatedAt: '2026-08-01T00:00:00.000Z',
+          },
+        ],
+        '2026-08-02T00:00:00.000Z'
+      ).map(change => ({
+        id: change.id,
+        beforeStatus: change.before.status,
+        patch: change.patch,
+      }))
+    ).toEqual([
+      { id: 'cp-a', beforeStatus: 'pending', patch: { sortOrder: 0 } },
+      { id: 'cp-b', beforeStatus: '', patch: { status: 'pending' } },
+    ]);
   });
 
   it('链接计划补原始归属、稳定去重并校正关联计数', () => {
@@ -101,8 +137,22 @@ describe('Issue 数据修正领域算法', () => {
       },
     ]);
     expect(plan.listCounts).toEqual([
-      { issueId: 'issue-1', listCount: 2 },
-      { issueId: 'issue-2', listCount: 1 },
+      { issueId: 'issue-1', before: 9, listCount: 2 },
+      { issueId: 'issue-2', before: 0, listCount: 1 },
+    ]);
+  });
+
+  it('IssueList 历史组织引用只清理非空值并按稳定 ID 排序', () => {
+    expect(
+      planIssueListOrgReferenceRepair([
+        { id: 'list-b', orgUnitId: ' legacy-org-2 ' },
+        { id: 'list-c', orgUnitId: null },
+        { id: 'list-a', orgUnitId: 'legacy-org-1' },
+        { id: 'list-d', orgUnitId: '  ' },
+      ])
+    ).toEqual([
+      { id: 'list-a', beforeOrgUnitId: 'legacy-org-1' },
+      { id: 'list-b', beforeOrgUnitId: 'legacy-org-2' },
     ]);
   });
 });

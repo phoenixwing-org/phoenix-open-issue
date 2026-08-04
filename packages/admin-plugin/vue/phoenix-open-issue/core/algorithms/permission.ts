@@ -1,6 +1,6 @@
-import type { MemberRole, SystemRole } from '../types/index.js'
+import type { MemberRole } from '../types/index.js'
 
-export type SystemAdminUser = { systemRole?: SystemRole | string | null; username?: string | null }
+export type HostAccessContext = { hostRoot: boolean }
 
 export type ListAction =
   | 'read'
@@ -28,34 +28,15 @@ export function canDeleteList(role: MemberRole | null): boolean {
   return role === 'owner'
 }
 
-export function isSystemAdmin(user: string | SystemAdminUser | null | undefined): boolean {
-  if (!user) return false
-  if (typeof user === 'string') return user === 'admin'
-  if (user.systemRole === 'admin') return true
-  // 旧会话 localStorage 可能尚无 systemRole
-  return user.username === 'admin'
-}
-
-export function isSystemViewer(user: string | SystemAdminUser | null | undefined): boolean {
-  if (!user) return false
-  if (typeof user === 'string') return user === 'viewer'
-  return user.systemRole === 'viewer'
-}
-
-/**
- * 合并系统级和列表级权限。
- * - system admin：可跨列表执行所有动作；
- * - system viewer：全局只读上限，即使列表角色更高也不能写；
- * - system editor：按列表成员角色判断。
- */
 export function canPerformListAction(
-  user: string | SystemAdminUser | null | undefined,
+  host: HostAccessContext,
   role: MemberRole | null,
   action: ListAction,
 ): boolean {
-  if (isSystemAdmin(user)) return true
+  // Cool's built-in root account is the only platform identity bypass. Other
+  // users first pass Host capability middleware, then this resource-role gate.
+  if (host.hostRoot) return true
   if (action === 'read') return role !== null
-  if (isSystemViewer(user)) return false
 
   switch (action) {
     case 'manage-list': return canManageList(role)
@@ -71,12 +52,11 @@ export function canPerformListAction(
 
 export function canDeleteListAsUser(
   role: MemberRole | null,
-  user: string | SystemAdminUser,
+  host: HostAccessContext,
   ownerId: string,
   userId: string,
 ): boolean {
-  if (isSystemAdmin(user)) return true
-  if (isSystemViewer(user)) return false
+  if (host.hostRoot) return true
   if (ownerId === userId) return true
   return canDeleteList(role)
 }
@@ -85,34 +65,25 @@ export function canAddMember(role: MemberRole | null): boolean {
   return role === 'owner' || role === 'admin'
 }
 
-/** 系统管理员可管理成员，即使不是列表成员 */
 export function canAddMemberAsUser(
   role: MemberRole | null,
-  user: string | SystemAdminUser | null | undefined,
+  host: HostAccessContext,
 ): boolean {
-  if (isSystemAdmin(user)) return true
-  if (isSystemViewer(user)) return false
-  return canAddMember(role)
+  return host.hostRoot || canAddMember(role)
 }
 
-/** 设为主负责人：系统管理员，或列表 owner 角色成员 */
 export function canTransferPrimaryOwnerAsUser(
   role: MemberRole | null,
-  user: string | SystemAdminUser | null | undefined,
+  host: HostAccessContext,
 ): boolean {
-  if (isSystemAdmin(user)) return true
-  if (isSystemViewer(user)) return false
-  return role === 'owner'
+  return host.hostRoot || role === 'owner'
 }
 
-/** 管理 owner 成员角色：系统管理员，或列表 owner 角色成员 */
 export function canManageOwnerMemberRoleAsUser(
   role: MemberRole | null,
-  user: string | SystemAdminUser | null | undefined,
+  host: HostAccessContext,
 ): boolean {
-  if (isSystemAdmin(user)) return true
-  if (isSystemViewer(user)) return false
-  return role === 'owner'
+  return host.hostRoot || role === 'owner'
 }
 
 export function canModifyIssue(role: MemberRole | null): boolean {

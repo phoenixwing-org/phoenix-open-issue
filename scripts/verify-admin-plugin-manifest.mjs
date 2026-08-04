@@ -1,5 +1,10 @@
 import { createHash } from 'node:crypto'
 import { lstat, readdir, readFile } from 'node:fs/promises'
+import {
+  extractCreatedTables,
+  validatePluginTableContract,
+} from './lib/admin-plugin-table-contract.mjs'
+import { validateAdminPluginDictionaryContract } from './lib/admin-plugin-dictionary-contract.mjs'
 
 const manifestPath = new URL('../packages/admin-plugin/manifest.json', import.meta.url)
 const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
@@ -13,6 +18,15 @@ const entityDirectory = new URL('../packages/admin-plugin/midway/phoenix-open-is
 const pluginRoot = new URL('../packages/admin-plugin/midway/phoenix-open-issue/', import.meta.url)
 const migrationDirectory = new URL('migrations/', pluginRoot)
 const artifactDescriptorPath = new URL('pah-plugin.artifacts.json', pluginRoot)
+const controllerPath = new URL('controller/admin/index.ts', pluginRoot)
+const dictAdapterPath = new URL(
+  '../packages/admin-plugin/vue/phoenix-open-issue/adapters/host-dict.ts',
+  import.meta.url,
+)
+const capabilityAdapterPath = new URL(
+  '../packages/admin-plugin/vue/phoenix-open-issue/core/algorithms/host-capability.ts',
+  import.meta.url,
+)
 
 if (manifest.formatVersion !== 2) {
   errors.push(`formatVersion 必须与 Pah SQL v1 契约一致：${manifest.formatVersion}`)
@@ -38,7 +52,46 @@ if (manifest.apiPrefix !== `/admin/${moduleId}/`) {
 }
 
 const capabilityIds = new Set((manifest.capabilities ?? []).map(item => item.id))
+try {
+  const capabilityAdapter = await readFile(capabilityAdapterPath, 'utf8')
+  const renderedCapabilityIds = new Set(
+    [...capabilityAdapter.matchAll(/'((?:phoenix-open-issue):[a-z-]+:[a-z-]+)'/g)]
+      .map(match => match[1]),
+  )
+  for (const capabilityId of capabilityIds) {
+    if (!renderedCapabilityIds.has(capabilityId)) {
+      errors.push(`前端 Cool capability adapter 缺少：${capabilityId}`)
+    }
+  }
+  for (const capabilityId of renderedCapabilityIds) {
+    if (!capabilityIds.has(capabilityId)) {
+      errors.push(`前端声明了 manifest 不存在的 capability：${capabilityId}`)
+    }
+  }
+} catch {
+  errors.push('无法读取前端 Cool capability adapter')
+}
+const endpointMethods = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE'])
+const declaredEndpointTokens = new Set()
 const routeIds = new Set((manifest.routes ?? []).map(item => item.id))
+const compatibilityTestRoute = (manifest.routes ?? []).find(
+  route => route.path === `${routePrefix}/test-runner`,
+)
+const maintenanceRoute = (manifest.routes ?? []).find(
+  route => route.path === `${routePrefix}/maintenance`,
+)
+if (maintenanceRoute?.viewPath !== `modules/${moduleId}/views/maintenance.vue`) {
+  errors.push('维护与测试统一入口必须由 maintenance.vue 承载')
+}
+if (compatibilityTestRoute?.viewPath !== `modules/${moduleId}/views/maintenance.vue` ||
+    compatibilityTestRoute?.isShow !== false ||
+    compatibilityTestRoute?.capability !== `${moduleId}:test:read`) {
+  errors.push('旧 test-runner 只能作为指向 maintenance.vue 的隐藏兼容路由')
+}
+if (manifest.navigation?.preferredGroupId !== 'pah-group-business' ||
+    manifest.navigation?.preferredGroupLabel !== '业务') {
+  errors.push('插件首次导航必须进入 Host 稳定“业务”组；产品大组只能由管理员手工分配')
+}
 for (const route of manifest.routes ?? []) {
   if (!route.id?.startsWith(`${moduleId}-`)) errors.push(`路由 ID 越界：${route.id}`)
   if (route.path !== routePrefix && !route.path?.startsWith(`${routePrefix}/`)) {
@@ -63,12 +116,85 @@ for (const route of manifest.routes ?? []) {
 
 for (const item of manifest.capabilities ?? []) {
   if (!item.id?.startsWith(`${moduleId}:`)) errors.push(`能力码越界：${item.id}`)
+  if (item.id !== manifest.uninstall?.purgeCapability &&
+      (!Array.isArray(item.endpoints) || item.endpoints.length === 0)) {
+    errors.push(`可调用能力缺少 endpoints：${item.id}`)
+  }
+  for (const endpoint of item.endpoints ?? []) {
+    const token = `${endpoint.method} ${endpoint.path}`
+    if (!endpointMethods.has(endpoint.method)) {
+      errors.push(`能力 endpoint method 不受支持：${token}`)
+    }
+    if (typeof endpoint.path !== 'string' ||
+        !endpoint.path.startsWith(manifest.apiPrefix) ||
+        endpoint.path.includes('..') || endpoint.path.includes('*') ||
+        endpoint.path.includes('?') || endpoint.path.includes('#') ||
+        endpoint.path.includes(',') || endpoint.path.includes(' ')) {
+      errors.push(`能力 endpoint 越界或不安全：${token}`)
+    }
+    if (declaredEndpointTokens.has(token)) {
+      errors.push(`重复能力 endpoint：${token}`)
+    }
+    declaredEndpointTokens.add(token)
+  }
 }
+const listAdminCapability = (manifest.capabilities ?? []).find(
+  item => item.id === `${moduleId}:list:admin`,
+)
+const listAdminEndpoints = new Set(
+  (listAdminCapability?.endpoints ?? []).map(item => `${item.method} ${item.path}`),
+)
+for (const token of [
+  `GET /admin/${moduleId}/lists/all`,
+  `GET /admin/${moduleId}/lists/deleted`,
+  `PATCH /admin/${moduleId}/list/:id/restore`,
+]) {
+  if (!listAdminEndpoints.has(token)) errors.push(`全局列表能力缺少 endpoint：${token}`)
+}
+if (listAdminCapability?.risk !== 'admin') {
+  errors.push('跨成员范围查看/恢复列表必须是独立 admin capability')
+}
+
+try {
+  const controllerSource = await readFile(controllerPath, 'utf8')
+  const decoratorMethod = { Get: 'GET', Post: 'POST', Put: 'PUT', Patch: 'PATCH', Del: 'DELETE' }
+  const controllerEndpointTokens = new Set()
+  for (const match of controllerSource.matchAll(/@(Get|Post|Put|Patch|Del)\(\s*["']([^"']+)["']/g)) {
+    controllerEndpointTokens.add(
+      `${decoratorMethod[match[1]]} ${manifest.apiPrefix.replace(/\/$/, '')}${match[2]}`,
+    )
+  }
+  for (const token of controllerEndpointTokens) {
+    if (!declaredEndpointTokens.has(token)) errors.push(`Controller endpoint 未声明 capability：${token}`)
+  }
+  for (const token of declaredEndpointTokens) {
+    if (!controllerEndpointTokens.has(token)) errors.push(`Capability endpoint 不存在于 Controller：${token}`)
+  }
+} catch {
+  errors.push('无法读取插件 Controller endpoint 清单')
+}
+
+let consumedDictionaryTypeKeys = []
+try {
+  const adapterSource = await readFile(dictAdapterPath, 'utf8')
+  consumedDictionaryTypeKeys = [
+    ...adapterSource.matchAll(/:\s*'(phoenix-open-issue\.[a-zA-Z][a-zA-Z0-9]*)'/g),
+  ].map(match => match[1])
+} catch {
+  errors.push('无法读取插件 Host 字典 adapter')
+}
+errors.push(...validateAdminPluginDictionaryContract({
+  moduleId,
+  hostReuse: manifest.hostReuse,
+  dictionaryContributions: manifest.dictionaryContributions,
+  consumedTypeKeys: consumedDictionaryTypeKeys,
+}))
 
 const migrations = Array.isArray(manifest.migrations) ? manifest.migrations : []
 const migrationIds = new Set()
 const migrationVersions = new Set()
 const declaredMigrationPaths = new Set()
+const migrationTables = []
 for (const migration of migrations) {
   if (!migration?.id?.startsWith(`${moduleId}-`)) {
     errors.push(`迁移 ID 越界：${migration?.id}`)
@@ -111,6 +237,7 @@ for (const migration of migrations) {
     if (checksum !== migration.checksum) {
       errors.push(`迁移制品校验和不匹配：${artifactPath}`)
     }
+    migrationTables.push(...extractCreatedTables(content.toString('utf8')))
   } catch {
     errors.push(`迁移制品不存在：${artifactPath}`)
   }
@@ -142,13 +269,35 @@ if (!manifest.uninstall?.purgeCapability?.startsWith(`${moduleId}:`)) {
 }
 
 const ownedTables = new Set(manifest.dataOwnership?.tables ?? [])
+if (ownedTables.size !== (manifest.dataOwnership?.tables ?? []).length) {
+  errors.push('插件 dataOwnership 存在重复表')
+}
+for (const table of ownedTables) {
+  if (!/^oip_[a-z0-9_]+$/.test(table)) errors.push(`插件数据表越界：${table}`)
+}
+if (manifest.dataOwnership?.retainedOnUninstall !== true ||
+    manifest.uninstall?.retainDataByDefault !== true) {
+  errors.push('插件卸载必须默认保留业务数据')
+}
+if (!manifest.hostReuse?.includes('backup') || manifest.uninstall?.requiresBackup !== true) {
+  errors.push('插件清除边界必须复用 Host backup 并要求可验证备份')
+}
+const purgeCapability = (manifest.capabilities ?? []).find(
+  item => item.id === manifest.uninstall?.purgeCapability,
+)
+if (!purgeCapability || purgeCapability.risk !== 'admin' || (purgeCapability.endpoints?.length ?? 0) > 0) {
+  errors.push('永久清除必须保持为未暴露 endpoint 的 admin 能力')
+}
+
+const entityTables = new Set()
 for (const entry of await readdir(entityDirectory)) {
   if (!entry.endsWith('.ts')) continue
   const source = await readFile(new URL(entry, entityDirectory), 'utf8')
   for (const match of source.matchAll(/@Entity\(["']([^"']+)["']\)/g)) {
-    if (!ownedTables.has(match[1])) errors.push(`实体表未声明为插件数据：${match[1]}`)
+    entityTables.add(match[1])
   }
 }
+errors.push(...validatePluginTableContract({ ownedTables, entityTables, migrationTables }))
 
 if (errors.length) {
   console.error(errors.join('\n'))

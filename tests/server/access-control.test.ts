@@ -80,6 +80,7 @@ async function login(username: string): Promise<string> {
 beforeAll(async () => {
   tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'open-issue-access-test-'))
   process.env.DB_DRIVER = 'sqlite'
+  process.env.ALLOW_LEGACY_SQLITE = 'true'
   process.env.DB_PATH = path.join(tempDir, 'access.sqlite')
   process.env.SERVE_STATIC = 'false'
   process.env.NODE_ENV = 'test'

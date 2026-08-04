@@ -3,10 +3,11 @@ import { externalAuthSchemaSql } from '../externalAuthSchema.js'
 import { pnwIssueExtensionsSchemaSql } from './pnwIssueExtensions.js'
 
 export async function pnwRunSchema(db: PnwDbAdapter): Promise<void> {
-  const now = db.dialect === 'postgres' ? "(CURRENT_TIMESTAMP::TEXT)" : '(CURRENT_TIMESTAMP)'
-  const extensions = db.dialect === 'postgres'
-    ? `JSONB NOT NULL DEFAULT '{}'::jsonb`
-    : `TEXT NOT NULL DEFAULT '{}'`
+  if (db.dialect !== 'postgres') {
+    throw new Error('正式 schema runner 只接受 PostgreSQL adapter')
+  }
+  const now = '(CURRENT_TIMESTAMP::TEXT)'
+  const extensions = `JSONB NOT NULL DEFAULT '{}'::jsonb`
   await db.exec(`
     CREATE TABLE IF NOT EXISTS "schemaMigrations" (
       "id" TEXT PRIMARY KEY,
@@ -180,6 +181,6 @@ export async function pnwRunSchema(db: PnwDbAdapter): Promise<void> {
     CREATE INDEX IF NOT EXISTS "idx_eightDReports_issue" ON "eightDReports"("relatedIssueId", "isDeleted");
     CREATE INDEX IF NOT EXISTS "idx_eightDReports_creator" ON "eightDReports"("createdBy", "isDeleted");
   `)
-  await db.exec(externalAuthSchemaSql(db.dialect))
-  if (db.dialect === 'postgres') await db.exec(pnwIssueExtensionsSchemaSql())
+  await db.exec(externalAuthSchemaSql('postgres'))
+  await db.exec(pnwIssueExtensionsSchemaSql())
 }

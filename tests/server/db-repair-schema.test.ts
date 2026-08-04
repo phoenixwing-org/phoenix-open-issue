@@ -11,6 +11,7 @@ let repair: import('../../packages/server/src/service/DbRepairService.js').DbRep
 beforeAll(async () => {
   tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'open-issue-db-repair-'))
   process.env.DB_DRIVER = 'sqlite'
+  process.env.ALLOW_LEGACY_SQLITE = 'true'
   process.env.DB_PATH = path.join(tempDir, 'repair.sqlite')
   process.env.SERVE_STATIC = 'false'
   process.env.NODE_ENV = 'test'

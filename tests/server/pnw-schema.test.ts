@@ -1,47 +1,48 @@
-import { afterEach, describe, expect, it } from 'vitest'
-import { PnwSqliteAdapter } from '../../packages/server/src/db/pnw/pnwSqliteAdapter.js'
+import { describe, expect, it, vi } from 'vitest'
 import { pnwRunSchema } from '../../packages/server/src/db/pnw/pnwSchema.js'
+import { RecordingPostgresAdapter } from './support/recording-postgres-adapter.js'
 
 describe('pnwRunSchema', () => {
-  let db: PnwSqliteAdapter | undefined
+  it('rejects the legacy adapter before executing formal schema DDL', async () => {
+    const exec = vi.fn()
+    const db = { dialect: 'sqlite', exec } as any
 
-  afterEach(async () => {
-    await db?.close()
+    await expect(pnwRunSchema(db)).rejects.toThrow('PostgreSQL')
+    expect(exec).not.toHaveBeenCalled()
   })
 
-  it('creates the complete fresh schema and can run repeatedly', async () => {
-    db = new PnwSqliteAdapter(':memory:')
+  it('生成完整 PostgreSQL schema，且重复运行保持幂等 DDL 契约', async () => {
+    const db = new RecordingPostgresAdapter()
     await pnwRunSchema(db)
     await pnwRunSchema(db)
 
+    const sql = db.statements.join('\n')
+    expect(db.statements).toHaveLength(6)
     expect(await db.tableExists('schemaMigrations')).toBe(true)
-    expect(await db.columnNames('users')).toEqual(expect.objectContaining(new Set([
-      'approved', 'disabled', 'systemRole', 'tokenVersion',
-    ])))
-    expect(await db.columnNames('issues')).toEqual(expect.objectContaining(new Set([
-      'functionId', 'extensions', 'listCount',
-    ])))
+    expect(sql).toContain('"approved" INTEGER NOT NULL DEFAULT 0')
+    expect(sql).toContain('"disabled" INTEGER NOT NULL DEFAULT 0')
+    expect(sql).toContain('"systemRole" TEXT NOT NULL DEFAULT')
+    expect(sql).toContain('"tokenVersion" INTEGER NOT NULL DEFAULT 0')
+    expect(sql).toContain('"extensions" JSONB NOT NULL DEFAULT')
+    expect(sql).toContain('"listCount" INTEGER NOT NULL DEFAULT 0')
     expect(await db.indexExists('idx_dict_group_value')).toBe(true)
     expect(await db.tableExists('externalIdentities')).toBe(true)
     expect(await db.tableExists('oauthLoginAttempts')).toBe(true)
     expect(await db.tableExists('oauthLoginTickets')).toBe(true)
     expect(await db.tableExists('externalBindRequests')).toBe(true)
-    expect(await db.columnNames('oauthLoginTickets')).toContain('returnTo')
+    expect(sql).toContain('"returnTo" TEXT NOT NULL')
     expect(await db.indexExists('idx_external_identities_provider_subject')).toBe(true)
+    expect(sql).toContain('CREATE OR REPLACE FUNCTION "pnwSyncIssueListCount"')
+    expect(sql).toContain('DROP TRIGGER IF EXISTS "trgIssueListLinksCount"')
   })
 
-  it('uses quoted camelCase identifiers in generated tables', async () => {
-    db = new PnwSqliteAdapter(':memory:')
+  it('为 camelCase 表和字段生成引用标识符', async () => {
+    const db = new RecordingPostgresAdapter()
     await pnwRunSchema(db)
-    await db.run(
-      'INSERT INTO "users" ("id", "username", "passwordHash", "systemRole") VALUES (?, ?, ?, ?)',
-      ['u1', 'admin', 'hash', 'admin'],
-    )
-
-    const row = await db.get<{ systemRole: string }>(
-      'SELECT "systemRole" FROM "users" WHERE "id" = ?',
-      ['u1'],
-    )
-    expect(row?.systemRole).toBe('admin')
+    const sql = db.statements.join('\n')
+    expect(sql).toContain('CREATE TABLE IF NOT EXISTS "issueListMembers"')
+    expect(sql).toContain('"passwordHash" TEXT NOT NULL')
+    expect(sql).toContain('"systemRole" TEXT NOT NULL')
+    expect(sql).toContain('"providerSubject" TEXT NOT NULL')
   })
 })

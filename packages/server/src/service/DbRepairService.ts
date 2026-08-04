@@ -57,10 +57,7 @@ export class DbRepairService {
     const pushColumnsBefore = await existingColumnNames(db, 'pushRecords')
     const reportColumnsBefore = await existingColumnNames(db, 'eightDReports')
     const issueColumnsBefore = await existingColumnNames(db, 'issues')
-    await ensureSchema(db)
-    const applied = await pnwRunMigrations(db)
-    // 再执行一遍第三方登录 DDL，覆盖「旧迁移已应用但缺新表」的情况
-    await db.exec(externalAuthSchemaSql(db.dialect))
+    const applied = await ensureSchema(db)
     const after = await snapshotExternalAuth(db)
     const checkpointColumnsAfter = await existingColumnNames(db, 'checkpoints')
     const pushColumnsAfter = await existingColumnNames(db, 'pushRecords')
@@ -377,16 +374,16 @@ async function count(db: ReturnType<typeof getAsyncDb>, sql: string): Promise<nu
   return Number((await db.get<{ c: number }>(sql))?.c ?? 0)
 }
 
-async function ensureSchema(db: PnwDbAdapter): Promise<void> {
+async function ensureSchema(db: PnwDbAdapter): Promise<string[]> {
   if (db.dialect === 'postgres') {
     await pnwRunSchema(db)
-  } else {
-    // SQLite：重新执行幂等建表/加列，确保升级后新表被补齐
-    const { runSchema } = await import('../db/schema.js')
-    runSchema(getDb())
+    await db.exec(externalAuthSchemaSql('postgres'))
+    return pnwRunMigrations(db)
   }
-  await db.exec(externalAuthSchemaSql(db.dialect))
-  await pnwRunMigrations(db)
+  // legacy 恢复链继续使用原同步 schema bridge，不写正式 migration ledger。
+  const { runSchema } = await import('../db/schema.js')
+  runSchema(getDb())
+  return []
 }
 
 async function snapshotExternalAuth(db: PnwDbAdapter): Promise<{ tables: Set<string>; indexes: Set<string> }> {

@@ -37,8 +37,6 @@ export {
   canManageList,
   canDeleteList,
   canDeleteListAsUser,
-  isSystemAdmin,
-  isSystemViewer,
   canPerformListAction,
   canAddMember,
   canAddMemberAsUser,
@@ -51,8 +49,35 @@ export {
   calculateNextCheckpoint,
   mapXlsxRow,
   diffImportRows,
+  ISSUE_HOST_CAPABILITIES,
+  hasIssueHostCapability,
+  LEGACY_BUSINESS_TABLES,
+  createLegacyBusinessSubmission,
+  previewLegacyMigrationPackage,
+  suggestLegacyUserMappings,
+  LEGACY_DICTIONARY_GROUP_KEYS,
+  previewLegacyDictionaryRows,
+  normalizePoiPrimarySectionExpansion,
+  poiPrimarySectionKey,
+  readPoiPrimarySectionExpanded,
+  writePoiPrimarySectionExpanded,
 } from './algorithms/index.js'
-export type { ListAction } from './algorithms/index.js'
+export type {
+  HostAccessContext,
+  HostUserIdentity,
+  IssueHostCapability,
+  LegacyBusinessSubmission,
+  LegacyBusinessTableName,
+  LegacyMigrationLocalPreview,
+  LegacyUserIdentity,
+  LegacyDictionaryConflictPreview,
+  LegacyDictionaryGroup,
+  LegacyDictionaryGroupPreview,
+  LegacyDictionaryPreview,
+  LegacyDictionarySourceRow,
+  ListAction,
+  PoiPrimarySectionExpansion,
+} from './algorithms/index.js'
 
 // 工具
 export { generateId } from './utils/id.js'

@@ -63,12 +63,12 @@ export class OpenIssueService {
       originListName: origin?.name ?? null,
       listCount: count,
       _attentionLevel: link?.attentionLevel ?? 0,
-      _canModify: canModifyIssue(originRole, this.access.isSystemAdmin()),
+      _canModify: canModifyIssue(originRole, this.access.isHostRoot()),
       _canSetAttention: canModifyIssue(
         currentRole,
-        this.access.isSystemAdmin()
+        this.access.isHostRoot()
       ),
-      _canPush: canModifyIssue(currentRole, this.access.isSystemAdmin()),
+      _canPush: canModifyIssue(currentRole, this.access.isHostRoot()),
       _functionName: func?.functionName ?? null,
       _functionPlatform: func?.platform ?? null,
       _functionExternalId: func?.externalId ?? null,
@@ -161,7 +161,7 @@ export class OpenIssueService {
         )
       )
     );
-    const canCurrentModify = canModifyIssue(role, this.access.isSystemAdmin());
+    const canCurrentModify = canModifyIssue(role, this.access.isHostRoot());
     const items = entities.map((issue, index) => {
       const func = issue.functionId
         ? functionsById.get(issue.functionId)
@@ -172,7 +172,7 @@ export class OpenIssueService {
         _attentionLevel: Number(raw[index]?.link_attentionLevel ?? 0),
         _canModify: canModifyIssue(
           originRoles.get(issue.listId) ?? null,
-          this.access.isSystemAdmin()
+          this.access.isHostRoot()
         ),
         _canSetAttention: canCurrentModify,
         _canPush: canCurrentModify,

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from "vue";
-import { driver, type DriveStep } from "driver.js";
-import "driver.js/dist/driver.css";
+import { driver, type DriveStep } from "../runtime/driver.js.mjs";
+import "../runtime/driver.css";
 import { PAGE_HELP } from "/$/phoenix-open-issue/content/pageHelp";
 
 const props = defineProps<{
@@ -82,7 +82,7 @@ function runPageTour() {
   border: 1px solid transparent;
   border-radius: 6px;
   background: transparent;
-  color: var(--muted, #64748b);
+  color: var(--pnw-workbench-muted, var(--el-text-color-secondary, #64748b));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -91,8 +91,8 @@ function runPageTour() {
 }
 
 .help-btn:hover {
-  background: rgba(148, 163, 184, 0.12);
-  color: var(--text, #334155);
+  background: var(--pnw-workbench-hover-bg, var(--el-fill-color-light, rgba(148, 163, 184, 0.12)));
+  color: var(--pnw-workbench-text, var(--el-text-color-primary, #334155));
 }
 
 .help-bullets {
@@ -101,13 +101,13 @@ function runPageTour() {
   list-style: disc;
   font-size: 0.82rem;
   line-height: 1.6;
-  color: var(--text, #334155);
+  color: var(--pnw-workbench-text, var(--el-text-color-primary, #334155));
 }
 
 .help-tour-row {
   margin-top: 10px;
   padding-top: 8px;
-  border-top: 1px solid var(--border, #e2e8f0);
+  border-top: 1px solid var(--pnw-workbench-border, var(--el-border-color, #e2e8f0));
   text-align: right;
 }
 </style>

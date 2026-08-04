@@ -93,12 +93,12 @@ function submit() {
 </template>
 
 <style scoped>
-.hint { margin: 0 0 12px; font-size: 0.82rem; color: #909399; line-height: 1.5; }
-.col-list { max-height: 360px; overflow-y: auto; border: 1px solid #ebeef5; border-radius: 6px; padding: 8px 0; }
+.hint { margin: 0 0 12px; font-size: 0.82rem; color: var(--el-text-color-secondary, #909399); line-height: 1.5; }
+.col-list { max-height: 360px; overflow-y: auto; border: 1px solid var(--el-border-color-lighter, #ebeef5); border-radius: 6px; padding: 8px 0; }
 .col-row {
   display: flex; align-items: center; justify-content: space-between;
   padding: 6px 12px;
 }
-.col-row:hover { background: #f5f7fa; }
+.col-row:hover { background: var(--el-fill-color-light, #f5f7fa); }
 .col-actions { display: flex; gap: 4px; flex-shrink: 0; }
 </style>

@@ -1,8 +1,6 @@
 export type * from './dict-tags.js'
 export type * from './attention.js'
 export type * from './user.js'
-export type * from './external-auth.js'
-export type * from './org-unit.js'
 export type * from './issue-list.js'
 export type * from './issue.js'
 export type * from './checkpoint.js'

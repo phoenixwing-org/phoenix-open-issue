@@ -30,7 +30,7 @@ Open Issue List 的目标是提供一个 **轻量、标准对齐、开箱即用*
 - **协作推送** — 可推送到有权访问的列表，也可定向推送给用户，由接收人决定接收到哪个工作列表
 - **点检时间线** — 每个 Issue 可追加多条点检记录，逾期项高亮提醒
 - **多视图** — 简单/复杂/跟踪三种视图，适配点检会议、审计追溯等不同场景
-- **PostgreSQL 持久化** — 正式运行统一使用 PostgreSQL；SQLite 仅保留弃用过渡期兼容
+- **PostgreSQL 持久化** — 正式运行统一使用 PostgreSQL；旧本地数据库兼容按独立清理门禁退出
 - **按需演示** — 首次登录弹窗询问是否添加演示数据，拒绝后不再打扰
 
 
@@ -71,7 +71,7 @@ Open Issue 同时保留独立 Web 与 Phoenix Admin 插件源码。插件部署�
 | `packages/core/`   | 纯 TypeScript 类型 + 算法（零框架依赖，可独立发布 npm） |
 | `packages/server/` | Express + PostgreSQL 后端（MVC）   |
 | `packages/web/`    | Vue 3 + Element Plus 前端               |
-| `data/`            | 旧 SQLite 数据目录（弃用过渡期，待迁移清理）                    |
+| `data/`            | 旧本地数据库资产目录（弃用过渡期，待归档清理）                    |
 | `doc/`             | 文档                                    |
 
 
@@ -84,7 +84,7 @@ Open Issue 同时保留独立 Web 与 Phoenix Admin 插件源码。插件部署�
 | ---- | ---------------------------- | -------------------- |
 | 前端   | Vue 3 + Element Plus + Pinia | 同 desk-tools 风格      |
 | 后端   | Express + TypeScript         | 当前生产与开发 API           |
-| 数据库  | PostgreSQL                   | 唯一正式支持；SQLite 仅保留旧库/测试兼容，后续移除 |
+| 数据库  | PostgreSQL                   | 唯一正式支持；旧库/测试兼容按整改 TODO 后续移除 |
 | 核心算法 | `@open-issue/core`           | 纯 TS，可独立发布 npm       |
 | 包管理  | pnpm workspaces              | monorepo             |
 
@@ -139,14 +139,14 @@ pnpm seed            # CLI 重新填充演示数据（force 追加可清空）
 | [文档索引](doc/文档索引.md)                       | 当前说明、草案与历史证据的唯一导航 |
 | [当前路线](doc/current-roadmap.md)                | 当前优先级与联合治理消费者责任 |
 | [更新日志](doc/CHANGELOG.md)                     | v0.6.1 版本变更摘要        |
-| [架构设计](doc/架构设计.md)                          | 架构 + 数据流             |
+| [早期架构设计（历史）](doc/架构设计.md)                  | v0.x Express + 本地数据库架构快照 |
 | [API参考](doc/API参考.md)                        | REST API 全部端点        |
 | [数据字典配置](doc/数据字典配置.md)                      | 下拉选项枚举值，汽车/软件预设      |
 | [已知问题](doc/已知问题.md)                         | 当前 workaround 与关闭条件    |
 | [phoenix-wing 依赖配置](doc/phoenix-wing依赖配置.md) | npm 固定版本与升级规则      |
-| [Linux 测试部署](doc/Linux测试部署.md)               | 构建、配置、systemd 与升级检查 |
-| [SQLite/PG 双数据库计划](doc/v0.4-PG双数据库适配计划.md) | PnwDbAdapter、迁移与双库测试方案 |
-| [PostgreSQL 部署与迁移](doc/PostgreSQL部署与迁移.md) | Linux 配置、SQLite JSON 迁移、校验与回滚 |
+| [Linux 测试部署（历史）](doc/Linux测试部署.md)           | v0.4 单机本地数据库部署快照 |
+| [本地库/PG 双数据库计划（历史）](doc/v0.4-PG双数据库适配计划.md) | PnwDbAdapter 早期迁移与双库测试方案 |
+| [PostgreSQL 部署与迁移（草案）](doc/PostgreSQL部署与迁移.md) | legacy 本地库一次性导入门禁与待验证流程 |
 | [Phoenix Admin 插件部署](doc/PhoenixAdmin插件部署.md) | 开发 Link 挂载与正式 Pah 安装流程 |
 | [多人权限与列表筛选加固](doc/多人权限与列表筛选加固.md) | 系统/列表权限矩阵、筛选分页、认证和回归测试 |
 | [Issue 扩展能力：定向推送与附属关联](doc/附属功能与Issue关联计划.md) | 用户定向推送、8D 可空关联、权限与迁移边界 |

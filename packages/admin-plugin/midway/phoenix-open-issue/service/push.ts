@@ -167,7 +167,7 @@ export class OpenIssuePushService {
       records.map(async record => {
         let canHandle = false;
         if (record.status === "pending") {
-          if (this.access.isSystemAdmin()) canHandle = true;
+          if (this.access.isHostRoot()) canHandle = true;
           else if (record.targetType === "user")
             canHandle = record.toUserId === actorId;
           else if (record.toListId) {
@@ -199,7 +199,7 @@ export class OpenIssuePushService {
     const records = await this.pushRepository.find({
       order: { pushedAt: "DESC" },
     });
-    if (this.access.isSystemAdmin()) return records;
+    if (this.access.isHostRoot()) return records;
     const actorId = this.access.actorId();
     const memberships = await this.memberRepository.find({
       where: { userId: actorId },
@@ -258,14 +258,14 @@ export class OpenIssuePushService {
     if (record.status !== "pending" || record.targetType !== "user")
       throw new CoolCommException("该记录不是待处理的用户推送", 400);
     if (
-      !this.access.isSystemAdmin() &&
+      !this.access.isHostRoot() &&
       record.toUserId !== this.access.actorId()
     )
       throw new CoolCommException("只有指定接收人可以处理此推送", 403);
     const query = this.listRepository
       .createQueryBuilder("list")
       .where("list.archived = 0 AND list.isDeleted = 0");
-    if (!this.access.isSystemAdmin()) {
+    if (!this.access.isHostRoot()) {
       const manageable = await this.memberRepository.find({
         where: {
           userId: this.access.actorId(),
@@ -302,14 +302,14 @@ export class OpenIssuePushService {
       throw new CoolCommException("该推送已处理", 409);
     const actorId = this.access.actorId();
     if (record.targetType === "user") {
-      if (!this.access.isSystemAdmin() && record.toUserId !== actorId)
+      if (!this.access.isHostRoot() && record.toUserId !== actorId)
         throw new CoolCommException("只有指定接收人可以处理此推送", 403);
     } else {
       if (!record.toListId)
         throw new CoolCommException("列表推送缺少目标列表", 400);
       const role = await this.access.roleFor(record.toListId);
       if (
-        !this.access.isSystemAdmin() &&
+        !this.access.isHostRoot() &&
         role !== "owner" &&
         role !== "admin"
       )
@@ -328,7 +328,7 @@ export class OpenIssuePushService {
       const list = await this.access.requiredList(acceptedToListId);
       const role = await this.access.roleFor(list.id);
       if (
-        !this.access.isSystemAdmin() &&
+        !this.access.isHostRoot() &&
         role !== "owner" &&
         role !== "admin"
       )
@@ -416,13 +416,9 @@ export class OpenIssuePushService {
       scope,
       incomingPushes: scope === "incoming" ? incoming.slice(0, limit) : [],
       outgoingPushes: scope === "outgoing" ? outgoing.slice(0, limit) : [],
-      // Cool 账号没有旧系统“待批准”和第三方绑定申请表；管理入口由 Host 提供。
-      pendingUsers: [],
-      externalBindRequests: [],
       counts: {
         incoming: incoming.length,
         outgoing: outgoing.length,
-        admin: 0,
         total,
       },
     };

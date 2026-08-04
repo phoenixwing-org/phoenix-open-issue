@@ -4,21 +4,22 @@ import { useRoute } from 'vue-router'
 import { useFunctionStore } from '/$/phoenix-open-issue/stores/functions'
 import { useSettingsStore } from '/$/phoenix-open-issue/stores/settings'
 import { ElMessage } from 'element-plus'
+import { Download, Plus, Refresh, Upload } from '@element-plus/icons-vue'
 import { pnwPromptChoice } from 'phoenix-wing'
-import PnwPageHeader from 'phoenix-wing/layout/PnwPageHeader.vue'
 import PageHelpButton from '/$/phoenix-open-issue/components/PageHelpButton.vue'
+import PoiCompactEditorView from '/$/phoenix-open-issue/components/workbench/PoiCompactEditorView.vue'
 import { mapXlsxRow } from '/$/phoenix-open-issue/core'
 import * as XLSX from 'xlsx'
 import * as api from '/$/phoenix-open-issue/api/functions'
-import { useAuthStore } from '/$/phoenix-open-issue/stores/auth'
 import PoiFunctionPrimary from '/$/phoenix-open-issue/components/workbench/PoiFunctionPrimary.vue'
 import { usePoiViewContribution } from '/$/phoenix-open-issue/layout/workbench/poiViewContributions'
+import { useIssueCapabilities } from '/$/phoenix-open-issue/composables/useIssueCapabilities'
 
 const route = useRoute()
 const store = useFunctionStore()
 const settings = useSettingsStore()
-const auth = useAuthStore()
-const isSystemAdmin = computed(() => auth.user?.systemRole === 'admin')
+const capabilities = useIssueCapabilities()
+const canWriteFunctions = computed(() => capabilities.can('phoenix-open-issue:function:write'))
 
 // ── 列表 ──
 const sortField = ref('')
@@ -48,6 +49,7 @@ const editTarget = ref<any>(null)
 const form = ref({ platform: '', externalId: '', functionName: '', targetYear: '', clientGroup: '', developGroup: '' })
 
 function openCreate() {
+  if (!canWriteFunctions.value) return
   editTarget.value = null
   form.value = { platform: '', externalId: '', functionName: '', targetYear: '', clientGroup: '', developGroup: '' }
   showForm.value = true
@@ -72,21 +74,20 @@ usePoiViewContribution(() => route.fullPath, {
   primary: {
     component: PoiFunctionPrimary,
     props: computed(() => ({
+      viewKey: 'phoenix-open-issue-functions',
       search: settings.funcSearch,
       numericSort: settings.funcNumericSort,
       statusFilter: statusFilter.value,
       itemCount: store.items.length,
-      isAdmin: isSystemAdmin.value,
       onUpdateSearch: updateSearch,
       onUpdateNumericSort: updateNumericSort,
       onUpdateStatusFilter: updateStatusFilter,
-      onRefresh: doLoad,
-      onCreate: openCreate,
     })),
   },
 })
 
 function openEdit(row: any) {
+  if (!canWriteFunctions.value) return
   editTarget.value = row
   form.value = {
     platform: row.platform,
@@ -100,6 +101,7 @@ function openEdit(row: any) {
 }
 
 async function onSubmit() {
+  if (!canWriteFunctions.value) return
   const data = { ...form.value, targetYear: form.value.targetYear || undefined, clientGroup: form.value.clientGroup || undefined, developGroup: form.value.developGroup || undefined }
   if (editTarget.value) {
     await api.updateFunction(editTarget.value.id, data)
@@ -113,6 +115,7 @@ async function onSubmit() {
 }
 
 async function onDelete(row: any) {
+  if (!canWriteFunctions.value) return
   const r = await pnwPromptChoice({
     title: '确认停用',
     message: `确定停用功能「${row.functionName}」？历史 Issue 关联将保留。`,
@@ -125,6 +128,7 @@ async function onDelete(row: any) {
 }
 
 async function onEnable(row: any) {
+  if (!canWriteFunctions.value) return
   const r = await pnwPromptChoice({
     title: '确认启用',
     message: `确定重新启用功能「${row.functionName}」？`,
@@ -142,6 +146,7 @@ const importPreview = ref<any[]>([])
 const importing = ref(false)
 
 function onImportFile(file: any) {
+  if (!canWriteFunctions.value) return
   const reader = new FileReader()
   reader.onload = (e) => {
     try {
@@ -159,6 +164,7 @@ function onImportFile(file: any) {
 }
 
 async function onConfirmImport() {
+  if (!canWriteFunctions.value) return
   if (!importPreview.value.length) return
   importing.value = true
   try {
@@ -193,19 +199,18 @@ async function onExport() {
 </script>
 
 <template>
-  <div class="page">
-    <PnwPageHeader title="功能表">
-      <template #actions>
-        <div class="function-actions" data-tour="functions-actions">
-          <el-button v-if="isSystemAdmin" type="primary" @click="openCreate">+ 新建</el-button>
-          <el-upload v-if="isSystemAdmin" :auto-upload="false" :show-file-list="false" accept=".xlsx" @change="onImportFile">
-            <el-button>📥 导入 XLSX</el-button>
-          </el-upload>
-          <el-button :loading="exporting" @click="onExport">📤 导出 JSON</el-button>
-        </div>
-      </template>
-      <template #help><PageHelpButton page-id="functions" /></template>
-    </PnwPageHeader>
+  <PoiCompactEditorView title="功能表" content-aria-label="Open Issue 功能表">
+    <template #actions>
+      <div class="function-actions" data-tour="functions-actions">
+        <el-button :loading="store.loading" @click="doLoad"><el-icon><Refresh /></el-icon>刷新</el-button>
+        <el-button v-if="canWriteFunctions" type="primary" @click="openCreate"><el-icon><Plus /></el-icon>新建</el-button>
+        <el-upload v-if="canWriteFunctions" :auto-upload="false" :show-file-list="false" accept=".xlsx" @change="onImportFile">
+          <el-button><el-icon><Upload /></el-icon>导入 XLSX</el-button>
+        </el-upload>
+        <el-button :loading="exporting" @click="onExport"><el-icon><Download /></el-icon>导出 JSON</el-button>
+      </div>
+    </template>
+    <template #help><PageHelpButton page-id="functions" /></template>
 
     <el-table :data="store.items" v-loading="store.loading" stripe @sort-change="onSortChange" data-tour="functions-table">
       <el-table-column prop="platform" label="平台" width="140" sortable="custom" />
@@ -220,7 +225,7 @@ async function onExport() {
           <el-tag :type="row.enabled ? 'success' : 'info'" size="small">{{ row.enabled ? '启用' : '停用' }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column v-if="isSystemAdmin" label="操作" width="140" align="center" fixed="right">
+      <el-table-column v-if="canWriteFunctions" label="操作" width="140" align="center" fixed="right">
         <template #default="{ row }">
           <el-button link size="small" @click="openEdit(row)">编辑</el-button>
           <el-button v-if="row.enabled" link size="small" type="warning" @click="onDelete(row)">停用</el-button>
@@ -263,7 +268,7 @@ async function onExport() {
 
     <!-- 导入预览对话框 -->
     <el-dialog v-model="showImport" title="导入预览" width="700px">
-      <p style="margin-bottom:8px;color:#909399">已解析 {{ importPreview.length }} 条记录。已存在的 (平台+ID) 将更新，新的将新增。</p>
+      <p class="import-preview-hint">已解析 {{ importPreview.length }} 条记录。已存在的 (平台+ID) 将更新，新的将新增。</p>
       <el-table :data="importPreview" max-height="360" size="small" stripe>
         <el-table-column prop="platform" label="平台" width="120" />
         <el-table-column prop="externalId" label="外部 ID" width="90" />
@@ -277,11 +282,12 @@ async function onExport() {
         <el-button type="primary" :loading="importing" @click="onConfirmImport">确认导入</el-button>
       </template>
     </el-dialog>
-  </div>
+  </PoiCompactEditorView>
 </template>
 
 <style scoped>
-.page { padding: 0; }
 .function-actions { display: inline-flex; align-items: center; gap: 8px; }
 .function-actions :deep(.el-button + .el-button) { margin-left: 0; }
+.import-preview-hint { margin-bottom: 8px; color: var(--el-text-color-secondary, #909399); }
+@media (max-width: 820px) { .function-actions { flex-wrap: wrap; justify-content: flex-end; } }
 </style>

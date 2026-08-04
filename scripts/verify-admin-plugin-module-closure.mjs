@@ -7,7 +7,19 @@ const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 const pluginRoot = path.join(repoRoot, ADMIN_PLUGIN_VUE_ROOT)
 const missing = new Set()
 const invalidStoreIds = new Set()
+const invalidRuntimeImports = new Set()
 const STORE_ID_PREFIX = 'phoenix-open-issue-'
+const packageJson = JSON.parse(
+  await readFile(path.join(repoRoot, 'packages/admin-plugin/package.json'), 'utf8'),
+)
+const allowedRuntimePackages = new Set(Object.keys(packageJson.peerDependencies ?? {}))
+
+function isAllowedRuntimeImport(specifier) {
+  if (specifier.startsWith('.') || specifier.startsWith('/')) return true
+  return [...allowedRuntimePackages].some(
+    dependency => specifier === dependency || specifier.startsWith(`${dependency}/`),
+  )
+}
 
 async function exists(target) {
   try {
@@ -51,6 +63,23 @@ async function visit(directory) {
         invalidStoreIds.add(`${path.relative(repoRoot, target)} -> ${match[1]}`)
       }
     }
+
+    if (!/\.(?:test|spec)\.[cm]?[jt]s$/.test(entry)) {
+      const specifiers = []
+      for (const match of source.matchAll(
+        /(?:^|\n)\s*(?:import|export)\s+(?:type\s+)?(?:[^'"\n;]*?\s+from\s+)?["']([^"']+)["']/g,
+      )) specifiers.push(match[1])
+      for (const match of source.matchAll(
+        /\bimport\s*\(\s*["']([^"']+)["']\s*\)/g,
+      )) specifiers.push(match[1])
+      for (const specifier of specifiers) {
+        if (!isAllowedRuntimeImport(specifier)) {
+          invalidRuntimeImports.add(
+            `${path.relative(repoRoot, target)} -> ${specifier}`,
+          )
+        }
+      }
+    }
   }
 }
 
@@ -62,6 +91,11 @@ if (missing.size) {
 } else if (invalidStoreIds.size) {
   for (const item of invalidStoreIds) console.error(`INVALID_STORE_ID ${item}`)
   process.exitCode = 1
+} else if (invalidRuntimeImports.size) {
+  for (const item of invalidRuntimeImports) console.error(`INVALID_RUNTIME_IMPORT ${item}`)
+  process.exitCode = 1
 } else {
-  console.log('Phoenix Open Issue 插件内部模块引用闭包与 Pinia 命名空间完整。')
+  console.log(
+    'Phoenix Open Issue 插件内部模块、peer runtime import 与 Pinia 命名空间闭包完整。',
+  )
 }

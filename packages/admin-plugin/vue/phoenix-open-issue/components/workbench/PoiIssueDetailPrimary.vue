@@ -1,77 +1,57 @@
 <script setup lang="ts">
-defineProps<{
+import PnwPrimaryPanel from 'phoenix-wing/layout/PnwPrimaryPanel.vue'
+import PnwPrimarySection from 'phoenix-wing/layout/PnwPrimarySection.vue'
+import { usePoiPrimarySectionExpanded } from './poiPrimarySectionState'
+
+const props = defineProps<{
+  viewKey: string
   issueNo: string
-  title: string
   status: string
   priority: string
   severity: string
   listCount: number
-  canModify: boolean
-  canPush: boolean
   has8d: boolean
   hasDescription: boolean
-  onBack: () => void
-  onEdit: () => void
-  onPush: () => void
   onNavigateSection: (sectionId: string) => void
 }>()
+
+const summaryExpanded = usePoiPrimarySectionExpanded(() => props.viewKey, 'summary')
+const navigationExpanded = usePoiPrimarySectionExpanded(() => props.viewKey, 'navigation')
 </script>
 
 <template>
-  <aside class="poi-issue-primary" aria-label="Issue 导航与操作">
-    <header>
-      <span>{{ issueNo || 'Issue' }}</span>
-      <strong :title="title">{{ title || '正在加载…' }}</strong>
-    </header>
-    <dl>
-      <div><dt>状态</dt><dd>{{ status || '—' }}</dd></div>
-      <div><dt>紧急度</dt><dd>{{ priority || '—' }}</dd></div>
-      <div><dt>重要度</dt><dd>{{ severity || '—' }}</dd></div>
-      <div v-if="listCount >= 2"><dt>关联点检表</dt><dd>{{ listCount }}</dd></div>
-    </dl>
-    <nav aria-label="Issue 章节">
-      <span>章节</span>
-      <button type="button" @click="onNavigateSection('issue-basic')">基本信息</button>
-      <button type="button" @click="onNavigateSection('issue-people')">人员与日期</button>
-      <button v-if="has8d" type="button" @click="onNavigateSection('issue-8d')">8D 报告</button>
-      <button v-if="hasDescription" type="button" @click="onNavigateSection('issue-description')">问题描述</button>
-    </nav>
-    <section>
-      <span>快速操作</span>
-      <button v-if="canModify" type="button" class="is-accent" @click="onEdit">编辑 Issue</button>
-      <button v-if="canPush" type="button" @click="onPush">推送到其他列表</button>
-      <button type="button" @click="onBack">返回上一页</button>
-    </section>
-  </aside>
+  <PnwPrimaryPanel :title="issueNo || 'Issue'" aria-label="Issue 导航与操作">
+    <template #summary><span>详情导航</span></template>
+    <PnwPrimarySection v-model:expanded="summaryExpanded" title="Issue 摘要">
+      <dl class="poi-issue-summary">
+        <div><dt>状态</dt><dd>{{ status || '—' }}</dd></div>
+        <div><dt>紧急度</dt><dd>{{ priority || '—' }}</dd></div>
+        <div><dt>重要度</dt><dd>{{ severity || '—' }}</dd></div>
+        <div v-if="listCount >= 2"><dt>关联点检表</dt><dd>{{ listCount }}</dd></div>
+      </dl>
+    </PnwPrimarySection>
+    <PnwPrimarySection v-model:expanded="navigationExpanded" title="章节">
+      <nav class="poi-issue-navigation" aria-label="Issue 章节">
+        <button type="button" @click="onNavigateSection('issue-basic')">基本信息</button>
+        <button type="button" @click="onNavigateSection('issue-people')">人员与日期</button>
+        <button v-if="has8d" type="button" @click="onNavigateSection('issue-8d')">8D 报告</button>
+        <button v-if="hasDescription" type="button" @click="onNavigateSection('issue-description')">问题描述</button>
+      </nav>
+    </PnwPrimarySection>
+  </PnwPrimaryPanel>
 </template>
 
 <style scoped>
-.poi-issue-primary {
+.poi-issue-summary,
+.poi-issue-navigation {
   display: grid;
-  align-content: start;
-  gap: 16px;
-  padding: 14px;
-  color: var(--pnw-workbench-text, var(--el-text-color-primary, #0f172a));
+  gap: 8px;
+  margin: 8px;
 }
-.poi-issue-primary header { display: grid; gap: 4px; min-width: 0; }
-.poi-issue-primary header span,
-.poi-issue-primary nav > span,
-.poi-issue-primary section > span {
-  color: var(--pnw-workbench-muted, var(--el-text-color-secondary, #64748b));
-  font-size: 12px;
-}
-.poi-issue-primary header strong {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.poi-issue-primary dl { display: grid; gap: 6px; margin: 0; }
-.poi-issue-primary dl div { display: flex; justify-content: space-between; gap: 8px; }
-.poi-issue-primary dt { color: var(--pnw-workbench-muted, #64748b); font-size: 12px; }
-.poi-issue-primary dd { margin: 0; font-size: 12px; font-weight: 600; }
-.poi-issue-primary nav,
-.poi-issue-primary section { display: grid; gap: 5px; }
-.poi-issue-primary button {
+.poi-issue-summary div { display: flex; justify-content: space-between; gap: 8px; }
+.poi-issue-summary dt { color: var(--pnw-workbench-muted, #64748b); font-size: 12px; }
+.poi-issue-summary dd { margin: 0; font-size: 12px; font-weight: 600; }
+.poi-issue-navigation button {
   padding: 7px 9px;
   border: 0;
   border-radius: 6px;
@@ -80,12 +60,7 @@ defineProps<{
   text-align: left;
   cursor: pointer;
 }
-.poi-issue-primary button:hover {
+.poi-issue-navigation button:hover {
   background: var(--pnw-workbench-hover-bg, var(--el-fill-color-light, #eff6ff));
-}
-.poi-issue-primary button.is-accent {
-  background: var(--pnw-workbench-active-bg, var(--el-color-primary-light-9, #dbeafe));
-  color: var(--pnw-control-active-text, var(--el-color-primary, #2563eb));
-  font-weight: 600;
 }
 </style>

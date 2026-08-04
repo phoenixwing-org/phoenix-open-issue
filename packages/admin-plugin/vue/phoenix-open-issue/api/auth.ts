@@ -23,18 +23,3 @@ export async function getAllUsers(
     data: includeDisabled ? users : users.filter(user => !user.disabled),
   }
 }
-
-/**
- * 旧仪表盘的“批准用户”复用 COOL 用户状态，不在插件内复制用户审批表。
- * Host 用户 ID 在领域层保持 string；调用 COOL 服务时再还原为 number。
- */
-export async function approveUser(
-  userId: string,
-  approved: boolean,
-): Promise<LegacyResponse<void>> {
-  const id = Number(userId)
-  if (!Number.isSafeInteger(id)) throw new Error(`非法 Host 用户 ID：${userId}`)
-
-  await service.base.sys.user.update({ id, status: approved ? 1 : 0 })
-  return { data: undefined }
-}

@@ -48,13 +48,6 @@ const mounts = [
   ...item,
   target: resolve(item.hostRoot, `src/modules/${moduleId}`),
 }))
-const vueRuntimeDependencies = ['driver.js'].map(name => ({
-  label: `Vue 插件依赖 ${name}`,
-  name,
-  source: resolve(repositoryRoot, 'packages/admin-plugin/node_modules', name),
-  target: resolve(mounts[0].hostRoot, 'node_modules', name),
-}))
-
 const markerStart = `# >>> ${moduleId} admin-plugin dev mount >>>`
 const markerEnd = `# <<< ${moduleId} admin-plugin dev mount <<<`
 
@@ -182,69 +175,10 @@ async function statusOne(mount) {
   if (state.state !== 'mounted') process.exitCode = 1
 }
 
-async function mountDependency(dependency) {
-  if (!(await pathState(dependency.source))) {
-    throw new Error(
-      `${dependency.label} 尚未安装：${dependency.source}\n` +
-        '请先执行 pnpm --filter @open-issue/admin-plugin install',
-    )
-  }
-
-  const state = await inspectMount(dependency)
-  if (state.state === 'occupied') {
-    console.log(`${dependency.label}：使用 Host 已安装版本 (${dependency.target})`)
-    return
-  }
-  if (state.state === 'foreign-link') {
-    throw new Error(`拒绝覆盖 Host 的其他依赖链接：${dependency.target} -> ${state.value}`)
-  }
-  if (state.state === 'missing') {
-    await mkdir(dirname(dependency.target), { recursive: true })
-    await symlink(
-      relative(dirname(dependency.target), dependency.source),
-      dependency.target,
-      'dir',
-    )
-  }
-  console.log(`${dependency.label}：已桥接到 Host node_modules`)
-}
-
-async function unmountDependency(dependency) {
-  const state = await inspectMount(dependency)
-  if (state.state === 'mounted') {
-    await unlink(dependency.target)
-    console.log(`${dependency.label}：已移除本地依赖链接`)
-  } else if (state.state === 'missing') {
-    console.log(`${dependency.label}：无需移除`)
-  } else {
-    console.log(`${dependency.label}：由 Host 管理，保持不变`)
-  }
-}
-
-async function statusDependency(dependency) {
-  const state = await inspectMount(dependency)
-  if (state.state === 'mounted') {
-    console.log(`${dependency.label}：已桥接插件版本`)
-    return
-  }
-  if (state.state === 'occupied' || state.state === 'foreign-link') {
-    console.log(`${dependency.label}：由 Host 提供`)
-    return
-  }
-  console.log(`${dependency.label}：缺失`)
-  process.exitCode = 1
-}
-
 for (const mount of mounts) {
   if (action === 'mount') await mountOne(mount)
   if (action === 'unmount') await unmountOne(mount)
   if (action === 'status') await statusOne(mount)
-}
-
-for (const dependency of vueRuntimeDependencies) {
-  if (action === 'mount') await mountDependency(dependency)
-  if (action === 'unmount') await unmountDependency(dependency)
-  if (action === 'status') await statusDependency(dependency)
 }
 
 if (action === 'mount') {

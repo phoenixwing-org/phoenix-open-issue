@@ -1,15 +1,14 @@
 # PostgreSQL 部署与 SQLite 数据迁移
 
+状态：draft / transitional
+
+> PostgreSQL 是唯一正式目标。本文件只描述 legacy SQLite 的一次性导入草案，尚未取得真实旧库归档和双 PostgreSQL 演练证据，不是可直接执行的发布或回滚 runbook。执行门禁以 [SQLite 清理执行草案](admin-plugin-rectification/SQLite清理执行草案.md) 为准。
+
 ## 1. 运行模式
 
-服务启动时只选择一种数据库，不双写，也不会在 PostgreSQL 连接失败时回退 SQLite。
+正式服务只允许 PostgreSQL，连接失败必须 fail closed，不双写，也不静默回退 legacy SQLite。当前源码中的 SQLite 分支仅是待门禁完成后移除的过渡兼容，不构成正式支持。
 
 ```dotenv
-# SQLite（默认）
-DB_DRIVER=sqlite
-DB_PATH=/var/lib/phoenix-open-issue/open-issue.sqlite
-
-# PostgreSQL
 DB_DRIVER=postgres
 DATABASE_URL=postgresql://openissue:change-me@127.0.0.1:5432/openissue
 DB_POOL_MAX=10
@@ -25,7 +24,7 @@ DB_SSL=false
 3. 服务自动创建 Schema、索引、admin 和基础字典。
 4. 日志出现 `Database: PostgreSQL` 后访问 `/health`。
 
-不要对 PG 手工执行 SQLite 的 `schema.ts` 或 `migrations.ts`，它们只用于既有 SQLite 文件升级。
+不要对 PG 手工执行 legacy SQLite 的 `schema.ts` 或 `migrations.ts`，它们只作为待归档的旧库升级证据。
 
 ## 3. SQLite → PostgreSQL
 
@@ -69,7 +68,7 @@ pnpm build
 
 迁移后先保留原 SQLite 文件，不要覆盖或删除。
 
-回滚时停止服务，将环境变量恢复为 `DB_DRIVER=sqlite` 和原 `DB_PATH`，再启动并执行登录及列表检查。PG 数据保留用于问题分析，不要在未确认差异前反向覆盖 SQLite。
+当前草案不授权把正式服务直接切回 SQLite。回滚必须由发布 owner 在冻结写入方、核对归档校验和并验证恢复路径后执行；PG 数据和原始 SQLite 资产均保留用于差异分析，禁止互相覆盖。
 
 ## 6. 运维
 

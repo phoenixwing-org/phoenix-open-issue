@@ -2,7 +2,7 @@
 import { computed, onActivated, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Connection, Download, Refresh, Upload, User } from '@element-plus/icons-vue'
+import { Download, Refresh, Upload } from '@element-plus/icons-vue'
 import { pnwPromptInput } from 'phoenix-wing'
 import type {
   DashboardPushTask,
@@ -10,14 +10,11 @@ import type {
   DashboardTasks,
   DashboardTaskScope,
   DashboardTaskTab,
-  ExternalBindRequestAdminView,
   PushTargetListOption,
-  UserPublic,
 } from '/$/phoenix-open-issue/core'
 import { getDashboardTasks } from '/$/phoenix-open-issue/api/dashboard'
-import { approveUser } from '/$/phoenix-open-issue/api/auth'
 import { getPushTargetLists, handlePush, withdrawPush } from '/$/phoenix-open-issue/api/push'
-import { useAuthStore } from '/$/phoenix-open-issue/stores/auth'
+import { useIssueCapabilities } from '/$/phoenix-open-issue/composables/useIssueCapabilities'
 
 type DashboardSection = 'overview' | DashboardTaskTab
 
@@ -31,22 +28,23 @@ const EMPTY_TASKS: DashboardTasks = {
   scope: 'summary',
   incomingPushes: [],
   outgoingPushes: [],
-  pendingUsers: [],
-  externalBindRequests: [],
-  counts: { incoming: 0, outgoing: 0, admin: 0, total: 0 },
+  counts: { incoming: 0, outgoing: 0, total: 0 },
 }
 
-const auth = useAuthStore()
 const router = useRouter()
+const capabilities = useIssueCapabilities()
+const canHandlePush = computed(() =>
+  capabilities.can('phoenix-open-issue:push:handle') &&
+  capabilities.can('phoenix-open-issue:push:read'),
+)
+const canReadPushHistory = computed(() => capabilities.can('phoenix-open-issue:push:read'))
+const canReadIssue = computed(() => capabilities.can('phoenix-open-issue:issue:read'))
 const tasks = ref<DashboardTasks>(EMPTY_TASKS)
 const loading = ref(false)
 let requestSequence = 0
 let skipFirstActivation = true
-const isAdmin = computed(() => auth.user?.systemRole === 'admin')
 const incomingTasks = computed(() => tasks.value.incomingPushes.slice(0, MAX_VISIBLE_TASKS))
 const outgoingTasks = computed(() => tasks.value.outgoingPushes.slice(0, MAX_VISIBLE_TASKS))
-const pendingUsers = computed(() => tasks.value.pendingUsers.slice(0, MAX_VISIBLE_TASKS))
-const externalBindRequests = computed(() => tasks.value.externalBindRequests.slice(0, MAX_VISIBLE_TASKS))
 const hiddenIncoming = computed(() => Math.max(0, tasks.value.counts.incoming - incomingTasks.value.length))
 const hiddenOutgoing = computed(() => Math.max(0, tasks.value.counts.outgoing - outgoingTasks.value.length))
 const acceptDialog = reactive({
@@ -59,7 +57,7 @@ const acceptDialog = reactive({
 })
 
 function activeScope(): DashboardTaskScope {
-  return activeTab.value === 'incoming' || activeTab.value === 'outgoing' || activeTab.value === 'admin'
+  return activeTab.value === 'incoming' || activeTab.value === 'outgoing'
     ? activeTab.value
     : 'summary'
 }
@@ -70,8 +68,6 @@ function releaseTaskData() {
     scope: 'summary',
     incomingPushes: [],
     outgoingPushes: [],
-    pendingUsers: [],
-    externalBindRequests: [],
   }
 }
 
@@ -167,33 +163,12 @@ async function onWithdraw(record: DashboardPushTask) {
   } catch { /* 用户取消 */ }
 }
 
-async function onApproveUser(user: UserPublic) {
-  try {
-    await ElMessageBox.confirm(
-      `批准账号「${user.displayName || user.username}」登录并使用系统？`,
-      '批准用户',
-      { type: 'info', confirmButtonText: '批准', cancelButtonText: '取消' },
-    )
-    await approveUser(user.id, true)
-    ElMessage.success('用户已批准')
-    await loadTasks()
-  } catch { /* 用户取消 */ }
-}
-
 function goPushHistory() {
   void router.push('/open-issue/push-history')
 }
 
-function goOrg() {
-  void router.push('/sys/user')
-}
-
 function goIssue(record: DashboardPushTask) {
   void router.push(`/open-issue/issue/${record.issueId}`)
-}
-
-function bindRequestName(request: ExternalBindRequestAdminView) {
-  return request.proposedDisplayName || request.displayName || request.proposedUsername || '待关联用户'
 }
 
 watch(activeTab, () => {
@@ -233,14 +208,14 @@ onActivated(() => {
               <small>{{ targetLabel(record) }}</small>
             </div>
             <div class="task-actions">
-              <el-button size="small" type="success" @click="onAccept(record)">接受</el-button>
-              <el-button size="small" plain type="danger" @click="onReject(record)">拒绝</el-button>
+              <el-button v-if="canHandlePush" size="small" type="success" @click="onAccept(record)">接受</el-button>
+              <el-button v-if="canHandlePush" size="small" plain type="danger" @click="onReject(record)">拒绝</el-button>
             </div>
           </article>
           <footer class="task-list-footer">
             <span v-if="hiddenIncoming">另有 {{ hiddenIncoming }} 项未显示</span>
             <span v-else>已显示全部待处理推送</span>
-            <el-button link type="primary" @click="goPushHistory">查看推送历史</el-button>
+            <el-button v-if="canReadPushHistory" link type="primary" @click="goPushHistory">查看推送历史</el-button>
           </footer>
           </div>
           <el-empty v-else :image-size="54" description="目前没有需要你处理的推送" />
@@ -257,68 +232,22 @@ onActivated(() => {
           <article v-for="record in outgoingTasks" :key="record.id" class="task-row">
             <span class="task-kind is-outgoing"><el-icon><Upload /></el-icon></span>
             <div class="task-main">
-              <button type="button" class="task-title-link" @click="goIssue(record)">{{ record.issueTitle }}</button>
+              <button v-if="canReadIssue" type="button" class="task-title-link" @click="goIssue(record)">{{ record.issueTitle }}</button>
+              <strong v-else>{{ record.issueTitle }}</strong>
               <span>{{ record.fromListName }} → {{ targetLabel(record) }} · {{ formatDate(record.pushedAt) }}</span>
               <small>等待接收方处理</small>
             </div>
             <div class="task-actions">
-              <el-button size="small" plain @click="onWithdraw(record)">撤回</el-button>
+              <el-button v-if="canHandlePush" size="small" plain @click="onWithdraw(record)">撤回</el-button>
             </div>
           </article>
           <footer class="task-list-footer">
             <span v-if="hiddenOutgoing">另有 {{ hiddenOutgoing }} 项未显示</span>
             <span v-else>已显示全部待处理推送</span>
-            <el-button link type="primary" @click="goPushHistory">查看推送历史</el-button>
+            <el-button v-if="canReadPushHistory" link type="primary" @click="goPushHistory">查看推送历史</el-button>
           </footer>
           </div>
           <el-empty v-else :image-size="54" description="没有等待处理的已发起推送" />
-    </div>
-
-    <div v-else-if="activeTab === 'admin' && isAdmin" id="dashboard-panel-admin" role="tabpanel" class="task-pane" v-loading="loading">
-          <header class="task-pane-head">
-            <span>待批准账号与待关联第三方登录申请</span>
-            <el-button link type="primary" :loading="loading" @click="scheduleLoad()" aria-label="刷新管理审批">
-              <el-icon><Refresh /></el-icon>刷新
-            </el-button>
-          </header>
-          <div v-if="pendingUsers.length || externalBindRequests.length" class="admin-task-groups">
-          <section v-if="pendingUsers.length" class="admin-task-group">
-            <h4>账号待批准 <span>{{ tasks.pendingUsers.length }}</span></h4>
-            <article v-for="user in pendingUsers" :key="user.id" class="task-row">
-              <span class="task-kind is-admin"><el-icon><User /></el-icon></span>
-              <div class="task-main">
-                <strong>{{ user.displayName || user.username }}</strong>
-                <span>账号 {{ user.username }} · {{ formatDate(user.createdAt) }}</span>
-                <small>{{ user.email || '未填写邮箱' }}</small>
-              </div>
-              <div class="task-actions">
-                <el-button size="small" type="primary" @click="onApproveUser(user)">批准</el-button>
-                <el-button size="small" plain @click="goOrg">详情</el-button>
-              </div>
-            </article>
-          </section>
-
-          <section v-if="externalBindRequests.length" class="admin-task-group">
-            <h4>第三方登录待关联 <span>{{ tasks.externalBindRequests.length }}</span></h4>
-            <article v-for="request in externalBindRequests" :key="request.id" class="task-row">
-              <span class="task-kind is-admin"><el-icon><Connection /></el-icon></span>
-              <div class="task-main">
-                <strong>{{ bindRequestName(request) }}</strong>
-                <span>飞书登录 · 最近尝试 {{ formatDate(request.lastSeenAt) }}</span>
-                <small>{{ request.email || request.proposedUsername || '等待管理员确认本地账号' }}</small>
-              </div>
-              <div class="task-actions">
-                <el-button size="small" type="primary" plain @click="goOrg">去处理</el-button>
-              </div>
-            </article>
-          </section>
-
-          <footer class="task-list-footer">
-            <span>复杂的人员与第三方账号操作在组织架构中完成</span>
-            <el-button link type="primary" @click="goOrg">打开组织架构</el-button>
-          </footer>
-          </div>
-          <el-empty v-else :image-size="54" description="目前没有管理审批事项" />
     </div>
 
     <el-dialog v-model="acceptDialog.visible" title="接受到目标列表" width="460px">
@@ -354,7 +283,7 @@ onActivated(() => {
 <style scoped>
 .dashboard-content {
   min-width: 0;
-  padding-top: 16px;
+  padding-top: 0;
 }
 .task-pane {
   min-height: 132px;
@@ -369,24 +298,9 @@ onActivated(() => {
   color: var(--pnw-workbench-muted, var(--el-text-color-secondary));
   font-size: 0.76rem;
 }
-.task-list,
-.admin-task-groups,
-.admin-task-group {
+.task-list {
   display: grid;
   gap: 6px;
-}
-.admin-task-groups {
-  gap: 12px;
-}
-.admin-task-group h4 {
-  margin: 2px 0 0;
-  font-size: 0.78rem;
-  color: var(--el-text-color-regular);
-}
-.admin-task-group h4 span {
-  margin-left: 4px;
-  color: var(--el-text-color-secondary);
-  font-variant-numeric: tabular-nums;
 }
 .task-row {
   min-width: 0;
@@ -396,7 +310,7 @@ onActivated(() => {
   gap: 10px;
   padding: 8px 10px;
   border: 1px solid var(--el-border-color-lighter);
-  border-radius: 8px;
+  border-radius: 0;
   background: var(--el-fill-color-blank);
 }
 .task-kind {
@@ -408,7 +322,6 @@ onActivated(() => {
 }
 .task-kind.is-incoming { color: var(--el-color-success); background: var(--el-color-success-light-9); }
 .task-kind.is-outgoing { color: var(--el-color-primary); background: var(--el-color-primary-light-9); }
-.task-kind.is-admin { color: var(--el-color-warning); background: var(--el-color-warning-light-9); }
 .task-main {
   min-width: 0;
   display: grid;

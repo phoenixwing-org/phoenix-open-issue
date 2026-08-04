@@ -1,60 +1,56 @@
 <script setup lang="ts">
-defineProps<{
+import PnwPrimaryPanel from 'phoenix-wing/layout/PnwPrimaryPanel.vue'
+import PnwPrimarySection from 'phoenix-wing/layout/PnwPrimarySection.vue'
+import { usePoiPrimarySectionExpanded } from './poiPrimarySectionState'
+
+const props = defineProps<{
+  viewKey: string
   search: string
   numericSort: boolean
   statusFilter: 'enabled' | 'disabled' | 'all'
   itemCount: number
-  isAdmin: boolean
   onUpdateSearch: (value: string) => void
   onUpdateNumericSort: (value: string | number | boolean) => void
   onUpdateStatusFilter: (value: string) => void
-  onRefresh: () => void
-  onCreate: () => void
 }>()
+
+const filtersExpanded = usePoiPrimarySectionExpanded(() => props.viewKey, 'filters')
 </script>
 
 <template>
-  <aside class="poi-function-primary" aria-label="功能表筛选与操作" data-tour="functions-filters">
-    <header>
-      <strong>功能筛选</strong>
-      <span>{{ itemCount }} 条结果</span>
-    </header>
-    <el-input
-      :model-value="search"
-      placeholder="功能名、平台或外部 ID"
-      clearable
-      size="small"
-      @update:model-value="onUpdateSearch"
-    />
-    <el-checkbox :model-value="numericSort" @update:model-value="onUpdateNumericSort">
-      外部 ID 按数字排序
-    </el-checkbox>
-    <el-select
-      :model-value="statusFilter"
-      aria-label="功能状态"
-      size="small"
-      @update:model-value="onUpdateStatusFilter"
-    >
-      <el-option label="启用" value="enabled" />
-      <el-option label="停用" value="disabled" />
-      <el-option label="全部" value="all" />
-    </el-select>
-    <el-button size="small" plain @click="onRefresh">刷新功能表</el-button>
-    <el-button v-if="isAdmin" size="small" type="primary" plain @click="onCreate">新建功能</el-button>
-  </aside>
+  <PnwPrimaryPanel title="功能表" aria-label="功能表筛选与操作" data-tour="functions-filters">
+    <template #summary>{{ itemCount }} 条结果</template>
+    <PnwPrimarySection v-model:expanded="filtersExpanded" title="功能筛选">
+      <div class="poi-function-primary-content">
+        <el-input
+          :model-value="search"
+          placeholder="功能名、平台或外部 ID"
+          clearable
+          size="small"
+          @update:model-value="onUpdateSearch"
+        />
+        <el-checkbox :model-value="numericSort" @update:model-value="onUpdateNumericSort">
+          外部 ID 按数字排序
+        </el-checkbox>
+        <el-select
+          :model-value="statusFilter"
+          aria-label="功能状态"
+          size="small"
+          @update:model-value="onUpdateStatusFilter"
+        >
+          <el-option label="启用" value="enabled" />
+          <el-option label="停用" value="disabled" />
+          <el-option label="全部" value="all" />
+        </el-select>
+      </div>
+    </PnwPrimarySection>
+  </PnwPrimaryPanel>
 </template>
 
 <style scoped>
-.poi-function-primary {
+.poi-function-primary-content {
   display: grid;
-  align-content: start;
-  gap: 10px;
-  padding: 14px;
-  color: var(--pnw-workbench-text, var(--el-text-color-primary, #0f172a));
+  gap: 8px;
+  margin: 8px;
 }
-.poi-function-primary header { display: flex; justify-content: space-between; gap: 8px; }
-.poi-function-primary header strong,
-.poi-function-primary header span { font-size: 12px; }
-.poi-function-primary header span { color: var(--pnw-workbench-muted, var(--el-text-color-secondary, #64748b)); }
-.poi-function-primary :deep(.el-button + .el-button) { margin-left: 0; }
 </style>

@@ -2,8 +2,6 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import PnwPageHeader from 'phoenix-wing/layout/PnwPageHeader.vue'
-import { useAuthStore } from '/$/phoenix-open-issue/stores/auth'
 import {
   createEightDReport,
   deleteEightDReport,
@@ -12,9 +10,11 @@ import {
   updateEightDReport,
 } from '/$/phoenix-open-issue/api/eightDReports'
 import EightDReportDialog from '/$/phoenix-open-issue/components/EightDReportDialog.vue'
+import PoiCompactEditorView from '/$/phoenix-open-issue/components/workbench/PoiCompactEditorView.vue'
 import PoiEightDReportsPrimary from '/$/phoenix-open-issue/components/workbench/PoiEightDReportsPrimary.vue'
 import { usePoiViewContribution } from '/$/phoenix-open-issue/layout/workbench/poiViewContributions'
 import type { EightDReport, EightDReportInput, EightDReportIssueOption } from '/$/phoenix-open-issue/core'
+import { useIssueCapabilities } from '/$/phoenix-open-issue/composables/useIssueCapabilities'
 
 type RelationFilter = 'all' | 'linked' | 'standalone'
 interface ReportRow extends EightDReport {
@@ -33,7 +33,7 @@ const router = {
     return hostRouter.push(target.startsWith('/issue/') ? `/open-issue${target}` : target)
   },
 }
-const auth = useAuthStore()
+const capabilities = useIssueCapabilities()
 const reports = ref<ReportRow[]>([])
 const issueOptions = ref<EightDReportIssueOption[]>([])
 const loading = ref(false)
@@ -41,7 +41,7 @@ const search = ref('')
 const filter = ref<RelationFilter>('all')
 const showDialog = ref(false)
 const editing = ref<ReportRow | null>(null)
-const canCreate = computed(() => auth.user?.systemRole !== 'viewer')
+const canCreate = computed(() => capabilities.can('phoenix-open-issue:report:write'))
 const counts = computed(() => ({
   all: reports.value.length,
   linked: reports.value.filter(report => !!report.relatedIssueId).length,
@@ -75,16 +75,19 @@ async function load() {
 onMounted(load)
 
 function openCreate() {
+  if (!canCreate.value) return
   editing.value = null
   showDialog.value = true
 }
 
 function openEdit(report: ReportRow) {
+  if (!canCreate.value || !report._canModify) return
   editing.value = report
   showDialog.value = true
 }
 
 async function save(data: EightDReportInput) {
+  if (!canCreate.value) return
   if (editing.value) await updateEightDReport(editing.value.id, data)
   else await createEightDReport(data)
   ElMessage.success(editing.value ? '8D 报告已更新' : '8D 报告已创建')
@@ -93,6 +96,7 @@ async function save(data: EightDReportInput) {
 }
 
 async function remove(report: ReportRow) {
+  if (!canCreate.value || !report._canModify) return
   try {
     await ElMessageBox.confirm(`确定删除“${report.title}”吗？`, '删除 8D 报告', { type: 'warning' })
     await deleteEightDReport(report.id)
@@ -105,26 +109,23 @@ usePoiViewContribution(() => route.fullPath, {
   primary: {
     component: PoiEightDReportsPrimary,
     props: computed(() => ({
+      viewKey: 'phoenix-open-issue-eight-d-reports',
       filter: filter.value,
       counts: counts.value,
-      canCreate: canCreate.value,
       onSelectFilter: (value: RelationFilter) => { filter.value = value },
-      onCreate: openCreate,
     })),
   },
 })
 </script>
 
 <template>
-  <div class="page">
-    <PnwPageHeader title="8D 报告">
-      <template #actions>
-        <el-input v-model="search" clearable placeholder="搜索报告或关联 Issue" class="report-search" />
-        <el-button v-if="canCreate" type="primary" @click="openCreate">新建报告</el-button>
-      </template>
-    </PnwPageHeader>
+  <PoiCompactEditorView title="8D 报告" content-aria-label="8D 报告列表">
+    <template #actions>
+      <el-input v-model="search" clearable placeholder="搜索报告或关联 Issue" class="report-search" />
+      <el-button v-if="canCreate" type="primary" @click="openCreate">新建报告</el-button>
+    </template>
 
-    <el-table :data="filtered" v-loading="loading" stripe size="small">
+    <el-table class="view-table" :data="filtered" v-loading="loading" stripe size="small">
       <el-table-column prop="title" label="报告" min-width="220" show-overflow-tooltip />
       <el-table-column label="关联 Issue" min-width="230">
         <template #default="{ row }">
@@ -139,7 +140,7 @@ usePoiViewContribution(() => route.fullPath, {
       <el-table-column label="更新于" width="120"><template #default="{ row }">{{ row.updatedAt.slice(0, 10) }}</template></el-table-column>
       <el-table-column label="操作" width="145" fixed="right">
         <template #default="{ row }">
-          <template v-if="row._canModify">
+          <template v-if="row._canModify && canCreate">
             <el-button link type="primary" @click="openEdit(row)">编辑</el-button>
             <el-button link type="danger" @click="remove(row)">删除</el-button>
           </template>
@@ -156,11 +157,12 @@ usePoiViewContribution(() => route.fullPath, {
       @confirm="save"
       @close="showDialog = false"
     />
-  </div>
+  </PoiCompactEditorView>
 </template>
 
 <style scoped>
-.page { padding:16px; }
 .report-search { width:260px; }
 .readonly { color:var(--el-text-color-placeholder); }
+.view-table { width: 100%; }
+@media (max-width: 720px) { .report-search { width: min(48vw, 220px); } }
 </style>

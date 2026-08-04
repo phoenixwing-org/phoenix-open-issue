@@ -10,7 +10,7 @@ Owner：Open Issue maintainers
 
 ## 已完成基线
 
-- v0.1–v0.4 已覆盖基础 CRUD、多列表关联、汽车行业字段、推送/点检、数据字典、Linux 部署、数据保护与 SQLite/PostgreSQL adapter。
+- v0.1–v0.4 已覆盖基础 CRUD、多列表关联、汽车行业字段、推送/点检、数据字典、Linux 部署、数据保护与双数据库 adapter；该 adapter 现仅作历史迁移兼容。
 - **当前包版本 `0.6.1`**：含飞书 OAuth 二期、Wing 工作台接入、完整 View contribution、Issue 状态/点检时间改进、用户定向推送，以及首个独立 8D 附属报告；见 [CHANGELOG](CHANGELOG.md)。
 - 8D 使用可空 `eightDReports.relatedIssueId` 验证附属能力，不建设通用关联表；Issue 新增 `extensions JSONB` 只承载轻量扩展属性，不保存附属关系或动态表单。只有出现多目标、关系元数据或跨模块统一查询时再升级关联模型。实现边界见[扩展能力计划](附属功能与Issue关联计划.md)。
 - 仪表盘已增加[待办中心](仪表盘待办中心.md)，按责任视角聚合待我处理、我发起的推送和管理员审批；不建设重复的通用任务表。
@@ -22,7 +22,7 @@ Owner：Open Issue maintainers
 ## 当前优先级
 
 1. 将权限细化、搜索/全文检索、Issue 拖拽排序和头像上传拆成可关闭 Issue，并明确 owner、里程碑和验收证据。
-2. PostgreSQL 作为唯一正式支持数据库；SQLite 进入弃用过渡期，完整移除工作见 `TODO.md`，本轮只保留旧库/自动化兼容。
+2. PostgreSQL 作为唯一正式支持数据库；旧本地数据库兼容进入弃用过渡期，完整移除工作见 `admin-plugin-rectification/TODO.md`。
 3. `@open-issue/core` 是否公开发布由第二个消费者与 API 稳定性决定，不为追求包数量提前拆 `@open-issue/ui`。
 
 ## 文档合并关系

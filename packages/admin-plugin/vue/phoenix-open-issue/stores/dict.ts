@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
-import { computed, ref } from 'vue'
+import { computed, ref, watch } from 'vue'
+import { useBase } from '/$/base'
 import * as api from '/$/phoenix-open-issue/api/dict'
 import { hasDictTag, type DictItem } from '/$/phoenix-open-issue/core'
 
@@ -22,7 +23,85 @@ export type DictTaggedOption = DictOption & { tags: string }
 
 const GROUP_COLORS = ['#409EFF', '#67C23A', '#E6A23C', '#909399', '#F56C6C', '#9B59B6', '#1ABC9C', '#3498DB', '#E74C3C']
 
+export const DICT_CACHE_STORAGE_KEY = 'phoenix-open-issue.dict-cache.v1'
+
+type DictCacheItem = Pick<
+  DictItem,
+  'groupName' | 'value' | 'label' | 'sortOrder' | 'enabled' | 'tags'
+>
+
+interface DictCachePayload {
+  version: 1
+  items: DictCacheItem[]
+}
+
+type DictCacheStorage = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
+
+function browserStorage(): DictCacheStorage | null {
+  try {
+    return typeof localStorage === 'undefined' ? null : localStorage
+  } catch {
+    return null
+  }
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
+function toCachedDictItem(value: unknown): DictItem | null {
+  if (!isRecord(value)) return null
+  if (typeof value.groupName !== 'string' || !(value.groupName in DICT_GROUPS)) return null
+  if (typeof value.value !== 'string' || !value.value) return null
+  if (typeof value.label !== 'string' || !value.label) return null
+  if (typeof value.sortOrder !== 'number' || !Number.isFinite(value.sortOrder)) return null
+  if (value.enabled !== 0 && value.enabled !== 1) return null
+  if (typeof value.tags !== 'string') return null
+
+  return {
+    id: `cache:${value.groupName}:${value.value}`,
+    groupName: value.groupName,
+    value: value.value,
+    label: value.label,
+    sortOrder: value.sortOrder,
+    enabled: value.enabled,
+    tags: value.tags,
+    createdAt: '',
+  }
+}
+
+export function decodeDictCache(raw: string | null): DictItem[] | null {
+  if (!raw) return null
+  try {
+    const payload: unknown = JSON.parse(raw)
+    if (!isRecord(payload) || payload.version !== 1 || !Array.isArray(payload.items)) {
+      return null
+    }
+    const items = payload.items.map(toCachedDictItem)
+    if (items.length === 0 || items.some(item => item === null)) return null
+    return items as DictItem[]
+  } catch {
+    return null
+  }
+}
+
+export function encodeDictCache(items: DictItem[]): string {
+  const payload: DictCachePayload = {
+    version: 1,
+    items: items.map(item => ({
+      groupName: item.groupName,
+      value: item.value,
+      label: item.label,
+      sortOrder: item.sortOrder,
+      enabled: item.enabled,
+      tags: item.tags,
+    })),
+  }
+  return JSON.stringify(payload)
+}
+
 export const useDictStore = defineStore('phoenix-open-issue-dict', () => {
+  const { user: hostUser } = useBase()
   const items = ref<DictItem[]>([])
   /** 启用项，按 groupName 索引 */
   const groupCache = ref<Record<string, DictItem[]>>({})
@@ -32,6 +111,27 @@ export const useDictStore = defineStore('phoenix-open-issue-dict', () => {
   const loading = ref(false)
 
   let loadPromise: Promise<void> | null = null
+  let loadGeneration = 0
+
+  function restore() {
+    const storage = browserStorage()
+    if (!storage) return
+    try {
+      const cached = decodeDictCache(storage.getItem(DICT_CACHE_STORAGE_KEY))
+      if (!cached) return
+      items.value = cached
+      rebuildCache()
+      loaded.value = true
+    } catch { /* storage may be unavailable */ }
+  }
+
+  function persist() {
+    const storage = browserStorage()
+    if (!storage) return
+    try {
+      storage.setItem(DICT_CACHE_STORAGE_KEY, encodeDictCache(items.value))
+    } catch { /* quota/security errors must not break dictionary display */ }
+  }
 
   function rebuildCache() {
     const groups: Record<string, DictItem[]> = {}
@@ -53,22 +153,29 @@ export const useDictStore = defineStore('phoenix-open-issue-dict', () => {
   }
 
   async function load(force = false) {
+    if (loadPromise) return loadPromise
     if (loaded.value && !force) return
-    if (loadPromise && !force) return loadPromise
 
-    loadPromise = (async () => {
+    const generation = loadGeneration
+    let request!: Promise<void>
+    request = (async () => {
       loading.value = true
       try {
         const res = await api.getAllDict()
+        if (generation !== loadGeneration) return
         items.value = res.data
         rebuildCache()
         loaded.value = true
+        persist()
       } catch { /* ignore */ }
       finally {
-        loading.value = false
-        loadPromise = null
+        if (loadPromise === request) {
+          loading.value = false
+          loadPromise = null
+        }
       }
     })()
+    loadPromise = request
 
     return loadPromise
   }
@@ -76,11 +183,17 @@ export const useDictStore = defineStore('phoenix-open-issue-dict', () => {
   const ensureLoaded = load
 
   function clear() {
+    loadGeneration += 1
     items.value = []
     groupCache.value = {}
     labelIndex.value = {}
     loaded.value = false
+    loading.value = false
     loadPromise = null
+    const storage = browserStorage()
+    try {
+      storage?.removeItem(DICT_CACHE_STORAGE_KEY)
+    } catch { /* storage may be unavailable */ }
   }
 
   function getGroup(groupName: string): DictItem[] {
@@ -120,9 +233,21 @@ export const useDictStore = defineStore('phoenix-open-issue-dict', () => {
   }
 
   async function refresh() {
-    loaded.value = false
     return load(true)
   }
+
+  // 先同步恢复非敏感显示缓存，再在进入已登录插件时刷新 Host 字典。
+  // 初始 token 可能仍在 Host 恢复中，不能把“尚未恢复”误判为登出并立即删掉缓存；
+  // 只有真实的已登录 -> 未登录转换才清除缓存。
+  restore()
+  if (hostUser.token) void refresh()
+  watch(
+    () => Boolean(hostUser.token),
+    (loggedIn, wasLoggedIn) => {
+      if (loggedIn) void refresh()
+      else if (wasLoggedIn) clear()
+    },
+  )
 
   /** 各分组选项（响应式，模板可直接 dict.options.listType） */
   const options = computed(() => {

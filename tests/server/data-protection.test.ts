@@ -11,6 +11,7 @@ let adminId: string
 beforeAll(async () => {
   tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'open-issue-test-'))
   process.env.DB_DRIVER = 'sqlite'
+  process.env.ALLOW_LEGACY_SQLITE = 'true'
   process.env.DB_PATH = path.join(tempDir, 'test.sqlite')
   process.env.SERVE_STATIC = 'false'
 

@@ -94,17 +94,34 @@ function fallbackGroup(groupName: IssueDictGroup): DictItem[] {
   }))
 }
 
+function hostValue(item: HostDictItem): string {
+  return String(item.value ?? item.id)
+}
+
+/**
+ * COOL 在未配置显示名时可能把稳定协议 value 原样放进 name。
+ * 这不是自定义显示名：已知协议值继续使用插件内置中文；只有非空且不等于
+ * value 的 Host name 才覆盖 fallback。Host 扩展值没有内置中文时退回 value。
+ */
+function resolveHostLabel(item: HostDictItem, fallbackLabel?: string): string {
+  const value = hostValue(item)
+  const name = String(item.name ?? '').trim()
+  if (name && name !== value) return name
+  return fallbackLabel ?? value
+}
+
 function toHostItem(
   groupName: IssueDictGroup,
   item: HostDictItem,
   sortOrder: number,
   tags = 'host',
+  fallbackLabel?: string,
 ): DictItem {
   return {
     id: `cool:${item.id}`,
     groupName,
-    value: String(item.value ?? item.id),
-    label: item.name,
+    value: hostValue(item),
+    label: resolveHostLabel(item, fallbackLabel),
     sortOrder,
     enabled: 1,
     tags,
@@ -116,13 +133,13 @@ function protocolGroup(
   groupName: 'severity' | 'priority',
   items: HostDictItem[],
 ): DictItem[] {
-  const byValue = new Map(items.map(item => [String(item.value ?? item.id), item]))
+  const byValue = new Map(items.map(item => [hostValue(item), item]))
   return fallbackGroup(groupName).map((fallback, sortOrder) => {
     const host = byValue.get(fallback.value)
     return {
       ...fallback,
       id: host ? `cool:${host.id}` : fallback.id,
-      label: host?.name ?? fallback.label,
+      label: host ? resolveHostLabel(host, fallback.label) : fallback.label,
       sortOrder,
       tags: 'core',
     }
@@ -132,14 +149,14 @@ function protocolGroup(
 function listTypeGroup(items: HostDictItem[]): DictItem[] {
   if (items.length === 0) return fallbackGroup('listType')
   const core = fallbackGroup('listType').filter(item => item.tags === 'core')
-  const hostByValue = new Map(items.map(item => [String(item.value ?? item.id), item]))
+  const hostByValue = new Map(items.map(item => [hostValue(item), item]))
   const protectedItems = core.map((fallback, sortOrder) => {
     const host = hostByValue.get(fallback.value)
     hostByValue.delete(fallback.value)
     return {
       ...fallback,
       id: host ? `cool:${host.id}` : fallback.id,
-      label: host?.name ?? fallback.label,
+      label: host ? resolveHostLabel(host, fallback.label) : fallback.label,
       sortOrder,
     }
   })
@@ -160,8 +177,18 @@ export function toIssueDictItems(
     }
     if (groupName === 'listType') return listTypeGroup(items)
     if (items.length === 0) return fallbackGroup(groupName)
-    return items.map((item, index) =>
-      toHostItem(groupName, item, item.orderNum ?? index),
+    const fallbackByValue = new Map(
+      fallbackGroup(groupName).map(item => [item.value, item.label]),
     )
+    return items.map((item, index) => {
+      const value = hostValue(item)
+      return toHostItem(
+        groupName,
+        item,
+        item.orderNum ?? index,
+        'host',
+        fallbackByValue.get(value),
+      )
+    })
   })
 }

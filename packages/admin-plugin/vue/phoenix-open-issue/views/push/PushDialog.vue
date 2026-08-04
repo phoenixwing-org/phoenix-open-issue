@@ -6,6 +6,7 @@ import { getAllUsers } from '/$/phoenix-open-issue/api/auth'
 import { previewPush, pushIssues } from '/$/phoenix-open-issue/api/push'
 import { ElMessage } from 'element-plus'
 import type { UserPublic } from '/$/phoenix-open-issue/core'
+import { useIssueCapabilities } from '/$/phoenix-open-issue/composables/useIssueCapabilities'
 
 const props = defineProps<{
   listId: string
@@ -15,6 +16,8 @@ const emit = defineEmits<{ close: [] }>()
 
 const listStore = useIssueListStore()
 const authStore = useAuthStore()
+const capabilities = useIssueCapabilities()
+const canListHostUsers = computed(() => capabilities.has('base:sys:user:list'))
 const targetType = ref<'list' | 'user'>('list')
 const targetListId = ref('')
 const targetUserId = ref('')
@@ -25,7 +28,7 @@ const previewResult = ref<any>(null)
 
 const targetLists = computed(() => listStore.lists.filter(list => list.id !== props.listId))
 const targetUsers = computed(() => users.value.filter(user =>
-  user.id !== authStore.user?.id && user.systemRole !== 'viewer' && !user.disabled,
+  user.id !== authStore.user?.id && !user.disabled,
 ))
 const canSubmit = computed(() => !!props.preselectedIssueIds?.length && (
   targetType.value === 'user' ? !!targetUserId.value : !!previewResult.value?.canPush
@@ -38,7 +41,10 @@ watch(targetType, () => {
 })
 
 onMounted(async () => {
-  const [, userResponse] = await Promise.all([listStore.fetchLists(), getAllUsers()])
+  const [, userResponse] = await Promise.all([
+    listStore.fetchLists(),
+    canListHostUsers.value ? getAllUsers() : Promise.resolve({ data: [] }),
+  ])
   users.value = userResponse.data as UserPublic[]
 })
 
@@ -100,7 +106,7 @@ async function onPush() {
       <el-form-item label="推送方式">
         <el-radio-group v-model="targetType">
           <el-radio-button value="list">推送到列表</el-radio-button>
-          <el-radio-button value="user">推送给用户</el-radio-button>
+          <el-radio-button v-if="canListHostUsers" value="user">推送给用户</el-radio-button>
         </el-radio-group>
       </el-form-item>
 

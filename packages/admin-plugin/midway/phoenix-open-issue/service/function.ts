@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import { Inject, Provide } from "@midwayjs/core";
+import { Provide } from "@midwayjs/core";
 import { InjectDataSource, InjectEntityModel } from "@midwayjs/typeorm";
 import { CoolCommException } from "@cool-midway/core";
 import { DataSource, Repository } from "typeorm";
@@ -13,13 +13,9 @@ import {
   type OpenIssueFunctionInput,
 } from "../domain/function";
 import { OpenIssueFunctionEntity } from "../entity/function";
-import { OpenIssueAccessService } from "./access";
 
 @Provide()
 export class OpenIssueFunctionService {
-  @Inject()
-  access: OpenIssueAccessService;
-
   @InjectEntityModel(OpenIssueFunctionEntity)
   repository: Repository<OpenIssueFunctionEntity>;
 
@@ -31,11 +27,6 @@ export class OpenIssueFunctionService {
       error instanceof Error ? error.message : "功能数据无效",
       400
     );
-  }
-
-  private assertAdmin() {
-    if (!this.access.isSystemAdmin())
-      throw new CoolCommException("仅 Host 系统管理员可维护功能表", 403);
   }
 
   async list(query: Record<string, unknown>) {
@@ -101,7 +92,6 @@ export class OpenIssueFunctionService {
   }
 
   async create(value: unknown) {
-    this.assertAdmin();
     let input;
     try {
       input = normalizeFunctionInput(value);
@@ -134,7 +124,6 @@ export class OpenIssueFunctionService {
   }
 
   async update(id: string, value: unknown) {
-    this.assertAdmin();
     const item = await this.get(id);
     let input;
     try {
@@ -155,7 +144,6 @@ export class OpenIssueFunctionService {
   }
 
   async delete(id: string) {
-    this.assertAdmin();
     const item = await this.get(id);
     item.enabled = 0;
     item.updatedAt = new Date().toISOString();
@@ -163,7 +151,6 @@ export class OpenIssueFunctionService {
   }
 
   async setEnabled(id: string, value: unknown) {
-    this.assertAdmin();
     const item = await this.get(id);
     let enabled;
     try {
@@ -177,7 +164,6 @@ export class OpenIssueFunctionService {
   }
 
   async import(value: unknown) {
-    this.assertAdmin();
     let rows: OpenIssueFunctionInput[];
     try {
       rows = normalizeFunctionImportRows(

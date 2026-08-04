@@ -3,22 +3,24 @@ import { onMounted, ref, computed, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useIssueListStore } from '/$/phoenix-open-issue/stores/issueLists'
 import { useAuthStore } from '/$/phoenix-open-issue/stores/auth'
-import { canPerformListAction, isSystemAdmin, isSystemViewer } from '/$/phoenix-open-issue/core'
+import { canPerformListAction } from '/$/phoenix-open-issue/core'
 import type { MemberRole } from '/$/phoenix-open-issue/core'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
-import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
 import PageHelpButton from "/$/phoenix-open-issue/components/PageHelpButton.vue"
 import ListFormDialog from '/$/phoenix-open-issue/components/ListFormDialog.vue'
+import PoiCompactEditorView from '/$/phoenix-open-issue/components/workbench/PoiCompactEditorView.vue'
 import { useDictGroup } from '/$/phoenix-open-issue/composables/useDictGroup'
 import { confirmListArchive, listLifecycleStatus } from '/$/phoenix-open-issue/utils/listLifecycle'
 import PoiIssueListPrimary from '/$/phoenix-open-issue/components/workbench/PoiIssueListPrimary.vue'
 import { usePoiViewContribution } from '/$/phoenix-open-issue/layout/workbench/poiViewContributions'
+import { useIssueCapabilities } from '/$/phoenix-open-issue/composables/useIssueCapabilities'
 
 const route = useRoute()
 const router = useRouter()
 const store = useIssueListStore()
 const auth = useAuthStore()
+const capabilities = useIssueCapabilities()
 const listTypeDict = useDictGroup('listType')
 const showCreate = ref(false)
 const editTarget = ref<string | null>(null)
@@ -30,8 +32,8 @@ const currentPage = ref(1)
 const pageSize = ref(30)
 const PAGE_SIZE_OPTIONS = [30, 50, 100]
 
-const isAdmin = computed(() => isSystemAdmin(auth.user ?? undefined))
-const canCreateList = computed(() => Boolean(auth.user && !isSystemViewer(auth.user)))
+const canAdministerLists = computed(() => capabilities.can('phoenix-open-issue:list:admin'))
+const canCreateList = computed(() => capabilities.can('phoenix-open-issue:list:create'))
 
 const filteredLists = computed(() => {
   const keyword = searchText.value.trim().toLocaleLowerCase()
@@ -71,10 +73,14 @@ usePoiViewContribution(() => route.fullPath, {
   primary: {
     component: PoiIssueListPrimary,
     props: computed(() => ({
+      viewKey: 'phoenix-open-issue-lists',
+      listView: listView.value,
+      canAdministerLists: canAdministerLists.value,
       searchText: searchText.value,
       listType: listTypeFilter.value,
       listTypeOptions: listTypeDict.options.value,
       hasActiveFilters: hasActiveFilters.value,
+      onSelectView: (value: ListView) => { void switchView(value) },
       onUpdateSearch: (value: string) => {
         searchText.value = value
       },
@@ -93,11 +99,11 @@ onMounted(() => {
 async function loadLists() {
   switch (listView.value) {
     case 'all':
-      if (isAdmin.value) await store.fetchAllLists(true, true)
+      if (canAdministerLists.value) await store.fetchAllLists(true, true)
       else await store.fetchLists(true)
       break
     case 'active':
-      if (isAdmin.value) await store.fetchAllLists()
+      if (canAdministerLists.value) await store.fetchAllLists()
       else await store.fetchLists()
       break
     case 'archived':
@@ -116,18 +122,24 @@ async function switchView(view: string | number | boolean | undefined) {
 }
 
 function canEditOwner(row: { myRole?: MemberRole | null }) {
-  if (!auth.user) return false
-  return canPerformListAction(auth.user, row.myRole ?? null, 'manage-members')
+  return capabilities.can('phoenix-open-issue:list:update') &&
+    capabilities.has('base:sys:user:list') &&
+    canPerformListAction({ hostRoot: auth.isHostRoot }, row.myRole ?? null, 'manage-members')
 }
 
 function canEdit(row: { myRole?: MemberRole | null }) {
-  if (!auth.user) return false
-  return canPerformListAction(auth.user, row.myRole ?? null, 'manage-list')
+  return capabilities.can('phoenix-open-issue:list:update') &&
+    canPerformListAction({ hostRoot: auth.isHostRoot }, row.myRole ?? null, 'manage-list')
+}
+
+function canArchive(row: { myRole?: MemberRole | null }) {
+  return capabilities.can('phoenix-open-issue:list:archive') &&
+    canPerformListAction({ hostRoot: auth.isHostRoot }, row.myRole ?? null, 'manage-list')
 }
 
 function canDelete(row: { myRole?: MemberRole | null }) {
-  if (!auth.user) return false
-  return canPerformListAction(auth.user, row.myRole ?? null, 'delete-list')
+  return capabilities.can('phoenix-open-issue:list:delete') &&
+    canPerformListAction({ hostRoot: auth.isHostRoot }, row.myRole ?? null, 'delete-list')
 }
 
 function goDetail(id: string, name: string) {
@@ -136,12 +148,15 @@ function goDetail(id: string, name: string) {
 }
 
 async function onCreate(data: any) {
+  if (!canCreateList.value) return
   await store.createList(data)
   showCreate.value = false
   ElMessage.success('创建成功')
 }
 
 async function onEdit(data: any) {
+  const row = store.lists.find(list => list.id === editTarget.value)
+  if (!row || !canEdit(row)) return
   if (editTarget.value) {
     await store.updateList(editTarget.value, data)
     editTarget.value = null
@@ -150,6 +165,8 @@ async function onEdit(data: any) {
 }
 
 async function onDelete(id: string, name: string) {
+  const row = store.lists.find(list => list.id === id)
+  if (!row || !canDelete(row)) return
   try {
     await ElMessageBox.confirm(
       `确定删除列表「${name}」？列表将被标记为已删除，数据仍保留在系统中。`,
@@ -164,12 +181,15 @@ async function onDelete(id: string, name: string) {
 }
 
 async function onArchive(id: string, name: string, archived: boolean) {
+  const row = store.lists.find(list => list.id === id)
+  if (!row || !canArchive(row)) return
   if (!await confirmListArchive(name, archived)) return
   await store.archiveList(id, archived)
   await loadLists()
 }
 
 async function onRestore(id: string, name: string) {
+  if (!canAdministerLists.value) return
   try {
     await ElMessageBox.confirm(
       `确定恢复列表「${name}」？`,
@@ -185,26 +205,13 @@ async function onRestore(id: string, name: string) {
 </script>
 
 <template>
-  <div class="page">
-    <PnwPageHeader title="列表管理">
-      <template #actions>
-        <el-button v-if="['all', 'active'].includes(listView) && canCreateList" type="primary" @click="showCreate = true" data-tour="lists-create">
-          <el-icon><Plus /></el-icon> 新建列表
-        </el-button>
-        <el-radio-group
-          v-model="listView"
-          size="small"
-          @change="switchView"
-          data-tour="lists-status"
-        >
-          <el-radio-button value="all">全部</el-radio-button>
-          <el-radio-button value="active">正常</el-radio-button>
-          <el-radio-button value="archived">已归档</el-radio-button>
-          <el-radio-button v-if="isAdmin" value="deleted">已删除</el-radio-button>
-        </el-radio-group>
-      </template>
-      <template #help><PageHelpButton page-id="lists" /></template>
-    </PnwPageHeader>
+  <PoiCompactEditorView title="列表管理" content-aria-label="Open Issue 列表管理">
+    <template #actions>
+      <el-button v-if="['all', 'active'].includes(listView) && canCreateList" type="primary" @click="showCreate = true" data-tour="lists-create">
+        <el-icon><Plus /></el-icon> 新建列表
+      </el-button>
+    </template>
+    <template #help><PageHelpButton page-id="lists" /></template>
 
     <el-table :data="paginatedLists" v-loading="store.loading" stripe data-tour="lists-table">
       <el-table-column type="index" :index="(index: number) => (currentPage - 1) * pageSize + index + 1" label="#" width="50" align="center" fixed />
@@ -223,7 +230,7 @@ async function onRestore(id: string, name: string) {
       </el-table-column>
       <el-table-column prop="listType" label="类型" width="90" align="center">
         <template #default="{ row }">
-          <el-tag :color="listTypeDict.color(row.listType)" effect="dark" size="small" style="color:#fff">
+          <el-tag :color="listTypeDict.color(row.listType)" effect="dark" size="small" class="list-type-tag">
             {{ listTypeDict.label(row.listType) }}
           </el-tag>
         </template>
@@ -254,12 +261,12 @@ async function onRestore(id: string, name: string) {
       <el-table-column label="操作" width="190" fixed="right">
         <template #default="{ row }">
           <template v-if="row.isDeleted">
-            <el-button link type="success" size="small" @click.stop="onRestore(row.id, row.name)">恢复</el-button>
+            <el-button v-if="canAdministerLists" link type="success" size="small" @click.stop="onRestore(row.id, row.name)">恢复</el-button>
           </template>
           <template v-else>
             <el-button v-if="canEdit(row)" link type="primary" size="small" @click.stop="editTarget = row.id">编辑</el-button>
             <el-button
-              v-if="canEdit(row)"
+              v-if="canArchive(row)"
               link type="warning" size="small"
               @click.stop="onArchive(row.id, row.name, !row.archived)"
             >{{ row.archived ? '取消归档' : '归档' }}</el-button>
@@ -300,20 +307,10 @@ async function onRestore(id: string, name: string) {
       @confirm="onEdit"
       @close="editTarget = null"
     />
-  </div>
+  </PoiCompactEditorView>
 </template>
 
 <style scoped>
-.page-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-.page-head h2 {
-  font-size: 1.3rem;
-  font-weight: 650;
-}
 .cell-link {
   display: block;
   overflow: hidden;
@@ -329,10 +326,11 @@ async function onRestore(id: string, name: string) {
   margin-top: 12px;
 }
 .pagination-summary {
-  color: #909399;
+  color: var(--el-text-color-secondary, #909399);
   font-size: 0.8rem;
   white-space: nowrap;
 }
+.list-type-tag { color: var(--el-color-white, #fff); }
 :deep(.el-table th) {
   white-space: nowrap;
 }

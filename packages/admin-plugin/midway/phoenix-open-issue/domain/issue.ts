@@ -212,9 +212,9 @@ export function normalizeIssueIds(value: unknown): string[] {
 
 export function canModifyIssue(
   role: string | null,
-  systemAdmin: boolean
+  hostRoot: boolean
 ): boolean {
   return (
-    systemAdmin || role === 'owner' || role === 'admin' || role === 'editor'
+    hostRoot || role === 'owner' || role === 'admin' || role === 'editor'
   );
 }

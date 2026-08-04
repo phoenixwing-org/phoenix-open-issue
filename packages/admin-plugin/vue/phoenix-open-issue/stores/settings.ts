@@ -6,6 +6,11 @@ import {
   type IssueListColumnSettings,
   DEFAULT_ISSUE_SORT,
 } from '/$/phoenix-open-issue/config/issueListColumns'
+import {
+  normalizePoiPrimarySectionExpansion,
+  readPoiPrimarySectionExpanded,
+  writePoiPrimarySectionExpanded,
+} from '/$/phoenix-open-issue/core/algorithms/primary-section-state'
 
 export const useSettingsStore = defineStore('phoenix-open-issue-settings', () => {
   const stored = localStorage.getItem('open-issue-settings')
@@ -23,6 +28,7 @@ export const useSettingsStore = defineStore('phoenix-open-issue-settings', () =>
   const orgIncludeChildren = ref<boolean>(data.orgIncludeChildren !== false)    // 组织架构：默认含下级
   const funcNumericSort = ref<boolean>(data.funcNumericSort !== false)           // 功能表：外部ID按数字排序，默认勾选
   const funcSearch = ref<string>(data.funcSearch || '')                          // 功能表：搜索关键词
+  const primarySectionExpanded = ref(normalizePoiPrimarySectionExpansion(data.primarySectionExpanded))
   const issueListColumns = ref<IssueListColumnSettings>(upgradeIssueListColumns(
     data.issueListColumns,
     Number(data.issueListColumnsVersion) || 0,
@@ -41,6 +47,7 @@ export const useSettingsStore = defineStore('phoenix-open-issue-settings', () =>
       orgIncludeChildren: orgIncludeChildren.value,
       funcNumericSort: funcNumericSort.value,
       funcSearch: funcSearch.value,
+      primarySectionExpanded: primarySectionExpanded.value,
       issueListColumns: issueListColumns.value,
       issueListColumnsVersion: ISSUE_LIST_COLUMNS_VERSION,
     }))
@@ -57,6 +64,7 @@ export const useSettingsStore = defineStore('phoenix-open-issue-settings', () =>
   watch(orgIncludeChildren, persist)
   watch(funcNumericSort, persist)
   watch(funcSearch, persist)
+  watch(primarySectionExpanded, persist, { deep: true })
   watch(issueListColumns, persist, { deep: true })
 
   function setColWidth(col: string, width: number) {
@@ -67,9 +75,27 @@ export const useSettingsStore = defineStore('phoenix-open-issue-settings', () =>
     issueListColumns.value = upgradeIssueListColumns(cols, ISSUE_LIST_COLUMNS_VERSION)
   }
 
+  function getPrimarySectionExpanded(viewId: string, sectionId: string, defaultExpanded = true) {
+    return readPoiPrimarySectionExpanded(
+      primarySectionExpanded.value,
+      viewId,
+      sectionId,
+      defaultExpanded,
+    )
+  }
+
+  function setPrimarySectionExpanded(viewId: string, sectionId: string, expanded: boolean) {
+    primarySectionExpanded.value = writePoiPrimarySectionExpanded(
+      primarySectionExpanded.value,
+      viewId,
+      sectionId,
+      expanded,
+    )
+  }
+
   return {
     colWidths, maxTimelineRows, checkpointTimelineOrder, checkpointTimelineDisplay, issueTimelineWidth, defaultViewMode, cpYearThresholdMonths, issueSort,
-    orgIncludeChildren, funcNumericSort, funcSearch, issueListColumns,
-    setColWidth, setIssueListColumns,
+    orgIncludeChildren, funcNumericSort, funcSearch, primarySectionExpanded, issueListColumns,
+    setColWidth, setIssueListColumns, getPrimarySectionExpanded, setPrimarySectionExpanded,
   }
 })

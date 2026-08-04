@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useDictGroup } from '/$/phoenix-open-issue/composables/useDictGroup'
 import { getAllUsers } from '/$/phoenix-open-issue/api/auth'
 import type { UserPublic } from '/$/phoenix-open-issue/core'
+import { useIssueCapabilities } from '/$/phoenix-open-issue/composables/useIssueCapabilities'
 
 const props = defineProps<{
   initial?: { name: string; description: string; listType: string; ownerId?: string }
@@ -13,6 +14,8 @@ const emit = defineEmits<{
   close: []
 }>()
 
+const capabilities = useIssueCapabilities()
+const canListHostUsers = computed(() => capabilities.has('base:sys:user:list'))
 const { options: listTypeOptions, ensureLoaded: ensureListTypeLoaded, defaultOf: listTypeDefault } = useDictGroup('listType')
 const name = ref(props.initial?.name || '')
 const listType = ref(props.initial?.listType || '')
@@ -33,7 +36,7 @@ onMounted(async () => {
   if (!listType.value) {
     listType.value = listTypeDefault('custom')
   }
-  if (props.canEditOwner && isEdit.value) {
+  if (props.canEditOwner && isEdit.value && canListHostUsers.value) {
     const res = await getAllUsers()
     users.value = res.data
     if (!ownerId.value && props.initial?.ownerId) {
@@ -49,7 +52,7 @@ function submit() {
     listType: listType.value,
     description: description.value,
   }
-  if (props.canEditOwner && isEdit.value && ownerId.value) {
+  if (props.canEditOwner && isEdit.value && canListHostUsers.value && ownerId.value) {
     data.ownerId = ownerId.value
   }
   emit('confirm', data)
@@ -72,7 +75,7 @@ function submit() {
           />
         </el-select>
       </el-form-item>
-      <el-form-item v-if="canEditOwner && isEdit" label="负责人">
+      <el-form-item v-if="canEditOwner && isEdit && canListHostUsers" label="负责人">
         <el-select v-model="ownerId" filterable placeholder="选择负责人" :teleported="false" style="width:100%">
           <el-option v-for="o in userOptions" :key="o.value" :label="o.label" :value="o.value" />
         </el-select>

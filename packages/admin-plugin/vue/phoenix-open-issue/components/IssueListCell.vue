@@ -205,36 +205,36 @@ const row = computed(() => props.row)
 <style scoped>
 .cell-text { font-size: 0.85rem; }
 .cell-link { cursor: pointer; border-radius: 2px; }
-.cell-link:hover { color: #409eff; text-decoration: underline; text-underline-offset: 2px; }
+.cell-link:hover { color: var(--el-color-primary, #409eff); text-decoration: underline; text-underline-offset: 2px; }
 .cell-editable { cursor: pointer; border-radius: 2px; }
-.cell-editable:hover { color: #409eff; text-decoration: underline; text-underline-offset: 2px; }
+.cell-editable:hover { color: var(--el-color-primary, #409eff); text-decoration: underline; text-underline-offset: 2px; }
 .cell-editable-tag { cursor: pointer; }
-.cell-editable-tag:hover { opacity: 0.85; outline: 1px dashed #409eff; }
+.cell-editable-tag:hover { opacity: 0.85; outline: 1px dashed var(--el-color-primary, #409eff); }
 .cell-mono { font-family: monospace; font-size: 0.8rem; }
-.cell-na { color: #c0c4cc; }
-.cell-editable.cell-na:hover { color: #909399; }
-.cell-date { font-family: monospace; font-size: 0.8rem; color: #909399; }
+.cell-na { color: var(--el-text-color-placeholder, #c0c4cc); }
+.cell-editable.cell-na:hover { color: var(--el-text-color-secondary, #909399); }
+.cell-date { font-family: monospace; font-size: 0.8rem; color: var(--el-text-color-secondary, #909399); }
 .cp-mini-list { font-size: 0.8rem; line-height: 1.6; position: relative; padding-bottom: 18px; }
 .cp-mini-item { display: flex; gap: 6px; align-items: baseline; padding: 1px 0; }
 .cp-mini-item.cp-editable { cursor: pointer; border-radius: 2px; }
-.cp-mini-item.cp-editable:hover { background: #ecf5ff; }
-.cp-mini-item.cp-overdue { margin: 0 -4px; background: #fef0f0; border-radius: 2px; padding: 1px 4px; }
-.cp-mini-item.cp-overdue.cp-editable:hover { background: #fde2e2; }
+.cp-mini-item.cp-editable:hover { background: var(--el-color-primary-light-9, #ecf5ff); }
+.cp-mini-item.cp-overdue { margin: 0 -4px; background: var(--el-color-danger-light-9, #fef0f0); border-radius: 2px; padding: 1px 4px; }
+.cp-mini-item.cp-overdue.cp-editable:hover { background: var(--el-color-danger-light-8, #fde2e2); }
 .cp-mini-icon { flex-shrink: 0; font-size: 0.75rem; }
-.cp-mini-date { flex-shrink: 0; color: #909399; font-family: monospace; font-size: 0.75rem; }
-.cp-mini-desc { flex: 1; color: #303133; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.cp-mini-who { flex-shrink: 0; color: #c0c4cc; font-size: 0.7rem; }
-.cp-mini-empty { color: #c0c4cc; font-style: italic; }
+.cp-mini-date { flex-shrink: 0; color: var(--el-text-color-secondary, #909399); font-family: monospace; font-size: 0.75rem; }
+.cp-mini-desc { flex: 1; color: var(--el-text-color-primary, #303133); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cp-mini-who { flex-shrink: 0; color: var(--el-text-color-placeholder, #c0c4cc); font-size: 0.7rem; }
+.cp-mini-empty { color: var(--el-text-color-placeholder, #c0c4cc); font-style: italic; }
 .cp-mini-more {
-  position: absolute; bottom: -3px; right: 26px; color: #909399;
-  background: #f0f2f5; font-size: 0.62rem; padding: 1px 6px; border-radius: 10px;
+  position: absolute; bottom: -3px; right: 26px; color: var(--el-text-color-secondary, #909399);
+  background: var(--el-fill-color-light, #f0f2f5); font-size: 0.62rem; padding: 1px 6px; border-radius: 10px;
 }
 .cp-mini-add {
   position: absolute; bottom: -3px; right: 4px;
   display: grid; place-items: center;
   width: 18px; height: 18px; padding: 0;
-  color: #409eff; background: #ecf5ff; border: 1px solid #b3d8ff; border-radius: 9px;
+  color: var(--el-color-primary, #409eff); background: var(--el-color-primary-light-9, #ecf5ff); border: 1px solid var(--el-color-primary-light-5, #b3d8ff); border-radius: 9px;
   cursor: pointer; font-size: 15px; line-height: 1;
 }
-.cp-mini-add:hover { color: #fff; background: #409eff; border-color: #409eff; }
+.cp-mini-add:hover { color: var(--el-color-white, #fff); background: var(--el-color-primary, #409eff); border-color: var(--el-color-primary, #409eff); }
 </style>

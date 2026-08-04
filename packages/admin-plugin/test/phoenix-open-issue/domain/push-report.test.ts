@@ -57,6 +57,7 @@ describe("Open Issue 推送领域算法", () => {
     expect(normalizePushAction("accepted")).toBe("accepted");
     expect(() => normalizePushAction("done")).toThrow("动作");
     expect(normalizeDashboardScope(undefined)).toBe("summary");
+    expect(() => normalizeDashboardScope("admin")).toThrow("Tab");
     expect(() => normalizeDashboardScope("other")).toThrow("Tab");
     expect(normalizeDashboardLimit(100)).toBe(20);
     expect(normalizeDashboardLimit("bad")).toBe(5);

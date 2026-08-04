@@ -284,7 +284,7 @@ export async function seedTestData(): Promise<string[]> {
   await db.run(`INSERT INTO issues (id, listId, issueNo, title, description, status, priority, severity, category, detectionPhase, reporterId, assigneeId, dueDate, sortOrder, createdBy, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     [i3, list2Id, 'ISS-2026-0003', 'API 响应超时', '查询列表接口偶发 5s+ 超时', 'open', 'critical', 'fatal', 'function', 'audit', uid_ls, uid_admin, '2026-07-05', 0, uid_ls, now, now])
   await db.run(`INSERT INTO eightDReports (id, relatedIssueId, title, containment, rootCause, correctiveAction, createdBy, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [generateId(), i3, '8D · API 响应超时', '增加查询超时熔断', 'SQLite WAL 锁竞争', '优化查询 + 加索引 + 连接池', uid_ls, now, now])
+    [generateId(), i3, '8D · API 响应超时', '增加查询超时熔断', '数据库写锁竞争', '优化查询 + 加索引 + 连接池', uid_ls, now, now])
   await db.run('INSERT INTO checkpoints (id, issueId, checkpointDate, description, status, responsibleUserId, sortOrder, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
     [generateId(), i3, '2026-06-28', '排查数据库慢查询', 'done', uid_admin, 0, now, now])
   await db.run('INSERT INTO checkpoints (id, issueId, checkpointDate, description, status, responsibleUserId, sortOrder, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',

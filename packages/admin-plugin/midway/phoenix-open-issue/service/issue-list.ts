@@ -54,7 +54,7 @@ export class OpenIssueListService {
     return String(value);
   }
 
-  private isSystemAdmin(): boolean {
+  private isHostRoot(): boolean {
     return this.ctx.admin?.username === 'admin';
   }
 
@@ -71,11 +71,13 @@ export class OpenIssueListService {
     all?: boolean;
   }): Promise<ListResult[]> {
     const actorId = this.actorId();
-    if ((options.all || options.deletedOnly) && !this.isSystemAdmin()) {
-      throw new CoolCommException('只有 Host 管理员可以查看全部列表', 403);
-    }
+    // all/deleted endpoints are isolated behind list:admin in the manifest;
+    // ordinary list reads still apply the plugin-owned membership boundary.
+    const globalScope = Boolean(
+      options.all || options.deletedOnly || this.isHostRoot()
+    );
 
-    const memberListIds = this.isSystemAdmin()
+    const memberListIds = globalScope
       ? []
       : (
           await this.memberRepository.find({
@@ -85,7 +87,7 @@ export class OpenIssueListService {
         ).map(item => item.listId);
 
     const query = this.listRepository.createQueryBuilder('list');
-    if (!this.isSystemAdmin()) {
+    if (!globalScope) {
       if (memberListIds.length > 0) {
         query.andWhere(
           '(list.ownerId = :actorId OR list.id IN (:...memberListIds))',
@@ -166,13 +168,13 @@ export class OpenIssueListService {
   }
 
   private async assertReadable(list: OpenIssueListEntity) {
-    if (this.isSystemAdmin()) return;
+    if (this.isHostRoot()) return;
     if (!(await this.roleFor(list)))
       throw new CoolCommException('无权查看此列表', 403);
   }
 
   private async assertManageable(list: OpenIssueListEntity) {
-    if (!canManageIssueList(await this.roleFor(list), this.isSystemAdmin())) {
+    if (!canManageIssueList(await this.roleFor(list), this.isHostRoot())) {
       throw new CoolCommException('无权管理此列表', 403);
     }
   }
@@ -379,7 +381,7 @@ export class OpenIssueListService {
   async delete(id: string): Promise<void> {
     const list = await this.requiredList(id);
     const role = await this.roleFor(list);
-    if (!this.isSystemAdmin() && role !== 'owner') {
+    if (!this.isHostRoot() && role !== 'owner') {
       throw new CoolCommException('只有 Host 管理员或列表负责人可以删除', 403);
     }
     const now = new Date().toISOString();
@@ -390,8 +392,6 @@ export class OpenIssueListService {
   }
 
   async restore(id: string): Promise<ListResult> {
-    if (!this.isSystemAdmin())
-      throw new CoolCommException('只有 Host 管理员可以恢复列表', 403);
     const list = await this.requiredList(id, true);
     if (list.isDeleted !== 1)
       throw new CoolCommException('列表未处于删除状态', 400);

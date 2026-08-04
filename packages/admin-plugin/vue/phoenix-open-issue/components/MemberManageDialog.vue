@@ -148,8 +148,8 @@ function onRoleChange(m: { userId: string; role: string }, newRole: string) {
 </template>
 
 <style scoped>
-.hint { margin: 0 0 12px; font-size: 0.85rem; color: #909399; line-height: 1.5; }
-.hint-sm { margin: 0 0 8px; font-size: 0.78rem; color: #909399; }
-.text-muted { color: #c0c4cc; font-size: 12px; }
+.hint { margin: 0 0 12px; font-size: 0.85rem; color: var(--el-text-color-secondary, #909399); line-height: 1.5; }
+.hint-sm { margin: 0 0 8px; font-size: 0.78rem; color: var(--el-text-color-secondary, #909399); }
+.text-muted { color: var(--el-text-color-placeholder, #c0c4cc); font-size: 12px; }
 .add-member { display: flex; gap: 8px; flex-wrap: wrap; }
 </style>

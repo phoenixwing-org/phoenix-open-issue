@@ -9,6 +9,7 @@ import {
   ISSUE_CORE_SOURCE_ROOT,
   ISSUE_CORE_TARGET_ROOT,
   ISSUE_UI_FILE_MAPPINGS,
+  ISSUE_UI_NEW_TARGETS,
 } from './admin-plugin-ui-files.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
@@ -106,7 +107,10 @@ function auditPack() {
 const coreSourceFiles = (await listFiles(ISSUE_CORE_SOURCE_ROOT)).filter(isCountedSource)
 const coreTargetFiles = (await listFiles(ISSUE_CORE_TARGET_ROOT)).filter(isCountedSource)
 const mappedSourceFiles = ISSUE_UI_FILE_MAPPINGS.map(([source]) => source)
-const mappedTargetFiles = ISSUE_UI_FILE_MAPPINGS.map(([, target]) => path.join(ADMIN_PLUGIN_VUE_ROOT, target))
+const mappedTargetFiles = [
+  ...ISSUE_UI_FILE_MAPPINGS.map(([, target]) => path.join(ADMIN_PLUGIN_VUE_ROOT, target)),
+  ...ISSUE_UI_NEW_TARGETS.map(target => path.join(ADMIN_PLUGIN_VUE_ROOT, target)),
+]
 const uiSourceFiles = mappedSourceFiles.filter(file => file.endsWith('.vue'))
 const uiTargetFiles = mappedTargetFiles.filter(file => file.endsWith('.vue'))
 const inheritedAlgorithmFiles = coreSourceFiles.filter(file => file.includes('/algorithms/') && !file.endsWith('.test.ts'))
