@@ -1,0 +1,1182 @@
+{
+  "version": 1,
+  "timestamp": "2026-01-01T00:00:00.000Z",
+  "passwordPolicy": "fixture-redacted",
+  "exportScope": "full",
+  "tables": {
+    "users": [
+      {
+        "id": "a33dd0a7-0898-547e-b521-3df1d513aeb9",
+        "username": "fixture_user_01",
+        "displayName": "测试用户 1",
+        "email": "fixture-user-1@example.invalid",
+        "passwordHash": "REDACTED-FIXTURE-ONLY-1",
+        "systemRole": "editor",
+        "approved": 1,
+        "disabled": 1,
+        "tokenVersion": 0,
+        "orgUnitId": "4db80515-4213-5d6a-8a1a-536bfd1428d9",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T01:00:00.000Z"
+      },
+      {
+        "id": "c2d31286-f095-59c0-bbf3-a58298a105d6",
+        "username": "fixture_user_02",
+        "displayName": "测试用户 2",
+        "email": "fixture-user-2@example.invalid",
+        "passwordHash": "REDACTED-FIXTURE-ONLY-2",
+        "systemRole": "editor",
+        "approved": 1,
+        "disabled": 0,
+        "tokenVersion": 0,
+        "orgUnitId": "4db80515-4213-5d6a-8a1a-536bfd1428d9",
+        "createdAt": "2026-01-02T00:00:00.000Z",
+        "updatedAt": "2026-01-02T01:00:00.000Z"
+      },
+      {
+        "id": "142d1abf-2b86-51b7-baed-a862c640e40e",
+        "username": "fixture_user_03",
+        "displayName": "测试用户 3",
+        "email": "fixture-user-3@example.invalid",
+        "passwordHash": "REDACTED-FIXTURE-ONLY-3",
+        "systemRole": "viewer",
+        "approved": 1,
+        "disabled": 1,
+        "tokenVersion": 0,
+        "orgUnitId": "5b82f015-ad3d-598b-9cf3-d999b3a823fa",
+        "createdAt": "2026-01-03T00:00:00.000Z",
+        "updatedAt": "2026-01-03T01:00:00.000Z"
+      },
+      {
+        "id": "8994c4d7-9e24-58fc-b0d0-40ca1f48095d",
+        "username": "fixture_user_04",
+        "displayName": "测试用户 4",
+        "email": "fixture-user-4@example.invalid",
+        "passwordHash": "REDACTED-FIXTURE-ONLY-4",
+        "systemRole": "admin",
+        "approved": 1,
+        "disabled": 0,
+        "tokenVersion": 1,
+        "orgUnitId": "5b82f015-ad3d-598b-9cf3-d999b3a823fa",
+        "createdAt": "2026-01-04T00:00:00.000Z",
+        "updatedAt": "2026-01-04T01:00:00.000Z"
+      }
+    ],
+    "externalIdentities": [],
+    "externalBindRequests": [],
+    "orgUnits": [
+      {
+        "id": "23982c17-b154-5adb-9050-3188ee47073a",
+        "name": "测试组织 1",
+        "parentId": null,
+        "unitType": "group",
+        "createdAt": "2026-01-01T00:00:00.000Z"
+      },
+      {
+        "id": "638b490f-c9ec-5f95-9931-b3c82e67fe3d",
+        "name": "测试组织 2",
+        "parentId": null,
+        "unitType": "division",
+        "createdAt": "2026-01-02T00:00:00.000Z"
+      },
+      {
+        "id": "5b82f015-ad3d-598b-9cf3-d999b3a823fa",
+        "name": "测试组织 3",
+        "parentId": "638b490f-c9ec-5f95-9931-b3c82e67fe3d",
+        "unitType": "group",
+        "createdAt": "2026-01-03T00:00:00.000Z"
+      },
+      {
+        "id": "4db80515-4213-5d6a-8a1a-536bfd1428d9",
+        "name": "测试组织 4",
+        "parentId": "638b490f-c9ec-5f95-9931-b3c82e67fe3d",
+        "unitType": "group",
+        "createdAt": "2026-01-04T00:00:00.000Z"
+      },
+      {
+        "id": "0f7bbe31-85ba-5b1d-b588-7afb01e4d9ec",
+        "name": "测试组织 5",
+        "parentId": null,
+        "unitType": "division",
+        "createdAt": "2026-01-05T00:00:00.000Z"
+      }
+    ],
+    "issueLists": [
+      {
+        "id": "4bda0c3e-ca9c-54eb-8215-c16cf1e258b9",
+        "name": "脱敏测试列表 1",
+        "description": "列表说明（脱敏测试 1）",
+        "listType": "monthly",
+        "ownerId": "8994c4d7-9e24-58fc-b0d0-40ca1f48095d",
+        "orgUnitId": null,
+        "archived": 0,
+        "isDeleted": 0,
+        "deletedAt": null,
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T01:00:00.000Z"
+      },
+      {
+        "id": "cc664217-005d-5348-821b-25ab5e8619f3",
+        "name": "脱敏测试列表 2",
+        "description": "列表说明（脱敏测试 2）",
+        "listType": "monthly",
+        "ownerId": "8994c4d7-9e24-58fc-b0d0-40ca1f48095d",
+        "orgUnitId": "5b82f015-ad3d-598b-9cf3-d999b3a823fa",
+        "archived": 1,
+        "isDeleted": 0,
+        "deletedAt": null,
+        "createdAt": "2026-01-02T00:00:00.000Z",
+        "updatedAt": "2026-01-02T01:00:00.000Z"
+      },
+      {
+        "id": "0bba189c-14ee-5e3a-9848-552d1126efb5",
+        "name": "脱敏测试列表 3",
+        "description": "列表说明（脱敏测试 3）",
+        "listType": "project",
+        "ownerId": "8994c4d7-9e24-58fc-b0d0-40ca1f48095d",
+        "orgUnitId": "0f7bbe31-85ba-5b1d-b588-7afb01e4d9ec",
+        "archived": 0,
+        "isDeleted": 0,
+        "deletedAt": null,
+        "createdAt": "2026-01-03T00:00:00.000Z",
+        "updatedAt": "2026-01-03T01:00:00.000Z"
+      },
+      {
+        "id": "6d0c1544-7319-527c-a242-1f6749c064a2",
+        "name": "脱敏测试列表 4",
+        "description": "列表说明（脱敏测试 4）",
+        "listType": "monthly",
+        "ownerId": "a33dd0a7-0898-547e-b521-3df1d513aeb9",
+        "orgUnitId": "4db80515-4213-5d6a-8a1a-536bfd1428d9",
+        "archived": 0,
+        "isDeleted": 0,
+        "deletedAt": null,
+        "createdAt": "2026-01-04T00:00:00.000Z",
+        "updatedAt": "2026-01-04T01:00:00.000Z"
+      }
+    ],
+    "issueListMembers": [
+      {
+        "id": "a40c67ec-049a-5004-801b-dec6c404c4d0",
+        "listId": "cc664217-005d-5348-821b-25ab5e8619f3",
+        "userId": "8994c4d7-9e24-58fc-b0d0-40ca1f48095d",
+        "role": "owner",
+        "joinedAt": "2026-01-01T02:00:00.000Z"
+      },
+      {
+        "id": "c23bb19f-1221-5646-b35a-7941aff1eef0",
+        "listId": "6d0c1544-7319-527c-a242-1f6749c064a2",
+        "userId": "a33dd0a7-0898-547e-b521-3df1d513aeb9",
+        "role": "owner",
+        "joinedAt": "2026-01-02T02:00:00.000Z"
+      },
+      {
+        "id": "0da2dfb5-739a-58c2-b9ab-44f13d0ce586",
+        "listId": "6d0c1544-7319-527c-a242-1f6749c064a2",
+        "userId": "8994c4d7-9e24-58fc-b0d0-40ca1f48095d",
+        "role": "editor",
+        "joinedAt": "2026-01-03T02:00:00.000Z"
+      },
+      {
+        "id": "55ac75ad-0a8d-5a95-9d74-799a4fcf5347",
+        "listId": "0bba189c-14ee-5e3a-9848-552d1126efb5",
+        "userId": "8994c4d7-9e24-58fc-b0d0-40ca1f48095d",
+        "role": "owner",
+        "joinedAt": "2026-01-04T02:00:00.000Z"
+      },
+      {
+        "id": "b173ffcd-c04a-5eee-ba2e-9379fde8b2c6",
+        "listId": "0bba189c-14ee-5e3a-9848-552d1126efb5",
+        "userId": "a33dd0a7-0898-547e-b521-3df1d513aeb9",
+        "role": "viewer",
+        "joinedAt": "2026-01-05T02:00:00.000Z"
+      },
+      {
+        "id": "bc51f8ff-bfb4-592c-a618-3b9e50a4cc5c",
+        "listId": "4bda0c3e-ca9c-54eb-8215-c16cf1e258b9",
+        "userId": "8994c4d7-9e24-58fc-b0d0-40ca1f48095d",
+        "role": "owner",
+        "joinedAt": "2026-01-06T02:00:00.000Z"
+      }
+    ],
+    "issues": [
+      {
+        "id": "7512c9b7-dfdd-5838-84c2-45d96efc7e38",
+        "listId": "cc664217-005d-5348-821b-25ab5e8619f3",
+        "issueNo": "FIXTURE-ISSUE-001",
+        "title": "脱敏测试 Issue 1",
+        "description": "Issue 描述（脱敏测试 1）",
+        "status": "open",
+        "closeReason": null,
+        "closedBy": null,
+        "priority": "medium",
+        "severity": "minor",
+        "category": "appearance",
+        "detectionPhase": "customer",
+        "reporterId": "142d1abf-2b86-51b7-baed-a862c640e40e",
+        "assigneeId": "142d1abf-2b86-51b7-baed-a862c640e40e",
+        "dueDate": "2026-01-09",
+        "completedAt": null,
+        "sortOrder": 1,
+        "extensions": {
+          "fixture": true
+        },
+        "listCount": 1,
+        "createdBy": "142d1abf-2b86-51b7-baed-a862c640e40e",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T01:00:00.000Z",
+        "functionId": null,
+        "containment": "",
+        "rootCause": "",
+        "correctiveAction": ""
+      },
+      {
+        "id": "ab5339c3-c321-5ce9-889e-789e1050c413",
+        "listId": "6d0c1544-7319-527c-a242-1f6749c064a2",
+        "issueNo": "FIXTURE-ISSUE-002",
+        "title": "脱敏测试 Issue 2",
+        "description": "Issue 描述（脱敏测试 2）",
+        "status": "open",
+        "closeReason": null,
+        "closedBy": null,
+        "priority": "critical",
+        "severity": "fatal",
+        "category": "function",
+        "detectionPhase": "audit",
+        "reporterId": "a33dd0a7-0898-547e-b521-3df1d513aeb9",
+        "assigneeId": "8994c4d7-9e24-58fc-b0d0-40ca1f48095d",
+        "dueDate": "2026-01-10",
+        "completedAt": null,
+        "sortOrder": 0,
+        "extensions": {
+          "fixture": true
+        },
+        "listCount": 2,
+        "createdBy": "a33dd0a7-0898-547e-b521-3df1d513aeb9",
+        "createdAt": "2026-01-02T00:00:00.000Z",
+        "updatedAt": "2026-01-02T01:00:00.000Z",
+        "functionId": null,
+        "containment": "围堵措施（脱敏测试 2）",
+        "rootCause": "根本原因（脱敏测试 2）",
+        "correctiveAction": "纠正措施（脱敏测试 2）"
+      },
+      {
+        "id": "f6503bb0-a7ed-5d21-9729-6894d8ab7397",
+        "listId": "6d0c1544-7319-527c-a242-1f6749c064a2",
+        "issueNo": "FIXTURE-ISSUE-003",
+        "title": "脱敏测试 Issue 3",
+        "description": "Issue 描述（脱敏测试 3）",
+        "status": "in_progress",
+        "closeReason": null,
+        "closedBy": null,
+        "priority": "high",
+        "severity": "major",
+        "category": "process",
+        "detectionPhase": "in_process",
+        "reporterId": "8994c4d7-9e24-58fc-b0d0-40ca1f48095d",
+        "assigneeId": "a33dd0a7-0898-547e-b521-3df1d513aeb9",
+        "dueDate": "2026-01-11",
+        "completedAt": null,
+        "sortOrder": 1,
+        "extensions": {
+          "fixture": true
+        },
+        "listCount": 2,
+        "createdBy": "a33dd0a7-0898-547e-b521-3df1d513aeb9",
+        "createdAt": "2026-01-03T00:00:00.000Z",
+        "updatedAt": "2026-01-03T01:00:00.000Z",
+        "functionId": null,
+        "containment": "围堵措施（脱敏测试 3）",
+        "rootCause": "根本原因（脱敏测试 3）",
+        "correctiveAction": "纠正措施（脱敏测试 3）"
+      },
+      {
+        "id": "5683a18e-5f85-57ab-8457-76b5289d6917",
+        "listId": "0bba189c-14ee-5e3a-9848-552d1126efb5",
+        "issueNo": "FIXTURE-ISSUE-004",
+        "title": "脱敏测试 Issue 4",
+        "description": "Issue 描述（脱敏测试 4）",
+        "status": "open",
+        "closeReason": null,
+        "closedBy": null,
+        "priority": "critical",
+        "severity": "fatal",
+        "category": "process",
+        "detectionPhase": "audit",
+        "reporterId": "8994c4d7-9e24-58fc-b0d0-40ca1f48095d",
+        "assigneeId": "a33dd0a7-0898-547e-b521-3df1d513aeb9",
+        "dueDate": "2026-01-12",
+        "completedAt": null,
+        "sortOrder": 0,
+        "extensions": {
+          "fixture": true
+        },
+        "listCount": 2,
+        "createdBy": "8994c4d7-9e24-58fc-b0d0-40ca1f48095d",
+        "createdAt": "2026-01-04T00:00:00.000Z",
+        "updatedAt": "2026-01-04T01:00:00.000Z",
+        "functionId": null,
+        "containment": "围堵措施（脱敏测试 4）",
+        "rootCause": "根本原因（脱敏测试 4）",
+        "correctiveAction": "纠正措施（脱敏测试 4）"
+      }
+    ],
+    "issueListLinks": [
+      {
+        "id": "072bee75-6ac0-5b07-8f75-78cd347ff259",
+        "issueId": "7512c9b7-dfdd-5838-84c2-45d96efc7e38",
+        "listId": "cc664217-005d-5348-821b-25ab5e8619f3",
+        "attentionLevel": 3,
+        "attentionUpdatedAt": null,
+        "attentionUpdatedBy": null,
+        "linkedAt": "2026-01-01T02:00:00.000Z",
+        "linkedBy": "142d1abf-2b86-51b7-baed-a862c640e40e"
+      },
+      {
+        "id": "c089a267-8593-5dc0-b881-52632ce062db",
+        "issueId": "ab5339c3-c321-5ce9-889e-789e1050c413",
+        "listId": "6d0c1544-7319-527c-a242-1f6749c064a2",
+        "attentionLevel": 3,
+        "attentionUpdatedAt": null,
+        "attentionUpdatedBy": null,
+        "linkedAt": "2026-01-02T02:00:00.000Z",
+        "linkedBy": "a33dd0a7-0898-547e-b521-3df1d513aeb9"
+      },
+      {
+        "id": "0ac30331-0cbe-569d-9c1c-8e123a5a51ae",
+        "issueId": "f6503bb0-a7ed-5d21-9729-6894d8ab7397",
+        "listId": "6d0c1544-7319-527c-a242-1f6749c064a2",
+        "attentionLevel": 3,
+        "attentionUpdatedAt": null,
+        "attentionUpdatedBy": null,
+        "linkedAt": "2026-01-03T02:00:00.000Z",
+        "linkedBy": "a33dd0a7-0898-547e-b521-3df1d513aeb9"
+      },
+      {
+        "id": "0ea4e33d-fdd7-55f3-b58b-6d72a09ae0a8",
+        "issueId": "5683a18e-5f85-57ab-8457-76b5289d6917",
+        "listId": "0bba189c-14ee-5e3a-9848-552d1126efb5",
+        "attentionLevel": 3,
+        "attentionUpdatedAt": null,
+        "attentionUpdatedBy": null,
+        "linkedAt": "2026-01-04T02:00:00.000Z",
+        "linkedBy": "8994c4d7-9e24-58fc-b0d0-40ca1f48095d"
+      },
+      {
+        "id": "840881ed-3748-57b1-87d9-2540c115b679",
+        "issueId": "f6503bb0-a7ed-5d21-9729-6894d8ab7397",
+        "listId": "cc664217-005d-5348-821b-25ab5e8619f3",
+        "attentionLevel": 3,
+        "attentionUpdatedAt": null,
+        "attentionUpdatedBy": null,
+        "linkedAt": "2026-01-05T02:00:00.000Z",
+        "linkedBy": "8994c4d7-9e24-58fc-b0d0-40ca1f48095d"
+      },
+      {
+        "id": "82b1baac-b9fc-5abc-a1f6-c647567528ba",
+        "issueId": "ab5339c3-c321-5ce9-889e-789e1050c413",
+        "listId": "0bba189c-14ee-5e3a-9848-552d1126efb5",
+        "attentionLevel": 3,
+        "attentionUpdatedAt": null,
+        "attentionUpdatedBy": null,
+        "linkedAt": "2026-01-06T02:00:00.000Z",
+        "linkedBy": "8994c4d7-9e24-58fc-b0d0-40ca1f48095d"
+      },
+      {
+        "id": "210bdcd6-ba31-554c-844c-c7d9cd3419a2",
+        "issueId": "5683a18e-5f85-57ab-8457-76b5289d6917",
+        "listId": "6d0c1544-7319-527c-a242-1f6749c064a2",
+        "attentionLevel": 3,
+        "attentionUpdatedAt": null,
+        "attentionUpdatedBy": null,
+        "linkedAt": "2026-01-07T02:00:00.000Z",
+        "linkedBy": "8994c4d7-9e24-58fc-b0d0-40ca1f48095d"
+      }
+    ],
+    "checkpoints": [
+      {
+        "id": "e72a9675-6bc7-5d24-ae18-e81717e6b485",
+        "issueId": "f6503bb0-a7ed-5d21-9729-6894d8ab7397",
+        "checkpointDate": "2026-01-01",
+        "deadline": null,
+        "description": "点检说明（脱敏测试 1）",
+        "status": "pending",
+        "responsibleUserId": "8994c4d7-9e24-58fc-b0d0-40ca1f48095d",
+        "sortOrder": 2,
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T01:00:00.000Z"
+      },
+      {
+        "id": "46f5a2b5-f762-52d6-98de-6bccc8095704",
+        "issueId": "7512c9b7-dfdd-5838-84c2-45d96efc7e38",
+        "checkpointDate": "2026-01-02",
+        "deadline": "2026-01-07",
+        "description": "点检说明（脱敏测试 2）",
+        "status": "pending",
+        "responsibleUserId": "142d1abf-2b86-51b7-baed-a862c640e40e",
+        "sortOrder": 0,
+        "createdAt": "2026-01-02T00:00:00.000Z",
+        "updatedAt": "2026-01-02T01:00:00.000Z"
+      },
+      {
+        "id": "05a6bc58-9b92-505f-8b47-dcd8349e0bac",
+        "issueId": "5683a18e-5f85-57ab-8457-76b5289d6917",
+        "checkpointDate": "2026-01-03",
+        "deadline": "2026-01-08",
+        "description": "点检说明（脱敏测试 3）",
+        "status": "done",
+        "responsibleUserId": "8994c4d7-9e24-58fc-b0d0-40ca1f48095d",
+        "sortOrder": 0,
+        "createdAt": "2026-01-03T00:00:00.000Z",
+        "updatedAt": "2026-01-03T01:00:00.000Z"
+      },
+      {
+        "id": "38626abf-daef-5a34-85d5-5859f4790eea",
+        "issueId": "5683a18e-5f85-57ab-8457-76b5289d6917",
+        "checkpointDate": "2026-01-04",
+        "deadline": "2026-01-09",
+        "description": "点检说明（脱敏测试 4）",
+        "status": "pending",
+        "responsibleUserId": "8994c4d7-9e24-58fc-b0d0-40ca1f48095d",
+        "sortOrder": 3,
+        "createdAt": "2026-01-04T00:00:00.000Z",
+        "updatedAt": "2026-01-04T01:00:00.000Z"
+      },
+      {
+        "id": "e20f0dd3-a8f0-5fd9-a4e5-46883d1e468b",
+        "issueId": "ab5339c3-c321-5ce9-889e-789e1050c413",
+        "checkpointDate": "2026-01-05",
+        "deadline": "2026-01-10",
+        "description": "点检说明（脱敏测试 5）",
+        "status": "done",
+        "responsibleUserId": "8994c4d7-9e24-58fc-b0d0-40ca1f48095d",
+        "sortOrder": 0,
+        "createdAt": "2026-01-05T00:00:00.000Z",
+        "updatedAt": "2026-01-05T01:00:00.000Z"
+      },
+      {
+        "id": "9ebe8f9d-5f06-5563-8fce-3ee6f616177e",
+        "issueId": "ab5339c3-c321-5ce9-889e-789e1050c413",
+        "checkpointDate": "2026-01-06",
+        "deadline": "2026-01-11",
+        "description": "点检说明（脱敏测试 6）",
+        "status": "skipped",
+        "responsibleUserId": "8994c4d7-9e24-58fc-b0d0-40ca1f48095d",
+        "sortOrder": 1,
+        "createdAt": "2026-01-06T00:00:00.000Z",
+        "updatedAt": "2026-01-06T01:00:00.000Z"
+      },
+      {
+        "id": "5dabf008-bb2d-5fee-b74b-25410d38126f",
+        "issueId": "f6503bb0-a7ed-5d21-9729-6894d8ab7397",
+        "checkpointDate": "2026-01-07",
+        "deadline": "2026-01-12",
+        "description": "点检说明（脱敏测试 7）",
+        "status": "voided",
+        "responsibleUserId": "a33dd0a7-0898-547e-b521-3df1d513aeb9",
+        "sortOrder": 0,
+        "createdAt": "2026-01-07T00:00:00.000Z",
+        "updatedAt": "2026-01-07T01:00:00.000Z"
+      },
+      {
+        "id": "470f74de-3e42-57cb-9d38-39aa255c06fb",
+        "issueId": "f6503bb0-a7ed-5d21-9729-6894d8ab7397",
+        "checkpointDate": "2026-01-08",
+        "deadline": "2026-01-13",
+        "description": "点检说明（脱敏测试 8）",
+        "status": "skipped",
+        "responsibleUserId": "a33dd0a7-0898-547e-b521-3df1d513aeb9",
+        "sortOrder": 1,
+        "createdAt": "2026-01-08T00:00:00.000Z",
+        "updatedAt": "2026-01-08T01:00:00.000Z"
+      },
+      {
+        "id": "0f42cb0e-16c2-5841-9bcd-5924c8478ee8",
+        "issueId": "5683a18e-5f85-57ab-8457-76b5289d6917",
+        "checkpointDate": "2026-01-09",
+        "deadline": "2026-01-14",
+        "description": "点检说明（脱敏测试 9）",
+        "status": "pending",
+        "responsibleUserId": "8994c4d7-9e24-58fc-b0d0-40ca1f48095d",
+        "sortOrder": 2,
+        "createdAt": "2026-01-09T00:00:00.000Z",
+        "updatedAt": "2026-01-09T01:00:00.000Z"
+      },
+      {
+        "id": "380062ca-3471-5be5-a4bb-e824cd0bc957",
+        "issueId": "5683a18e-5f85-57ab-8457-76b5289d6917",
+        "checkpointDate": "2026-01-10",
+        "deadline": "2026-01-15",
+        "description": "点检说明（脱敏测试 10）",
+        "status": "pending",
+        "responsibleUserId": "a33dd0a7-0898-547e-b521-3df1d513aeb9",
+        "sortOrder": 1,
+        "createdAt": "2026-01-10T00:00:00.000Z",
+        "updatedAt": "2026-01-10T01:00:00.000Z"
+      },
+      {
+        "id": "268f2fdb-9892-510f-9238-15dd713e2458",
+        "issueId": "5683a18e-5f85-57ab-8457-76b5289d6917",
+        "checkpointDate": "2026-01-11",
+        "deadline": "2026-01-16",
+        "description": "点检说明（脱敏测试 11）",
+        "status": "pending",
+        "responsibleUserId": null,
+        "sortOrder": 4,
+        "createdAt": "2026-01-11T00:00:00.000Z",
+        "updatedAt": "2026-01-11T01:00:00.000Z"
+      },
+      {
+        "id": "f47f17f0-ef00-59d9-beab-340960103424",
+        "issueId": "ab5339c3-c321-5ce9-889e-789e1050c413",
+        "checkpointDate": "2026-01-12",
+        "deadline": "2026-01-17",
+        "description": "点检说明（脱敏测试 12）",
+        "status": "voided",
+        "responsibleUserId": "c2d31286-f095-59c0-bbf3-a58298a105d6",
+        "sortOrder": 2,
+        "createdAt": "2026-01-12T00:00:00.000Z",
+        "updatedAt": "2026-01-12T01:00:00.000Z"
+      }
+    ],
+    "eightDReports": [
+      {
+        "id": "f5a293cc-c21e-5178-85b1-3c7d0d295178-fixture8d",
+        "relatedIssueId": "ab5339c3-c321-5ce9-889e-789e1050c413",
+        "title": "脱敏测试 8D 报告 1",
+        "containment": "围堵措施（脱敏测试 2）",
+        "rootCause": "根本原因（脱敏测试 2）",
+        "correctiveAction": "纠正措施（脱敏测试 2）",
+        "createdBy": "a33dd0a7-0898-547e-b521-3df1d513aeb9",
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T01:00:00.000Z",
+        "isDeleted": 0,
+        "deletedAt": null
+      },
+      {
+        "id": "af8e2449-a056-5ecd-b206-c51ca9be8401-fixture8d",
+        "relatedIssueId": "f6503bb0-a7ed-5d21-9729-6894d8ab7397",
+        "title": "脱敏测试 8D 报告 2",
+        "containment": "围堵措施（脱敏测试 3）",
+        "rootCause": "根本原因（脱敏测试 3）",
+        "correctiveAction": "纠正措施（脱敏测试 3）",
+        "createdBy": "a33dd0a7-0898-547e-b521-3df1d513aeb9",
+        "createdAt": "2026-01-02T00:00:00.000Z",
+        "updatedAt": "2026-01-02T01:00:00.000Z",
+        "isDeleted": 0,
+        "deletedAt": null
+      },
+      {
+        "id": "f725db61-6a93-554b-b0c1-91a6e1398d68-fixture8d",
+        "relatedIssueId": "5683a18e-5f85-57ab-8457-76b5289d6917",
+        "title": "脱敏测试 8D 报告 3",
+        "containment": "围堵措施（脱敏测试 4）",
+        "rootCause": "根本原因（脱敏测试 4）",
+        "correctiveAction": "纠正措施（脱敏测试 4）",
+        "createdBy": "8994c4d7-9e24-58fc-b0d0-40ca1f48095d",
+        "createdAt": "2026-01-03T00:00:00.000Z",
+        "updatedAt": "2026-01-03T01:00:00.000Z",
+        "isDeleted": 0,
+        "deletedAt": null
+      }
+    ],
+    "pushRecords": [
+      {
+        "id": "0c95aaf1-2b22-537e-aa77-21290757d0aa",
+        "fromListId": "6d0c1544-7319-527c-a242-1f6749c064a2",
+        "targetType": "list",
+        "toListId": "cc664217-005d-5348-821b-25ab5e8619f3",
+        "toUserId": null,
+        "issueId": "f6503bb0-a7ed-5d21-9729-6894d8ab7397",
+        "pushedBy": "8994c4d7-9e24-58fc-b0d0-40ca1f48095d",
+        "pushedAt": "2026-01-01T02:00:00.000Z",
+        "status": "accepted",
+        "handledBy": "8994c4d7-9e24-58fc-b0d0-40ca1f48095d",
+        "handledAt": "2026-01-01T03:00:00.000Z",
+        "rejectReason": null,
+        "note": "推送备注（脱敏测试 1）"
+      },
+      {
+        "id": "b745be38-916d-5c0c-a6e0-95f601f53e21",
+        "fromListId": "6d0c1544-7319-527c-a242-1f6749c064a2",
+        "targetType": "list",
+        "toListId": "0bba189c-14ee-5e3a-9848-552d1126efb5",
+        "toUserId": null,
+        "issueId": "ab5339c3-c321-5ce9-889e-789e1050c413",
+        "pushedBy": "8994c4d7-9e24-58fc-b0d0-40ca1f48095d",
+        "pushedAt": "2026-01-02T02:00:00.000Z",
+        "status": "accepted",
+        "handledBy": "8994c4d7-9e24-58fc-b0d0-40ca1f48095d",
+        "handledAt": "2026-01-02T03:00:00.000Z",
+        "rejectReason": null,
+        "note": "推送备注（脱敏测试 2）"
+      },
+      {
+        "id": "935db04d-eea0-59c5-940b-897be7ec63ea",
+        "fromListId": "0bba189c-14ee-5e3a-9848-552d1126efb5",
+        "targetType": "user",
+        "toListId": "6d0c1544-7319-527c-a242-1f6749c064a2",
+        "toUserId": "c2d31286-f095-59c0-bbf3-a58298a105d6",
+        "issueId": "5683a18e-5f85-57ab-8457-76b5289d6917",
+        "pushedBy": "8994c4d7-9e24-58fc-b0d0-40ca1f48095d",
+        "pushedAt": "2026-01-03T02:00:00.000Z",
+        "status": "accepted",
+        "handledBy": "8994c4d7-9e24-58fc-b0d0-40ca1f48095d",
+        "handledAt": "2026-01-03T03:00:00.000Z",
+        "rejectReason": null,
+        "note": ""
+      },
+      {
+        "id": "cd29c21b-6fc0-5bc6-b08d-ae0e854954f5",
+        "fromListId": "6d0c1544-7319-527c-a242-1f6749c064a2",
+        "targetType": "list",
+        "toListId": "0bba189c-14ee-5e3a-9848-552d1126efb5",
+        "toUserId": null,
+        "issueId": "5683a18e-5f85-57ab-8457-76b5289d6917",
+        "pushedBy": "8994c4d7-9e24-58fc-b0d0-40ca1f48095d",
+        "pushedAt": "2026-01-04T02:00:00.000Z",
+        "status": "accepted",
+        "handledBy": "8994c4d7-9e24-58fc-b0d0-40ca1f48095d",
+        "handledAt": "2026-01-04T03:00:00.000Z",
+        "rejectReason": null,
+        "note": ""
+      }
+    ],
+    "dict": [
+      {
+        "id": "a8f7ae00-acf2-5eba-bd9c-16da7d6499f4",
+        "groupName": "issueCategory",
+        "value": "appearance",
+        "label": "脱敏字典项 issueCategory 1",
+        "sortOrder": 0,
+        "enabled": 1,
+        "tags": ",automotive,",
+        "createdAt": "2026-01-01T00:00:00.000Z"
+      },
+      {
+        "id": "336609ce-786a-5a67-a3b7-f2d1207c2d31",
+        "groupName": "issueCategory",
+        "value": "function",
+        "label": "脱敏字典项 issueCategory 3",
+        "sortOrder": 2,
+        "enabled": 1,
+        "tags": ",automotive,",
+        "createdAt": "2026-01-02T00:00:00.000Z"
+      },
+      {
+        "id": "17c3caba-acd7-503a-8683-2fa12078bad0",
+        "groupName": "issueCategory",
+        "value": "process",
+        "label": "脱敏字典项 issueCategory 4",
+        "sortOrder": 3,
+        "enabled": 1,
+        "tags": ",automotive,",
+        "createdAt": "2026-01-03T00:00:00.000Z"
+      },
+      {
+        "id": "a7b4c43e-1765-51bf-8633-0316e0e3e957",
+        "groupName": "detectionPhase",
+        "value": "in_process",
+        "label": "脱敏字典项 detectionPhase 8",
+        "sortOrder": 7,
+        "enabled": 1,
+        "tags": ",automotive,",
+        "createdAt": "2026-01-04T00:00:00.000Z"
+      },
+      {
+        "id": "062c90e4-b812-59f6-ac8f-8f023b3d0a1b",
+        "groupName": "detectionPhase",
+        "value": "customer",
+        "label": "脱敏字典项 detectionPhase 10",
+        "sortOrder": 9,
+        "enabled": 1,
+        "tags": ",automotive,",
+        "createdAt": "2026-01-05T00:00:00.000Z"
+      },
+      {
+        "id": "6bae7a4b-5abd-5c5d-b1b6-a2fa879ecf98",
+        "groupName": "detectionPhase",
+        "value": "audit",
+        "label": "脱敏字典项 detectionPhase 11",
+        "sortOrder": 10,
+        "enabled": 1,
+        "tags": ",automotive,",
+        "createdAt": "2026-01-06T00:00:00.000Z"
+      },
+      {
+        "id": "cd4d3b43-8311-5631-a7d7-4e951a7436ef",
+        "groupName": "orgUnitType",
+        "value": "group",
+        "label": "脱敏字典项 orgUnitType 13",
+        "sortOrder": 12,
+        "enabled": 1,
+        "tags": ",automotive,software,",
+        "createdAt": "2026-01-07T00:00:00.000Z"
+      },
+      {
+        "id": "33702bb2-ba0f-52cd-978f-f7e632dbb8f0",
+        "groupName": "orgUnitType",
+        "value": "division",
+        "label": "脱敏字典项 orgUnitType 15",
+        "sortOrder": 14,
+        "enabled": 1,
+        "tags": ",automotive,software,",
+        "createdAt": "2026-01-08T00:00:00.000Z"
+      },
+      {
+        "id": "f865e5fa-82be-5225-9a55-c55e12450c53",
+        "groupName": "issueCategory",
+        "value": "ui",
+        "label": "脱敏字典项 issueCategory 5",
+        "sortOrder": 4,
+        "enabled": 1,
+        "tags": ",software,",
+        "createdAt": "2026-01-09T00:00:00.000Z"
+      },
+      {
+        "id": "c9b9bd5e-e895-5de7-a950-1404c8752c8e",
+        "groupName": "issueCategory",
+        "value": "logic",
+        "label": "脱敏字典项 issueCategory 6",
+        "sortOrder": 5,
+        "enabled": 1,
+        "tags": ",software,",
+        "createdAt": "2026-01-10T00:00:00.000Z"
+      },
+      {
+        "id": "13fdbe6d-b275-5904-84b2-73762fd26a10",
+        "groupName": "issueCategory",
+        "value": "performance",
+        "label": "脱敏字典项 issueCategory 7",
+        "sortOrder": 6,
+        "enabled": 1,
+        "tags": ",software,",
+        "createdAt": "2026-01-11T00:00:00.000Z"
+      },
+      {
+        "id": "14e4eb1e-4d31-55d2-b476-4820218f4b37",
+        "groupName": "issueCategory",
+        "value": "security",
+        "label": "脱敏字典项 issueCategory 8",
+        "sortOrder": 7,
+        "enabled": 1,
+        "tags": ",software,",
+        "createdAt": "2026-01-12T00:00:00.000Z"
+      },
+      {
+        "id": "224f3ac5-88bb-547e-904f-ea060ba24e3a",
+        "groupName": "issueCategory",
+        "value": "data",
+        "label": "脱敏字典项 issueCategory 9",
+        "sortOrder": 8,
+        "enabled": 1,
+        "tags": ",software,",
+        "createdAt": "2026-01-13T00:00:00.000Z"
+      },
+      {
+        "id": "cfb501db-8ba2-5fe5-86b4-f4418deb20ac",
+        "groupName": "issueCategory",
+        "value": "integration",
+        "label": "脱敏字典项 issueCategory 10",
+        "sortOrder": 9,
+        "enabled": 1,
+        "tags": ",software,",
+        "createdAt": "2026-01-14T00:00:00.000Z"
+      },
+      {
+        "id": "569f1ff8-3390-59d3-831e-9abbf9ffabc8",
+        "groupName": "issueCategory",
+        "value": "compatibility",
+        "label": "脱敏字典项 issueCategory 11",
+        "sortOrder": 10,
+        "enabled": 1,
+        "tags": ",software,",
+        "createdAt": "2026-01-15T00:00:00.000Z"
+      },
+      {
+        "id": "23d6d1d5-73d9-5cd9-996a-33edb22594ec",
+        "groupName": "issueCategory",
+        "value": "algorithm",
+        "label": "脱敏字典项 issueCategory 12",
+        "sortOrder": 11,
+        "enabled": 1,
+        "tags": ",software,",
+        "createdAt": "2026-01-16T00:00:00.000Z"
+      },
+      {
+        "id": "aeffdda1-74c9-5e73-b8fa-0aa5cfd1d63f",
+        "groupName": "issueCategory",
+        "value": "simulation",
+        "label": "脱敏字典项 issueCategory 13",
+        "sortOrder": 12,
+        "enabled": 1,
+        "tags": ",software,",
+        "createdAt": "2026-01-17T00:00:00.000Z"
+      },
+      {
+        "id": "df05d220-e291-5b56-b857-17d31ae8a9b0",
+        "groupName": "issueCategory",
+        "value": "build",
+        "label": "脱敏字典项 issueCategory 14",
+        "sortOrder": 13,
+        "enabled": 1,
+        "tags": ",software,",
+        "createdAt": "2026-01-18T00:00:00.000Z"
+      },
+      {
+        "id": "fba5938e-167c-5887-aec7-3537f8f9a37c",
+        "groupName": "issueCategory",
+        "value": "other",
+        "label": "脱敏字典项 issueCategory 15",
+        "sortOrder": 14,
+        "enabled": 1,
+        "tags": ",software,",
+        "createdAt": "2026-01-19T00:00:00.000Z"
+      },
+      {
+        "id": "97ac3ca3-9d52-5007-8860-baaf3beda309",
+        "groupName": "detectionPhase",
+        "value": "code_review",
+        "label": "脱敏字典项 detectionPhase 12",
+        "sortOrder": 11,
+        "enabled": 1,
+        "tags": ",software,",
+        "createdAt": "2026-01-20T00:00:00.000Z"
+      },
+      {
+        "id": "9d5c865f-2f26-56a2-846e-22a9da43e73c",
+        "groupName": "severity",
+        "value": "minor",
+        "label": "脱敏字典项 severity 2",
+        "sortOrder": 1,
+        "enabled": 1,
+        "tags": ",core,general,",
+        "createdAt": "2026-01-01T00:00:00.000Z"
+      },
+      {
+        "id": "ebc59e62-c80a-5be0-8e5d-aa449d7257ec",
+        "groupName": "severity",
+        "value": "major",
+        "label": "脱敏字典项 severity 3",
+        "sortOrder": 2,
+        "enabled": 1,
+        "tags": ",core,general,",
+        "createdAt": "2026-01-02T00:00:00.000Z"
+      },
+      {
+        "id": "56a07462-0605-5f0f-bea1-37f855020e74",
+        "groupName": "severity",
+        "value": "fatal",
+        "label": "脱敏字典项 severity 4",
+        "sortOrder": 3,
+        "enabled": 1,
+        "tags": ",core,general,",
+        "createdAt": "2026-01-03T00:00:00.000Z"
+      },
+      {
+        "id": "b7f64d70-869f-5110-956d-84ea451a533f",
+        "groupName": "detectionPhase",
+        "value": "static_analysis",
+        "label": "脱敏字典项 detectionPhase 13",
+        "sortOrder": 12,
+        "enabled": 1,
+        "tags": ",software,",
+        "createdAt": "2026-01-04T00:00:00.000Z"
+      },
+      {
+        "id": "13e83b78-2f8e-576a-b58f-82a98fa473cc",
+        "groupName": "detectionPhase",
+        "value": "unit_test",
+        "label": "脱敏字典项 detectionPhase 14",
+        "sortOrder": 13,
+        "enabled": 1,
+        "tags": ",software,",
+        "createdAt": "2026-01-05T00:00:00.000Z"
+      },
+      {
+        "id": "a839770f-5594-5c72-b330-6bb6db44a3f0",
+        "groupName": "detectionPhase",
+        "value": "integration_test",
+        "label": "脱敏字典项 detectionPhase 15",
+        "sortOrder": 14,
+        "enabled": 1,
+        "tags": ",software,",
+        "createdAt": "2026-01-06T00:00:00.000Z"
+      },
+      {
+        "id": "77fc5238-a522-5932-b13b-c0f094f796ba",
+        "groupName": "detectionPhase",
+        "value": "system_test",
+        "label": "脱敏字典项 detectionPhase 16",
+        "sortOrder": 15,
+        "enabled": 1,
+        "tags": ",software,",
+        "createdAt": "2026-01-07T00:00:00.000Z"
+      },
+      {
+        "id": "19d91051-3b64-5784-8591-2799bef604d7",
+        "groupName": "detectionPhase",
+        "value": "uat",
+        "label": "脱敏字典项 detectionPhase 17",
+        "sortOrder": 16,
+        "enabled": 1,
+        "tags": ",software,",
+        "createdAt": "2026-01-08T00:00:00.000Z"
+      },
+      {
+        "id": "768de992-e07f-5d44-8282-f3db65bfef6a",
+        "groupName": "detectionPhase",
+        "value": "production",
+        "label": "脱敏字典项 detectionPhase 18",
+        "sortOrder": 17,
+        "enabled": 1,
+        "tags": ",software,",
+        "createdAt": "2026-01-09T00:00:00.000Z"
+      },
+      {
+        "id": "44d9bc3b-0860-5ae9-971b-1bb78ba56f8a",
+        "groupName": "detectionPhase",
+        "value": "post_market",
+        "label": "脱敏字典项 detectionPhase 19",
+        "sortOrder": 18,
+        "enabled": 1,
+        "tags": ",software,",
+        "createdAt": "2026-01-10T00:00:00.000Z"
+      },
+      {
+        "id": "1e3b2606-c1ab-5443-9117-3f726d2d8329",
+        "groupName": "orgUnitType",
+        "value": "department",
+        "label": "脱敏字典项 orgUnitType 16",
+        "sortOrder": 15,
+        "enabled": 1,
+        "tags": ",software,",
+        "createdAt": "2026-01-11T00:00:00.000Z"
+      },
+      {
+        "id": "531513b0-eed7-53b0-aef8-435558a4ac7d",
+        "groupName": "orgUnitType",
+        "value": "squad",
+        "label": "脱敏字典项 orgUnitType 17",
+        "sortOrder": 16,
+        "enabled": 1,
+        "tags": ",software,",
+        "createdAt": "2026-01-12T00:00:00.000Z"
+      },
+      {
+        "id": "80576fe9-6297-547b-88b1-922fea858946",
+        "groupName": "closeReason",
+        "value": "completed",
+        "label": "脱敏字典项 closeReason 1",
+        "sortOrder": 0,
+        "enabled": 1,
+        "tags": ",software,",
+        "createdAt": "2026-01-13T00:00:00.000Z"
+      },
+      {
+        "id": "ef3e007c-29a0-5509-b4ed-98ea994ebe9e",
+        "groupName": "closeReason",
+        "value": "cancelled",
+        "label": "脱敏字典项 closeReason 2",
+        "sortOrder": 1,
+        "enabled": 1,
+        "tags": ",software,",
+        "createdAt": "2026-01-14T00:00:00.000Z"
+      },
+      {
+        "id": "dcf8b272-af94-5554-b903-80ba262d0002",
+        "groupName": "closeReason",
+        "value": "duplicate",
+        "label": "脱敏字典项 closeReason 3",
+        "sortOrder": 2,
+        "enabled": 1,
+        "tags": ",software,",
+        "createdAt": "2026-01-15T00:00:00.000Z"
+      },
+      {
+        "id": "23b91bcc-75e2-5981-ab33-9070f7452d74",
+        "groupName": "closeReason",
+        "value": "transferred",
+        "label": "脱敏字典项 closeReason 4",
+        "sortOrder": 3,
+        "enabled": 1,
+        "tags": ",software,",
+        "createdAt": "2026-01-16T00:00:00.000Z"
+      },
+      {
+        "id": "b3ad2a08-e301-579c-8275-b229204b3cf4",
+        "groupName": "closeReason",
+        "value": "wont_fix",
+        "label": "脱敏字典项 closeReason 5",
+        "sortOrder": 4,
+        "enabled": 1,
+        "tags": ",software,",
+        "createdAt": "2026-01-17T00:00:00.000Z"
+      },
+      {
+        "id": "fe6545b3-c034-535b-a9c9-a9b06e28ce93",
+        "groupName": "closeReason",
+        "value": "unreproducible",
+        "label": "脱敏字典项 closeReason 6",
+        "sortOrder": 5,
+        "enabled": 1,
+        "tags": ",software,",
+        "createdAt": "2026-01-18T00:00:00.000Z"
+      },
+      {
+        "id": "35abe715-149d-5517-b0a0-f3a2f16ab0bb",
+        "groupName": "listType",
+        "value": "yearly",
+        "label": "脱敏字典项 listType 1",
+        "sortOrder": 0,
+        "enabled": 1,
+        "tags": ",core,",
+        "createdAt": "2026-01-19T00:00:00.000Z"
+      },
+      {
+        "id": "bfe2206d-12f9-5f98-8069-ea047b03590d",
+        "groupName": "listType",
+        "value": "monthly",
+        "label": "脱敏字典项 listType 2",
+        "sortOrder": 1,
+        "enabled": 1,
+        "tags": ",core,",
+        "createdAt": "2026-01-20T00:00:00.000Z"
+      },
+      {
+        "id": "5b03e689-3747-5528-abbe-07f3b2ff4e5c",
+        "groupName": "listType",
+        "value": "project",
+        "label": "脱敏字典项 listType 3",
+        "sortOrder": 2,
+        "enabled": 1,
+        "tags": ",core,",
+        "createdAt": "2026-01-01T00:00:00.000Z"
+      },
+      {
+        "id": "4902642c-ff9b-5071-b0e6-4e21dde8b7d0",
+        "groupName": "listType",
+        "value": "custom",
+        "label": "脱敏字典项 listType 4",
+        "sortOrder": 3,
+        "enabled": 1,
+        "tags": ",core,",
+        "createdAt": "2026-01-02T00:00:00.000Z"
+      },
+      {
+        "id": "30137425-99be-531f-a707-9876a4f92cf2",
+        "groupName": "listType",
+        "value": "personal",
+        "label": "脱敏字典项 listType 5",
+        "sortOrder": 4,
+        "enabled": 1,
+        "tags": ",general,",
+        "createdAt": "2026-01-03T00:00:00.000Z"
+      },
+      {
+        "id": "8e12937e-d8f5-555b-88bd-f65adb83d975",
+        "groupName": "listType",
+        "value": "group",
+        "label": "脱敏字典项 listType 6",
+        "sortOrder": 5,
+        "enabled": 1,
+        "tags": ",general,",
+        "createdAt": "2026-01-04T00:00:00.000Z"
+      },
+      {
+        "id": "702a3dfe-c3c5-50a1-920b-7f19df240c56",
+        "groupName": "listType",
+        "value": "department",
+        "label": "脱敏字典项 listType 7",
+        "sortOrder": 6,
+        "enabled": 1,
+        "tags": ",general,",
+        "createdAt": "2026-01-05T00:00:00.000Z"
+      },
+      {
+        "id": "aca7ce4c-7813-5bec-a0a1-4d4d5d232292",
+        "groupName": "listType",
+        "value": "division",
+        "label": "脱敏字典项 listType 8",
+        "sortOrder": 7,
+        "enabled": 1,
+        "tags": ",general,",
+        "createdAt": "2026-01-06T00:00:00.000Z"
+      },
+      {
+        "id": "511ad90d-d976-5f03-b964-8cc01cc1efbe",
+        "groupName": "listType",
+        "value": "company",
+        "label": "脱敏字典项 listType 9",
+        "sortOrder": 8,
+        "enabled": 1,
+        "tags": ",general,",
+        "createdAt": "2026-01-07T00:00:00.000Z"
+      },
+      {
+        "id": "e8eae88e-9337-5452-b577-61a18712adfd",
+        "groupName": "priority",
+        "value": "low",
+        "label": "脱敏字典项 priority 1",
+        "sortOrder": 0,
+        "enabled": 1,
+        "tags": ",core,general,",
+        "createdAt": "2026-01-08T00:00:00.000Z"
+      },
+      {
+        "id": "7eee7ff2-7c70-5bef-98ee-ec2ccca73fe5",
+        "groupName": "priority",
+        "value": "medium",
+        "label": "脱敏字典项 priority 2",
+        "sortOrder": 1,
+        "enabled": 1,
+        "tags": ",core,general,",
+        "createdAt": "2026-01-09T00:00:00.000Z"
+      },
+      {
+        "id": "6cb339d2-eb58-5c46-b9cc-5cdb6dced287",
+        "groupName": "priority",
+        "value": "high",
+        "label": "脱敏字典项 priority 3",
+        "sortOrder": 2,
+        "enabled": 1,
+        "tags": ",core,general,",
+        "createdAt": "2026-01-10T00:00:00.000Z"
+      },
+      {
+        "id": "b321b9fc-c18b-502d-a8f2-ffa744209053",
+        "groupName": "priority",
+        "value": "critical",
+        "label": "脱敏字典项 priority 4",
+        "sortOrder": 3,
+        "enabled": 1,
+        "tags": ",core,general,",
+        "createdAt": "2026-01-11T00:00:00.000Z"
+      },
+      {
+        "id": "fa5cbc27-3cc4-5787-8596-ce0486998d4e",
+        "groupName": "severity",
+        "value": "trivial",
+        "label": "脱敏字典项 severity 1",
+        "sortOrder": 0,
+        "enabled": 1,
+        "tags": ",core,general,",
+        "createdAt": "2026-01-12T00:00:00.000Z"
+      }
+    ],
+    "poiFunctions": [
+      {
+        "id": "85b7d821-5ae6-587d-9af5-8103e068a2f4",
+        "platform": "FIXTURE-PLATFORM-1",
+        "externalId": "fixture-function-1",
+        "functionName": "脱敏测试功能 1",
+        "targetYear": "2026",
+        "clientGroup": "测试客户组 1",
+        "developGroup": "测试开发组 1",
+        "enabled": 0,
+        "createdAt": "2026-01-01T00:00:00.000Z",
+        "updatedAt": "2026-01-01T01:00:00.000Z"
+      }
+    ]
+  }
+}

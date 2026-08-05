@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { onMounted, ref, inject, computed, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useIssueListStore } from '@/stores/issueLists'
 import { useAuthStore } from '@/stores/auth'
 import { canPerformListAction, isSystemAdmin, isSystemViewer } from '@open-issue/core'
@@ -10,7 +11,10 @@ import PageHelpButton from "@/components/PageHelpButton.vue"
 import ListFormDialog from '@/components/ListFormDialog.vue'
 import { useDictGroup } from '@/composables/useDictGroup'
 import { confirmListArchive, listLifecycleStatus } from '@/utils/listLifecycle'
+import PoiIssueListPrimary from '@/components/workbench/PoiIssueListPrimary.vue'
+import { usePoiViewContribution } from '@/layout/workbench/poiViewContributions'
 
+const route = useRoute()
 const store = useIssueListStore()
 const auth = useAuthStore()
 const listTypeDict = useDictGroup('listType')
@@ -61,6 +65,25 @@ function clearFilters() {
   searchText.value = ''
   listTypeFilter.value = ''
 }
+
+usePoiViewContribution(() => route.fullPath, {
+  primary: {
+    component: PoiIssueListPrimary,
+    props: computed(() => ({
+      searchText: searchText.value,
+      listType: listTypeFilter.value,
+      listTypeOptions: listTypeDict.options.value,
+      hasActiveFilters: hasActiveFilters.value,
+      onUpdateSearch: (value: string) => {
+        searchText.value = value
+      },
+      onUpdateListType: (value: string) => {
+        listTypeFilter.value = value
+      },
+      onClear: clearFilters,
+    })),
+  },
+})
 
 onMounted(() => {
   loadLists()
@@ -181,20 +204,6 @@ async function onRestore(id: string, name: string) {
       <template #help><PageHelpButton page-id="lists" /></template>
     </PnwPageHeader>
 
-    <div class="list-filters" data-tour="lists-filters">
-      <el-input
-        v-model="searchText"
-        placeholder="搜索名称/描述/负责人..."
-        clearable
-        size="small"
-        style="width:240px"
-      />
-      <el-select v-model="listTypeFilter" placeholder="列表类型" clearable size="small" style="width:130px">
-        <el-option v-for="o in listTypeDict.options.value" :key="o.value" :label="o.label" :value="o.value" />
-      </el-select>
-      <el-button v-if="hasActiveFilters" size="small" link type="primary" @click="clearFilters">清除筛选</el-button>
-    </div>
-
     <el-table :data="paginatedLists" v-loading="store.loading" stripe data-tour="lists-table">
       <el-table-column type="index" :index="(index: number) => (currentPage - 1) * pageSize + index + 1" label="#" width="50" align="center" fixed />
       <el-table-column prop="name" label="名称" min-width="180" fixed="left">
@@ -308,13 +317,6 @@ async function onRestore(id: string, name: string) {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-}
-.list-filters {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 12px;
 }
 .pagination-bar {
   display: flex;

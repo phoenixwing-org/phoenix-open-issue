@@ -3,6 +3,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useDictStore } from '@/stores/dict'
 import { useFunctionStore } from '@/stores/functions'
 import AttentionStars from '@/components/AttentionStars.vue'
+import { ISSUE_IMPORTANCE_DICT, ISSUE_URGENCY_DICT } from '@open-issue/core'
 
 export type IssueQuickEditField = 'severity' | 'priority' | 'status' | 'attention' | 'assignee' | 'function' | 'category' | 'detectionPhase'
 
@@ -33,8 +34,8 @@ const attentionLevel = computed({
 onMounted(() => { if (props.field === 'function') funcStore.load() })
 
 const fieldTitle = computed(() => ({
-  severity: '严重度',
-  priority: '优先级',
+  severity: '重要度',
+  priority: '紧急度',
   status: '状态',
   attention: '关注度',
   assignee: '责任人',
@@ -45,18 +46,38 @@ const fieldTitle = computed(() => ({
 
 const statusOptions = [
   { value: 'open', label: '待处理' },
-  { value: 'in_progress', label: '进行中' },
-  { value: 'resolved', label: '已解决' },
-  { value: 'closed', label: '已关闭' },
+  { value: 'in_progress', label: '处理中' },
+  { value: 'resolved', label: '待验收' },
+  { value: 'closed', label: '已完成' },
   { value: 'cancelled', label: '已取消' },
 ]
 
-const priorityOptions = [
-  { value: 'low', label: '低' },
-  { value: 'medium', label: '中' },
-  { value: 'high', label: '高' },
-  { value: 'critical', label: '紧急' },
-]
+const directChoiceOptions = computed(() => {
+  if (props.field === 'severity') {
+    const configured = dict.getOptions('severity')
+    return configured.length ? configured : ISSUE_IMPORTANCE_DICT
+  }
+  if (props.field === 'priority') {
+    const configured = dict.getOptions('priority')
+    return configured.length ? configured : ISSUE_URGENCY_DICT
+  }
+  if (props.field === 'status') return statusOptions
+  return []
+})
+
+function dimensionLevel(value: string): number | null {
+  const values = props.field === 'severity'
+    ? ISSUE_IMPORTANCE_DICT.map(item => item.value)
+    : props.field === 'priority'
+      ? ISSUE_URGENCY_DICT.map(item => item.value)
+      : []
+  const index = values.indexOf(value as never)
+  return index >= 0 ? index + 1 : null
+}
+
+function selectDirectChoice(value: string) {
+  selected.value = value
+}
 
 function submit() {
   if (props.field === 'attention') {
@@ -80,22 +101,40 @@ function submit() {
     @close="emit('close')"
   >
     <el-form label-position="top" @submit.prevent="submit">
-      <el-form-item v-if="field === 'severity'" label="严重度">
-        <el-select v-model="selected" :teleported="false" placeholder="选择严重度" style="width:100%">
-          <el-option v-for="o in dict.getOptions('severity')" :key="o.value" :label="o.label" :value="o.value" />
-        </el-select>
-      </el-form-item>
-
-      <el-form-item v-else-if="field === 'priority'" label="优先级">
-        <el-select v-model="selected" :teleported="false" placeholder="选择优先级" style="width:100%">
-          <el-option v-for="o in priorityOptions" :key="o.value" :label="o.label" :value="o.value" />
-        </el-select>
-      </el-form-item>
-
-      <el-form-item v-else-if="field === 'status'" label="状态">
-        <el-select v-model="selected" :teleported="false" placeholder="选择状态" style="width:100%">
-          <el-option v-for="o in statusOptions" :key="o.value" :label="o.label" :value="o.value" />
-        </el-select>
+      <el-form-item
+        v-if="field === 'severity' || field === 'priority' || field === 'status'"
+        :label="fieldTitle"
+      >
+        <div class="quick-choice-list" role="radiogroup" :aria-label="fieldTitle">
+          <template v-for="option in directChoiceOptions" :key="option.value">
+            <span
+              v-if="field === 'status' && option.value === 'closed'"
+              class="quick-choice-divider"
+              aria-hidden="true"
+            >结束处理</span>
+            <button
+              class="quick-choice-option"
+              :class="{
+                'is-selected': selected === option.value,
+                'is-terminal': field === 'status' && (option.value === 'closed' || option.value === 'cancelled'),
+                [`is-level-${dimensionLevel(option.value)}`]: dimensionLevel(option.value),
+              }"
+              type="button"
+              role="radio"
+              :aria-checked="selected === option.value"
+              @click="selectDirectChoice(option.value)"
+            >
+              <span class="quick-choice-indicator" aria-hidden="true" />
+              <span>{{ option.label }}</span>
+            </button>
+          </template>
+        </div>
+        <div v-if="field === 'severity' || field === 'priority'" class="dimension-scale-hint" aria-hidden="true">
+          <span>低</span><span class="dimension-scale-line" /><span>高</span>
+        </div>
+        <p v-if="field === 'status'" class="status-hint">
+          待验收：处理完成，等待确认；已完成：验收通过；已取消：无需继续处理。
+        </p>
       </el-form-item>
 
       <el-form-item v-else-if="field === 'attention'" label="关注度（本列表）">
@@ -145,10 +184,141 @@ function submit() {
 </template>
 
 <style scoped>
+.quick-choice-list {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.quick-choice-option {
+  min-width: 76px;
+  min-height: 34px;
+  display: inline-flex;
+  flex: 0 1 auto;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 7px 12px;
+  border: 1px solid var(--el-border-color, #dcdfe6);
+  border-radius: 6px;
+  background: var(--el-fill-color-blank, #fff);
+  color: var(--el-text-color-regular, #606266);
+  cursor: pointer;
+  font: inherit;
+  line-height: 1;
+  transition: border-color 0.16s ease, background-color 0.16s ease, color 0.16s ease;
+}
+
+.quick-choice-option:hover {
+  border-color: var(--el-color-primary-light-5, #79bbff);
+  color: var(--el-color-primary, #409eff);
+}
+
+.quick-choice-option:focus-visible {
+  outline: 2px solid var(--el-color-primary-light-5, #79bbff);
+  outline-offset: 2px;
+}
+
+.quick-choice-option.is-selected {
+  border-color: var(--el-color-primary, #409eff);
+  background: color-mix(in srgb, var(--el-color-primary, #409eff) 11%, transparent);
+  color: var(--el-color-primary, #409eff);
+  font-weight: 600;
+}
+
+.quick-choice-divider {
+  flex: 0 0 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+  color: var(--el-text-color-secondary, #909399);
+  font-size: 0.76rem;
+  line-height: 1;
+}
+
+.quick-choice-divider::after {
+  height: 1px;
+  flex: 1;
+  background: var(--el-border-color-lighter, #ebeef5);
+  content: '';
+}
+
+.quick-choice-option.is-terminal:not(.is-selected) {
+  background: var(--el-fill-color-light, #f5f7fa);
+}
+
+.quick-choice-indicator {
+  width: 12px;
+  height: 12px;
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  border: 1.5px solid currentColor;
+  border-radius: 50%;
+}
+
+.quick-choice-option.is-selected .quick-choice-indicator::after {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  content: '';
+}
+
+.quick-choice-option.is-level-1 { --dimension-color: #67c23a; }
+.quick-choice-option.is-level-2 { --dimension-color: #409eff; }
+.quick-choice-option.is-level-3 { --dimension-color: #e6a23c; }
+.quick-choice-option.is-level-4 { --dimension-color: #f56c6c; }
+
+.quick-choice-option[class*='is-level-'] .quick-choice-indicator {
+  border-color: var(--dimension-color);
+  background: color-mix(in srgb, var(--dimension-color) 16%, transparent);
+}
+
+.quick-choice-option[class*='is-level-'].is-selected {
+  border-color: var(--dimension-color);
+  color: var(--dimension-color);
+  background: color-mix(in srgb, var(--dimension-color) 11%, transparent);
+}
+
+.quick-choice-option[class*='is-level-'].is-selected .quick-choice-indicator::after {
+  background: var(--dimension-color);
+}
+
+.dimension-scale-hint {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 7px;
+  color: var(--el-text-color-secondary, #909399);
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.dimension-scale-line {
+  height: 3px;
+  flex: 1;
+  border-radius: 99px;
+  background: linear-gradient(90deg, #67c23a, #409eff, #e6a23c, #f56c6c);
+}
+
 .attention-hint {
   margin: 6px 0 0;
   font-size: 0.78rem;
   color: #909399;
   line-height: 1.4;
+}
+
+.status-hint {
+  margin: 10px 0 0;
+  color: var(--el-text-color-secondary, #909399);
+  font-size: 0.78rem;
+  line-height: 1.55;
 }
 </style>

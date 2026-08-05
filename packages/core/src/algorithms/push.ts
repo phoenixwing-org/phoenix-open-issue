@@ -40,10 +40,13 @@ export function canPushToList(userRole: string | null, overlapExists: boolean): 
 
 export function canHandlePush(
   userId: string,
-  push: { toListId: string; status: string },
-  targetListMembers: MemberLike[],
+  push: { targetType?: 'list' | 'user'; toListId: string | null; toUserId?: string | null; status: string },
+  targetListMembers: MemberLike[] = [],
+  isSystemAdmin = false,
 ): boolean {
   if (push.status !== 'pending') return false
+  if (isSystemAdmin) return true
+  if (push.targetType === 'user') return push.toUserId === userId
   const member = targetListMembers.find(m => m.userId === userId)
   return member?.role === 'owner' || member?.role === 'admin'
 }

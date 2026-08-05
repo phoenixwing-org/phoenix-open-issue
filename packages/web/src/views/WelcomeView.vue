@@ -1,9 +1,12 @@
 <script setup lang="ts">
-import { useRouter } from 'vue-router'
+import { useRoute, useRouter } from 'vue-router'
 import PnwWelcomeShell from 'phoenix-wing/layout/PnwWelcomeShell.vue'
 import PageHelpButton from '@/components/PageHelpButton.vue'
 import { runShellTour } from '@/composables/useShellTour'
+import PoiWelcomePrimary from '@/components/workbench/PoiWelcomePrimary.vue'
+import { usePoiViewContribution } from '@/layout/workbench/poiViewContributions'
 
+const route = useRoute()
 const router = useRouter()
 const emit = defineEmits<{ close: [] }>()
 
@@ -21,6 +24,19 @@ async function startTour() {
   await router.push('/dashboard')
   setTimeout(() => runShellTour(), 400)
 }
+
+usePoiViewContribution(
+  () => route.name === 'welcome' ? route.fullPath : null,
+  {
+    primary: {
+      component: PoiWelcomePrimary,
+      props: {
+        onNavigate: (path: string) => router.push(path),
+        onStartTour: startTour,
+      },
+    },
+  },
+)
 </script>
 
 <template>
@@ -93,8 +109,8 @@ async function startTour() {
 
     <template #links>
       <div class="footer-links">
-        <a href="https://gitee.com/PhoenixWing321/phoenix-open-issue" target="_blank">Gitee</a>
-        <a href="https://gitee.com/PhoenixWing321/phoenix-wing" target="_blank">phoenix-wing</a>
+        <a href="https://gitee.com/phoenixwing/phoenix-open-issue" target="_blank">Gitee</a>
+        <a href="https://gitee.com/phoenixwing/phoenix-wing" target="_blank">phoenix-wing</a>
       </div>
     </template>
   </PnwWelcomeShell>

@@ -1,5 +1,10 @@
 import { getAsyncDb } from './db/connection.js'
-import { generateId, normalizeDictTags } from '@open-issue/core'
+import {
+  generateId,
+  normalizeDictTags,
+  ISSUE_IMPORTANCE_DICT,
+  ISSUE_URGENCY_DICT,
+} from '@open-issue/core'
 import bcrypt from 'bcryptjs'
 import { ensurePendingOrgUnitAsync } from './utils/pendingOrgUnit.js'
 import type { PnwDbExecutor } from './db/pnw/pnwDbTypes.js'
@@ -39,6 +44,57 @@ export async function seedListTypeDict(): Promise<number> {
   for (const item of LIST_TYPE_DICT) {
     if (await insertDictIfAbsent(db, 'listType', item.v, item.l, item.tags)) count++
   }
+  return count
+}
+
+/**
+ * Issue 的重要度/紧急度是内置四档系统协议。
+ * 旧库仍使用 severity/priority 作为字段和分组名；只开放 label 定制，value 不迁移。
+ */
+export async function seedIssueDimensionDict(): Promise<number> {
+  const db = getAsyncDb()
+  const groups = [
+    { groupName: 'severity', items: ISSUE_IMPORTANCE_DICT },
+    { groupName: 'priority', items: ISSUE_URGENCY_DICT },
+  ] as const
+  const shouldRenameLegacyLabels = await getSystemFlag('migrate_issue_dimensions_v1') !== '1'
+  const legacyLabels = new Set([
+    '致命', '严重', '轻微', '一般',
+    '致命-系统崩溃', '严重-核心不可用', '轻微-部分异常', '一般-体验问题',
+    '低', '中', '高', '紧急',
+  ])
+  let count = 0
+
+  for (const group of groups) {
+    for (const [sortOrder, item] of group.items.entries()) {
+      const existing = await db.get(
+        'SELECT id, label, tags, sortOrder FROM dict WHERE groupName = ? AND value = ?',
+        [group.groupName, item.value],
+      ) as { id: string; label: string; tags: string; sortOrder: number } | undefined
+      if (!existing) {
+        if (await insertDictIfAbsent(db, group.groupName, item.value, item.label, 'core,general')) count++
+        await db.run(
+          'UPDATE dict SET sortOrder = ? WHERE groupName = ? AND value = ?',
+          [sortOrder, group.groupName, item.value],
+        )
+        continue
+      }
+
+      // 系统维度标签也是协议的一部分，清理旧 preset 遗留标签。
+      const tags = normalizeDictTags('core,general')
+      const label = shouldRenameLegacyLabels && legacyLabels.has(existing.label)
+        ? item.label
+        : existing.label
+      if (tags !== normalizeDictTags(existing.tags) || label !== existing.label || existing.sortOrder !== sortOrder) {
+        await db.run(
+          'UPDATE dict SET label = ?, tags = ?, sortOrder = ? WHERE id = ?',
+          [label, tags, sortOrder, existing.id],
+        )
+      }
+    }
+  }
+
+  if (shouldRenameLegacyLabels) await setSystemFlag('migrate_issue_dimensions_v1', '1')
   return count
 }
 
@@ -86,9 +142,6 @@ export async function seedDict(): Promise<number> {
     { g: 'orgUnitType', tag: 'automotive', items: [
       { v: 'group', l: '小组' }, { v: 'department', l: '科室' }, { v: 'division', l: '部' },
     ]},
-    { g: 'severity', tag: 'automotive', items: [
-      { v: 'fatal', l: '致命' }, { v: 'major', l: '严重' }, { v: 'minor', l: '轻微' }, { v: 'trivial', l: '一般' },
-    ]},
     { g: 'closeReason', tag: 'automotive', items: [
       { v: 'completed', l: '已完成' }, { v: 'cancelled', l: '已取消' }, { v: 'duplicate', l: '重复' },
       { v: 'transferred', l: '已转交' }, { v: 'unreproducible', l: '不可复现' },
@@ -102,6 +155,7 @@ export async function seedDict(): Promise<number> {
     }
   }
   dictCount += await seedListTypeDict()
+  dictCount += await seedIssueDimensionDict()
   console.log(`  📚 ${dictCount} dict entries seeded`)
   return dictCount
 }
@@ -119,6 +173,7 @@ export async function seedEssential(): Promise<string[]> {
       await seedDict()
     } else {
       await seedListTypeDict()
+      await seedIssueDimensionDict()
     }
     await db.exec("UPDATE users SET systemRole = 'admin' WHERE username = 'admin' AND systemRole != 'admin'")
     return logs
@@ -200,8 +255,10 @@ export async function seedTestData(): Promise<string[]> {
   await db.run('INSERT INTO issueListMembers (id, listId, userId, role) VALUES (?, ?, ?, ?)', [generateId(), list1Id, uid_zs, 'editor'])
 
   const i1 = generateId()
-  await db.run(`INSERT INTO issues (id, listId, issueNo, title, description, status, priority, severity, category, detectionPhase, reporterId, assigneeId, dueDate, containment, rootCause, correctiveAction, sortOrder, createdBy, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [i1, list1Id, 'ISS-2026-0001', '页面加载慢', 'Dashboard 首次加载超过 5s', 'in_progress', 'high', 'major', 'function', 'customer', uid_zs, uid_admin, '2026-07-10', '先加 loading 动画', '未做代码分割，bundle 过大', '配置 Vite code-split + lazy load 路由', 0, uid_admin, now, now])
+  await db.run(`INSERT INTO issues (id, listId, issueNo, title, description, status, priority, severity, category, detectionPhase, reporterId, assigneeId, dueDate, sortOrder, createdBy, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [i1, list1Id, 'ISS-2026-0001', '页面加载慢', 'Dashboard 首次加载超过 5s', 'in_progress', 'high', 'major', 'function', 'customer', uid_zs, uid_admin, '2026-07-10', 0, uid_admin, now, now])
+  await db.run(`INSERT INTO eightDReports (id, relatedIssueId, title, containment, rootCause, correctiveAction, createdBy, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [generateId(), i1, '8D · 页面加载慢', '先加 loading 动画', '未做代码分割，bundle 过大', '配置 Vite code-split + lazy load 路由', uid_admin, now, now])
   await db.run('INSERT INTO checkpoints (id, issueId, checkpointDate, description, status, responsibleUserId, sortOrder, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
     [generateId(), i1, '2026-06-25', '定位性能瓶颈', 'done', uid_admin, 0, now, now])
   await db.run('INSERT INTO checkpoints (id, issueId, checkpointDate, description, status, responsibleUserId, sortOrder, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
@@ -210,8 +267,8 @@ export async function seedTestData(): Promise<string[]> {
     [generateId(), i1, '2026-07-05', '验证加载时间', 'pending', uid_zs, 2, now, now])
 
   const i2 = generateId()
-  await db.run(`INSERT INTO issues (id, listId, issueNo, title, description, status, priority, severity, category, detectionPhase, reporterId, assigneeId, dueDate, containment, rootCause, correctiveAction, sortOrder, createdBy, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [i2, list1Id, 'ISS-2026-0002', '登录页样式错乱', 'iPhone SE 上按钮溢出', 'open', 'medium', 'minor', 'appearance', 'customer', uid_zs, uid_zs, '2026-07-15', null, null, null, 1, uid_zs, now, now])
+  await db.run(`INSERT INTO issues (id, listId, issueNo, title, description, status, priority, severity, category, detectionPhase, reporterId, assigneeId, dueDate, sortOrder, createdBy, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [i2, list1Id, 'ISS-2026-0002', '登录页样式错乱', 'iPhone SE 上按钮溢出', 'open', 'medium', 'minor', 'appearance', 'customer', uid_zs, uid_zs, '2026-07-15', 1, uid_zs, now, now])
   await db.run('INSERT INTO checkpoints (id, issueId, checkpointDate, description, status, responsibleUserId, sortOrder, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
     [generateId(), i2, '2026-07-02', '复现问题', 'pending', uid_zs, 0, now, now])
   console.log('  📋 List 1: "前端组 2026年7月点检" — 2 issues')
@@ -224,16 +281,20 @@ export async function seedTestData(): Promise<string[]> {
   await db.run('INSERT INTO issueListMembers (id, listId, userId, role) VALUES (?, ?, ?, ?)', [generateId(), list2Id, uid_admin, 'editor'])
 
   const i3 = generateId()
-  await db.run(`INSERT INTO issues (id, listId, issueNo, title, description, status, priority, severity, category, detectionPhase, reporterId, assigneeId, dueDate, containment, rootCause, correctiveAction, sortOrder, createdBy, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [i3, list2Id, 'ISS-2026-0003', 'API 响应超时', '查询列表接口偶发 5s+ 超时', 'open', 'critical', 'fatal', 'function', 'audit', uid_ls, uid_admin, '2026-07-05', '增加查询超时熔断', 'SQLite WAL 锁竞争', '优化查询 + 加索引 + 连接池', 0, uid_ls, now, now])
+  await db.run(`INSERT INTO issues (id, listId, issueNo, title, description, status, priority, severity, category, detectionPhase, reporterId, assigneeId, dueDate, sortOrder, createdBy, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [i3, list2Id, 'ISS-2026-0003', 'API 响应超时', '查询列表接口偶发 5s+ 超时', 'open', 'critical', 'fatal', 'function', 'audit', uid_ls, uid_admin, '2026-07-05', 0, uid_ls, now, now])
+  await db.run(`INSERT INTO eightDReports (id, relatedIssueId, title, containment, rootCause, correctiveAction, createdBy, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [generateId(), i3, '8D · API 响应超时', '增加查询超时熔断', '数据库写锁竞争', '优化查询 + 加索引 + 连接池', uid_ls, now, now])
   await db.run('INSERT INTO checkpoints (id, issueId, checkpointDate, description, status, responsibleUserId, sortOrder, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
     [generateId(), i3, '2026-06-28', '排查数据库慢查询', 'done', uid_admin, 0, now, now])
   await db.run('INSERT INTO checkpoints (id, issueId, checkpointDate, description, status, responsibleUserId, sortOrder, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
     [generateId(), i3, '2026-07-01', '加索引优化', 'pending', uid_admin, 1, now, now])
 
   const i4 = generateId()
-  await db.run(`INSERT INTO issues (id, listId, issueNo, title, description, status, priority, severity, category, detectionPhase, reporterId, assigneeId, dueDate, containment, rootCause, correctiveAction, sortOrder, createdBy, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [i4, list2Id, 'ISS-2026-0004', '数据库备份脚本', '缺少自动备份，存在数据丢失风险', 'in_progress', 'high', 'major', 'process', 'in_process', uid_admin, uid_ls, '2026-07-08', '手动每日备份', '未配置自动化', '编写 cron + 同步脚本', 1, uid_ls, now, now])
+  await db.run(`INSERT INTO issues (id, listId, issueNo, title, description, status, priority, severity, category, detectionPhase, reporterId, assigneeId, dueDate, sortOrder, createdBy, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [i4, list2Id, 'ISS-2026-0004', '数据库备份脚本', '缺少自动备份，存在数据丢失风险', 'in_progress', 'high', 'major', 'process', 'in_process', uid_admin, uid_ls, '2026-07-08', 1, uid_ls, now, now])
+  await db.run(`INSERT INTO eightDReports (id, relatedIssueId, title, containment, rootCause, correctiveAction, createdBy, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [generateId(), i4, '8D · 数据库备份脚本', '手动每日备份', '未配置自动化', '编写 cron + 同步脚本', uid_ls, now, now])
   await db.run('INSERT INTO checkpoints (id, issueId, checkpointDate, description, status, responsibleUserId, sortOrder, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
     [generateId(), i4, '2026-06-30', '调研备份方案', 'done', uid_ls, 0, now, now])
   await db.run('INSERT INTO checkpoints (id, issueId, checkpointDate, description, status, responsibleUserId, sortOrder, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
@@ -250,8 +311,10 @@ export async function seedTestData(): Promise<string[]> {
   await db.run('INSERT INTO issueListMembers (id, listId, userId, role) VALUES (?, ?, ?, ?)', [generateId(), list3Id, uid_ls, 'viewer'])
 
   const i5 = generateId()
-  await db.run(`INSERT INTO issues (id, listId, issueNo, title, description, status, priority, severity, category, detectionPhase, reporterId, assigneeId, dueDate, containment, rootCause, correctiveAction, sortOrder, createdBy, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-    [i5, list3Id, 'ISS-2026-0005', '过程审核不符合项 #A12', '未按 WI-OP-003 执行首件检验记录', 'open', 'critical', 'fatal', 'process', 'audit', uid_admin, uid_ls, '2026-07-20', '临时增加检验员复核', '培训不到位 + 记录表格不清晰', '1.全员培训 WI-OP-003  2.更新记录表格为电子版  3.增加班组长抽查', 0, uid_admin, now, now])
+  await db.run(`INSERT INTO issues (id, listId, issueNo, title, description, status, priority, severity, category, detectionPhase, reporterId, assigneeId, dueDate, sortOrder, createdBy, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [i5, list3Id, 'ISS-2026-0005', '过程审核不符合项 #A12', '未按 WI-OP-003 执行首件检验记录', 'open', 'critical', 'fatal', 'process', 'audit', uid_admin, uid_ls, '2026-07-20', 0, uid_admin, now, now])
+  await db.run(`INSERT INTO eightDReports (id, relatedIssueId, title, containment, rootCause, correctiveAction, createdBy, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [generateId(), i5, '8D · 过程审核不符合项 #A12', '临时增加检验员复核', '培训不到位 + 记录表格不清晰', '1.全员培训 WI-OP-003  2.更新记录表格为电子版  3.增加班组长抽查', uid_admin, now, now])
   await db.run('INSERT INTO checkpoints (id, issueId, checkpointDate, description, status, responsibleUserId, sortOrder, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
     [generateId(), i5, '2026-07-01', '制定培训计划', 'done', uid_admin, 0, now, now])
   await db.run('INSERT INTO checkpoints (id, issueId, checkpointDate, description, status, responsibleUserId, sortOrder, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',

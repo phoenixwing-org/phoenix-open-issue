@@ -251,6 +251,7 @@ Content-Type: application/json
 
 {
   "checkpointDate": "2026-07-15",
+  "deadline": null,
   "description": "验证修复效果",
   "responsibleUserId": null
 }
@@ -260,7 +261,7 @@ PUT {{base}}/checkpoint/{{cpId}}
 Authorization: Bearer {{token}}
 Content-Type: application/json
 
-{ "status": "done", "description": "已完成验证" }
+{ "status": "done", "checkpointDate": "2026-07-16", "deadline": "2026-07-20", "description": "已完成验证" }
 
 ### 删除点检
 DELETE {{base}}/checkpoint/{{cpId}}

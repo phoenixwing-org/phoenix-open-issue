@@ -108,6 +108,14 @@ describePostgres('PostgreSQL integration', () => {
       [`pg-test-link-${suffix}`, issueId, linkedListId, checkpointOwnerId],
     )
     await db.run(
+      'INSERT INTO issueListLinks (id, issueId, listId, linkedBy) VALUES (?, ?, ?, ?)',
+      [`pg-test-origin-link-${suffix}`, issueId, sourceListId, checkpointOwnerId],
+    )
+    expect(await db.get<{ extensions: Record<string, unknown>; listCount: number }>(
+      'SELECT extensions, listCount FROM issues WHERE id = ?',
+      [issueId],
+    )).toEqual({ extensions: {}, listCount: 2 })
+    await db.run(
       'INSERT INTO checkpoints (id, issueId, checkpointDate, description) VALUES (?, ?, ?, ?)',
       [checkpointId, issueId, '2026-07-13', 'Visible in linked list'],
     )

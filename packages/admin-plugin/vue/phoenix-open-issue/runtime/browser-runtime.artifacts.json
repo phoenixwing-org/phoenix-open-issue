@@ -1,0 +1,51 @@
+{
+  "formatVersion": 1,
+  "moduleId": "phoenix-open-issue",
+  "source": {
+    "package": "driver.js",
+    "version": "1.6.0",
+    "license": "MIT",
+    "sourceFiles": {
+      "esm": "dist/driver.js.mjs",
+      "css": "dist/driver.css",
+      "types": "dist/driver.js.d.mts",
+      "license": "license"
+    }
+  },
+  "artifacts": [
+    {
+      "id": "page-help-driver-esm",
+      "path": "runtime/driver.js.mjs",
+      "format": "esm",
+      "runtime": "browser",
+      "bytes": 26225,
+      "gzipBytes": 6883,
+      "sha256": "sha256:6bba71b2c7dfdf3737a879f6215cad4739eb4de4945c25233758f0d61888e499",
+      "externalImports": 0
+    },
+    {
+      "id": "page-help-driver-css",
+      "path": "runtime/driver.css",
+      "format": "css",
+      "runtime": "browser",
+      "bytes": 2986,
+      "gzipBytes": 974,
+      "sha256": "sha256:29941b8a749ddc47f31ff0480bb6f4ea42808496fbe09fc2cd477e46ce2dfcff",
+      "externalImports": 0
+    }
+  ],
+  "supportFiles": [
+    {
+      "path": "runtime/driver.js.d.mts",
+      "format": "typescript-declaration",
+      "bytes": 4301,
+      "sha256": "sha256:f6d857b118fd92c8eaa2c9e2a7e2aeea2bc70eda49294c203481741ebdd1c628"
+    },
+    {
+      "path": "runtime/driver.js.LICENSE.txt",
+      "format": "license",
+      "bytes": 1067,
+      "sha256": "sha256:ec3ce3a08736fefd6a03a6d5b52b0705e6919fe06de9d7bd3fb63dcfb492d76d"
+    }
+  ]
+}

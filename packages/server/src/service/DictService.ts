@@ -6,6 +6,7 @@ import {
   normalizeDictTags,
   mergeDictTags,
   dictTagLikePattern,
+  isIssueSystemDictGroup,
 } from '@open-issue/core'
 import type { DictItem } from '@open-issue/core'
 import { ConflictError } from '../utils/errors.js'
@@ -38,12 +39,6 @@ export const DICT_PRESETS: Record<string, PresetGroup> = {
       { v: 'group', l: '小组' },
       { v: 'department', l: '科室' },
       { v: 'division', l: '部' },
-    ],
-    severity: [
-      { v: 'fatal', l: '致命' },
-      { v: 'major', l: '严重' },
-      { v: 'minor', l: '轻微' },
-      { v: 'trivial', l: '一般' },
     ],
     closeReason: [
       { v: 'completed', l: '已完成' },
@@ -83,12 +78,6 @@ export const DICT_PRESETS: Record<string, PresetGroup> = {
       { v: 'division', l: '事业部' },
       { v: 'squad', l: '敏捷小队' },
     ],
-    severity: [
-      { v: 'fatal', l: '致命-系统崩溃' },
-      { v: 'major', l: '严重-核心不可用' },
-      { v: 'minor', l: '轻微-部分异常' },
-      { v: 'trivial', l: '一般-体验问题' },
-    ],
     closeReason: [
       { v: 'completed', l: '已完成' },
       { v: 'cancelled', l: '已取消' },
@@ -121,6 +110,9 @@ export class DictService {
 
   async create(groupName: string, value: string, label: string, tags?: string): Promise<DictItem> {
     const db = getAsyncDb()
+    if (isIssueSystemDictGroup(groupName)) {
+      throw new ConflictError('重要度和紧急度是内置系统字段，不能新增值，只能修改显示名')
+    }
     const trimmed = value.trim()
     if (!trimmed) throw new ConflictError('字典值不能为空')
 
@@ -180,9 +172,25 @@ export class DictService {
 
   async update(id: string, data: { label?: string; value?: string; enabled?: number; sortOrder?: number; tags?: string }): Promise<DictItem> {
     const db = getAsyncDb()
+    const current = await db.get(
+      'SELECT groupName, value, enabled, sortOrder, tags FROM dict WHERE id = ?',
+      [id],
+    ) as Pick<DictItem, 'groupName' | 'value' | 'enabled' | 'sortOrder' | 'tags'> | undefined
+    if (!current) throw new ConflictError('字典项不存在')
+
+    if (isIssueSystemDictGroup(current.groupName)) {
+      const changesSystemContract =
+        (data.value !== undefined && data.value.trim() !== current.value)
+        || (data.enabled !== undefined && data.enabled !== current.enabled)
+        || (data.sortOrder !== undefined && data.sortOrder !== current.sortOrder)
+        || (data.tags !== undefined && normalizeDictTags(data.tags) !== normalizeDictTags(current.tags))
+      if (changesSystemContract) {
+        throw new ConflictError('内置重要度/紧急度只能修改显示名，值、顺序、标签和启用状态不可修改')
+      }
+      data = { label: data.label }
+    }
+
     if (data.value !== undefined) {
-      const current = await db.get('SELECT groupName FROM dict WHERE id = ?', [id]) as { groupName: string } | undefined
-      if (!current) throw new ConflictError('字典项不存在')
       const trimmed = data.value.trim()
       if (!trimmed) throw new ConflictError('字典值不能为空')
       const dup = await db.get(
@@ -217,7 +225,8 @@ export class DictService {
     const usageMap: Record<string, { table: string; column: string; label: string }> = {
       issueCategory:    { table: 'issues', column: 'category', label: 'Issue 问题分类' },
       detectionPhase:   { table: 'issues', column: 'detectionPhase', label: 'Issue 发现阶段' },
-      severity:         { table: 'issues', column: 'severity', label: 'Issue 严重度' },
+      severity:         { table: 'issues', column: 'severity', label: 'Issue 重要度' },
+      priority:         { table: 'issues', column: 'priority', label: 'Issue 紧急度' },
       closeReason:      { table: 'issues', column: 'closeReason', label: 'Issue 关闭理由' },
       orgUnitType:      { table: 'orgUnits', column: 'unitType', label: '组织类型' },
       listType:         { table: 'issueLists', column: 'listType', label: '点检表类型' },

@@ -17,8 +17,7 @@ function resolvePath(p: string): string {
 }
 
 const staticDir = resolvePath(process.env.STATIC_DIR || '../web/dist')
-const defaultDbPath = resolvePath(process.env.DB_PATH || '../../data/open-issue.sqlite')
-const database = pnwResolveDbConfig(process.env, defaultDbPath)
+const database = pnwResolveDbConfig(process.env)
 const nodeEnv = process.env.NODE_ENV || 'development'
 const jwtSecret = process.env.JWT_SECRET || 'dev-secret-change-me'
 const bootstrapAdminPassword = process.env.INITIAL_ADMIN_PASSWORD || '123456'
@@ -104,7 +103,6 @@ export const config = {
   nodeEnv,
   jwtSecret,
   bootstrapAdminPassword,
-  dbPath: database.driver === 'sqlite' ? database.path : defaultDbPath,
   database,
   testReportsDir: resolvePath(process.env.TEST_REPORTS_DIR || '../../data/test-reports'),
   serveStatic: resolveServeStatic(),

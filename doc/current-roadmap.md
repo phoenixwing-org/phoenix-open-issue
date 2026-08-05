@@ -4,22 +4,25 @@
 
 Owner：Open Issue maintainers
 
-适用版本：0.5.x
+适用版本：0.7.x
 
-最后核验：2026-07-20
+最后核验：2026-08-05
 
 ## 已完成基线
 
-- v0.1–v0.4 已覆盖基础 CRUD、多列表关联、汽车行业字段、推送/点检、数据字典、Linux 部署、数据保护与 SQLite/PostgreSQL adapter。
-- **当前包版本 `0.5.0`**：含飞书 OAuth 二期（管理员绑定 + 待审查）、登录方式设定，以及 post-0.4 积压能力；见 [CHANGELOG](CHANGELOG.md)。
-- 前端和服务端精确消费 Registry `phoenix-wing@0.5.1`，不依赖相邻源码；已删除 `optimizeDeps.exclude`，singleton 与 Ribbon v1 fixture 回归、依赖来源、自动测试和三段构建已进入 `verify:ci`。
+- v0.1–v0.4 已覆盖基础 CRUD、多列表关联、汽车行业字段、推送/点检、数据字典、Linux 部署、数据保护与双数据库 adapter；该 adapter 现仅作历史迁移兼容。
+- **当前包版本 `0.7.0`**：Open Issue 已收敛为 Phoenix Admin 声明式业务插件，使用 `.phoenix.cool` 不可变制品；保留既有 Issue 工作台、数据迁移、字典适配、用户定向推送和独立 8D 能力，详见 [CHANGELOG](CHANGELOG.md)。
+- 8D 使用可空 `eightDReports.relatedIssueId` 验证附属能力，不建设通用关联表；Issue 新增 `extensions JSONB` 只承载轻量扩展属性，不保存附属关系或动态表单。只有出现多目标、关系元数据或跨模块统一查询时再升级关联模型。实现边界见[扩展能力计划](附属功能与Issue关联计划.md)。
+- 仪表盘已增加[待办中心](仪表盘待办中心.md)，按责任视角聚合待我处理、我发起的推送和管理员审批；不建设重复的通用任务表。
+- 前端和服务端精确消费 Registry `phoenix-wing@0.6.0`，不依赖相邻源码；singleton、Ribbon/Tree 工作台、View contribution、依赖来源、自动测试和三段构建已进入 `verify:ci`。
+- `codex/single-pnw-workbench` 已完成 `PnwWorkbenchShell` 真实消费者验证；受控并列 resolver 仅用于后续 Wing 源码候选联调，不修改 Registry 依赖图，也不与 `develop/admin-plugin` 迁移线合并语义。
 - `@open-issue/core` 保持纯 TypeScript，前后端共享类型和算法但不引入 Vue、Express 或数据库驱动。
 - 飞书 OAuth 二期设计归档：`doc/第三方登录/`；表结构点检纳入设置「表结构补全」。真实飞书点检已通过（2026-07-21）。
 
 ## 当前优先级
 
 1. 将权限细化、搜索/全文检索、Issue 拖拽排序和头像上传拆成可关闭 Issue，并明确 owner、里程碑和验收证据。
-2. 保持 SQLite 与 PostgreSQL 行为一致；迁移必须提供校验、回滚和数据保护证据。
+2. PostgreSQL 作为唯一正式支持数据库；旧本地数据库兼容进入弃用过渡期，完整移除工作见 `admin-plugin-rectification/TODO.md`。
 3. `@open-issue/core` 是否公开发布由第二个消费者与 API 稳定性决定，不为追求包数量提前拆 `@open-issue/ui`。
 
 ## 文档合并关系

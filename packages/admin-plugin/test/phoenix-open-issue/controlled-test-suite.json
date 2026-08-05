@@ -1,0 +1,176 @@
+{
+  "schemaVersion": 1,
+  "suiteId": "phoenix-open-issue.admin-plugin.core",
+  "pluginId": "phoenix-open-issue",
+  "toolId": "vitest",
+  "toolVersionRange": ">=3.2.7 <3.3.0",
+  "config": {
+    "path": "packages/admin-plugin/vue/vitest.config.ts",
+    "sha256": "16c71f5c7cde5a7dabc07fe9535c86bfacfd4bce51d71c42621bcf3d3de9c333"
+  },
+  "expectedFileCount": 23,
+  "expectedCaseCount": 131,
+  "tests": [
+    {
+      "id": "domain:function",
+      "filePath": "packages/admin-plugin/test/phoenix-open-issue/domain/function.test.ts",
+      "packageName": "domain",
+      "caseCount": 6,
+      "sha256": "aa44ac69481f2a8b1568b9bdb3f254c14cd4fa571535459db7bc807fb65d5308"
+    },
+    {
+      "id": "domain:issue-list",
+      "filePath": "packages/admin-plugin/test/phoenix-open-issue/domain/issue-list.test.ts",
+      "packageName": "domain",
+      "caseCount": 5,
+      "sha256": "b58910c93ada6ebf564fb2dba9a4ffbd2830d079402ab8c88d6864f2dec535f7"
+    },
+    {
+      "id": "domain:issue",
+      "filePath": "packages/admin-plugin/test/phoenix-open-issue/domain/issue.test.ts",
+      "packageName": "domain",
+      "caseCount": 8,
+      "sha256": "20274920f3c49c795fa9101d6eb6a1a0bde5f0811166210a3de7a1eaa966f28b"
+    },
+    {
+      "id": "domain:legacy-import",
+      "filePath": "packages/admin-plugin/test/phoenix-open-issue/domain/legacy-import.test.ts",
+      "packageName": "domain",
+      "caseCount": 5,
+      "sha256": "3fb22b0a9b99d5b4fd4afa5c6c27906221fcb2e4872336e7b4e5914b1a2a42ee"
+    },
+    {
+      "id": "domain:maintenance",
+      "filePath": "packages/admin-plugin/test/phoenix-open-issue/domain/maintenance.test.ts",
+      "packageName": "domain",
+      "caseCount": 6,
+      "sha256": "da6bf829fb12b4d2b5560fe023f4bca2b4448beadf98578e1f2d2c64abba02e3"
+    },
+    {
+      "id": "domain:push-report",
+      "filePath": "packages/admin-plugin/test/phoenix-open-issue/domain/push-report.test.ts",
+      "packageName": "domain",
+      "caseCount": 3,
+      "sha256": "d9160b345ff54c26688a30e9ed78589aa83f746571ad9ea008c0cdabae27768a"
+    },
+    {
+      "id": "domain:test-runner",
+      "filePath": "packages/admin-plugin/test/phoenix-open-issue/domain/test-runner.test.ts",
+      "packageName": "domain",
+      "caseCount": 4,
+      "sha256": "25658c1ddb452a22d18f009185c4a4f32283ff82fd33549e10b3ae693eefc173"
+    },
+    {
+      "id": "service:access",
+      "filePath": "packages/admin-plugin/test/phoenix-open-issue/service/access.test.ts",
+      "packageName": "service",
+      "caseCount": 6,
+      "sha256": "295741ce3435df31ffed45f5e5f790438cafdf60f5006108f911f149fc95f6cb"
+    },
+    {
+      "id": "service:issue-list",
+      "filePath": "packages/admin-plugin/test/phoenix-open-issue/service/issue-list.test.ts",
+      "packageName": "service",
+      "caseCount": 1,
+      "sha256": "52b3135e139710b5e402b475690a271a9b765d11ff48f43e7152817d89c29378"
+    },
+    {
+      "id": "service:legacy-import",
+      "filePath": "packages/admin-plugin/test/phoenix-open-issue/service/legacy-import.test.ts",
+      "packageName": "service",
+      "caseCount": 10,
+      "sha256": "97762d79c4862fa23f4a87fb9330e7d82cd97b859a025aa9c1adca9e3be19322"
+    },
+    {
+      "id": "service:maintenance",
+      "filePath": "packages/admin-plugin/test/phoenix-open-issue/service/maintenance.test.ts",
+      "packageName": "service",
+      "caseCount": 4,
+      "sha256": "c8259529bf5c505a933de19307d6bdfbc4256d378bc340fa2b32db82486fc782"
+    },
+    {
+      "id": "contract:dictionary",
+      "filePath": "packages/admin-plugin/test/scripts/admin-plugin-dictionary-contract.test.ts",
+      "packageName": "contract",
+      "caseCount": 3,
+      "sha256": "e1a470597cadd50a8fb02a8d251e0b09d4dad23760b0959ad155dfb51dcd9e3e"
+    },
+    {
+      "id": "contract:settings-boundary",
+      "filePath": "packages/admin-plugin/test/scripts/admin-plugin-settings-boundary.test.ts",
+      "packageName": "contract",
+      "caseCount": 3,
+      "sha256": "89201a66f8a1c9c0e416b290d2deb31c270ec1deca4485d0f23742e07abb2689"
+    },
+    {
+      "id": "contract:view-layout",
+      "filePath": "packages/admin-plugin/test/scripts/admin-plugin-view-layout.test.ts",
+      "packageName": "contract",
+      "caseCount": 11,
+      "sha256": "a48de6ec829c7885f02e3845beebae734ec3584ea8d77c58580f32b4d2fb2359"
+    },
+    {
+      "id": "core:dict-catalog",
+      "filePath": "packages/admin-plugin/vue/phoenix-open-issue/api/dict-catalog.test.ts",
+      "packageName": "core",
+      "caseCount": 2,
+      "sha256": "f131a9ba6c48efc5053b89a2e7818784c7a9b2641d9189dd46d8f0c43afc3826"
+    },
+    {
+      "id": "core:dict",
+      "filePath": "packages/admin-plugin/vue/phoenix-open-issue/api/dict.test.ts",
+      "packageName": "core",
+      "caseCount": 5,
+      "sha256": "09476e41f099547c9deefb55ba5f0f015fe5c440b480d9450487f861b381b894"
+    },
+    {
+      "id": "core:dict-store",
+      "filePath": "packages/admin-plugin/vue/phoenix-open-issue/stores/dict.test.ts",
+      "packageName": "core",
+      "caseCount": 3,
+      "sha256": "4f577892176fb65c8c376ab5a0a85378aa807d7d2caf8d84527289a3528448b9"
+    },
+    {
+      "id": "core:host-capability",
+      "filePath": "packages/admin-plugin/vue/phoenix-open-issue/core/algorithms/host-capability.test.ts",
+      "packageName": "core",
+      "caseCount": 3,
+      "sha256": "69c5a21466704df408377aa8f4707d7be011ab9c6a495048b6530fb8a91709b4"
+    },
+    {
+      "id": "core:legacy-dictionary",
+      "filePath": "packages/admin-plugin/vue/phoenix-open-issue/core/algorithms/legacy-dictionary.test.ts",
+      "packageName": "core",
+      "caseCount": 3,
+      "sha256": "856cc2584652a13801363d74fe8cfe4ff94e8a21ac33c140678f8485f0b25868"
+    },
+    {
+      "id": "core:legacy-import",
+      "filePath": "packages/admin-plugin/vue/phoenix-open-issue/core/algorithms/legacy-import.test.ts",
+      "packageName": "core",
+      "caseCount": 5,
+      "sha256": "7382e1006fcf3712ff36fc46ee18d460d7aa55ed4c5fc1deef1cabec241a9161"
+    },
+    {
+      "id": "core:permission",
+      "filePath": "packages/admin-plugin/vue/phoenix-open-issue/core/algorithms/permission.test.ts",
+      "packageName": "core",
+      "caseCount": 7,
+      "sha256": "d101fd1fada15a06c27f4be5944cecd20d7bc24430b6d7000cb164296ea9c739"
+    },
+    {
+      "id": "core:push",
+      "filePath": "packages/admin-plugin/vue/phoenix-open-issue/core/algorithms/push.test.ts",
+      "packageName": "core",
+      "caseCount": 13,
+      "sha256": "77c0f36a3684c43b7afe090f3aa2f4d143e31bd4016b9c4353ebd80abc2cdbd7"
+    },
+    {
+      "id": "core:scheduling",
+      "filePath": "packages/admin-plugin/vue/phoenix-open-issue/core/algorithms/scheduling.test.ts",
+      "packageName": "core",
+      "caseCount": 15,
+      "sha256": "0ff85aa61fc2c95d1a66c73b66c01a2ad83654ff366eecc7ee2e05a8584912d9"
+    }
+  ]
+}

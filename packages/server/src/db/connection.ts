@@ -1,4 +1,4 @@
-// 禁止使用 better-sqlite3（需要 C++ 编译），统一通过适配层使用 node-sqlite3-wasm
+// 正式路径使用 PostgreSQL；同步 SQLite bridge 仅保留给显式 opt-in 的 legacy 归档/导入。
 import { pnwCreateDb, type PnwDbAdapter } from './pnwDbAdapter.js'
 import { config } from '../config.js'
 import { runSchema } from './schema.js'
@@ -7,7 +7,7 @@ import fs from 'fs'
 import path from 'path'
 import { PnwSqliteAdapter } from './pnw/pnwSqliteAdapter.js'
 import type { PnwDbAdapter as PnwAsyncDbAdapter } from './pnw/pnwDbTypes.js'
-import { pnwCreateAsyncDb } from './pnw/pnwDbFactory.js'
+import { PnwPostgresAdapter } from './pnw/pnwPostgresAdapter.js'
 import { pnwRunSchema } from './pnw/pnwSchema.js'
 import { pnwRunMigrations } from './pnw/pnwMigrationRunner.js'
 
@@ -45,8 +45,8 @@ export function getDb(): PnwDbAdapter {
       db.exec('PRAGMA journal_mode = WAL')
     } catch {
       // 如果 WAL 文件损坏（上次崩溃遗留），清理后重试
-      const dir = path.dirname(config.dbPath)
-      const base = path.basename(config.dbPath)
+      const dir = path.dirname(config.database.path)
+      const base = path.basename(config.database.path)
       const wal = path.join(dir, base + '-wal')
       const shm = path.join(dir, base + '-shm')
       try { if (fs.existsSync(wal)) fs.unlinkSync(wal) } catch {}
@@ -65,7 +65,7 @@ export function getAsyncDb(): PnwAsyncDbAdapter {
   if (!asyncDb) {
     asyncDb = config.database.driver === 'sqlite'
       ? new PnwSqliteAdapter(getDb())
-      : pnwCreateAsyncDb(config.database)
+      : new PnwPostgresAdapter(config.database)
   }
   return asyncDb
 }
@@ -74,8 +74,10 @@ export function initializeDb(): Promise<PnwAsyncDbAdapter> {
   if (!initialization) {
     initialization = (async () => {
       const database = getAsyncDb()
-      if (database.dialect === 'postgres') await pnwRunSchema(database)
-      await pnwRunMigrations(database)
+      if (database.dialect === 'postgres') {
+        await pnwRunSchema(database)
+        await pnwRunMigrations(database)
+      }
       await seedEssential()
       return database
     })().catch(error => {

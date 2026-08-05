@@ -12,7 +12,7 @@ export function repairIssueListLinks() {
   return request.post('/db/repair-links')
 }
 
-export type RepairTaskId = 'schema' | 'checkpoints' | 'links' | 'dict' | 'users' | 'issueNo' | 'linkAttention' | 'all'
+export type RepairTaskId = 'schema' | 'checkpoints' | 'links' | 'dict' | 'users' | 'issueNo' | 'linkAttention' | 'reports' | 'all'
 
 export interface RepairTaskResult {
   task: RepairTaskId

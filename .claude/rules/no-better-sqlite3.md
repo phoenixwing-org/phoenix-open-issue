@@ -1,23 +1,10 @@
-# 禁止使用 better-sqlite3
+# PostgreSQL 正式路径与 legacy SQLite 边界
 
-**原因：** `better-sqlite3` 在 `pnpm install` 时需要 C++ 编译器进行原生编译，导致跨平台和环境问题。
+状态：transitional；待旧库归档与导入演练完成后删除。
 
-**替代方案：** 已统一使用 `node-sqlite3-wasm`（纯 WASM，无需编译）。
-
-- ❌ **不要** 安装或导入 `better-sqlite3` 或 `@types/better-sqlite3`
-- ✅ **始终** 使用 `node-sqlite3-wasm`（已封装在 `db/connection.ts`）
-- 数据库操作通过 `getDb()` 获取实例
-- API 调用方式：使用 `db.run/get/all/exec` 而非 `db.prepare(sql).run/get/all`
-- 事务使用手动 `BEGIN TRANSACTION` / `COMMIT` / `ROLLBACK`（`node-sqlite3-wasm` 不支持 `db.transaction(fn)`）
-
-**导入方式（仅 connection.ts 需要）：**
-```ts
-import { createRequire } from 'module'
-const require = createRequire(import.meta.url)
-const { Database } = require('node-sqlite3-wasm')
-```
-
-**类型导入：**
-```ts
-import type { Database } from 'node-sqlite3-wasm'
-```
+- 新功能、测试和正式部署只使用 PostgreSQL；不得新增 legacy embedded DB 依赖、adapter、schema、migration 或 fixture。
+- 未配置 `DATABASE_URL` 时必须拒绝启动，禁止创建本地数据库或静默回退。
+- `better-sqlite3`、`@types/better-sqlite3` 和其他新 embedded DB 驱动一律禁止引入。
+- 既有 `node-sqlite3-wasm` 只服务已登记 legacy 旧库的归档/导入；必须显式设置 `DB_DRIVER=sqlite` 与 `ALLOW_LEGACY_SQLITE=true`，不得用于新开发或生产。
+- 不要扩展 `packages/server/src/db/pnw/pnwSqliteAdapter.ts` 或同步 `db/connection.ts`；有价值的领域语义先迁到纯算法/PostgreSQL 测试，再删除兼容实现。
+- 真实旧库、校验和、owner、保留期和旧库→PostgreSQL 对账未冻结前，不得删除唯一恢复入口。

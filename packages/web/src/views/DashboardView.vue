@@ -9,6 +9,8 @@ import PageHelpButton from '@/components/PageHelpButton.vue'
 import ListFormDialog from '@/components/ListFormDialog.vue'
 import { useAuthStore } from '@/stores/auth'
 import { canPerformListAction, isSystemAdmin, isSystemViewer } from '@open-issue/core'
+import type { DashboardTaskCounts, DashboardTaskTab } from '@open-issue/core'
+import DashboardTaskCenter from '@/components/dashboard/DashboardTaskCenter.vue'
 import {
   confirmListArchive,
   filterListsByLifecycle,
@@ -22,7 +24,10 @@ const listTypeDict = useDictGroup('listType')
 const openTab = inject<(pageId: string, title: string, contextKey?: string) => void>('openTab')!
 const showCreate = ref(false)
 type DashboardScope = 'mine' | 'all'
+type DashboardSection = 'overview' | DashboardTaskTab
 const listScope = ref<DashboardScope>('mine')
+const activeDashboardTab = ref<DashboardSection>('overview')
+const dashboardTaskCounts = ref<DashboardTaskCounts>({ incoming: 0, outgoing: 0, admin: 0, total: 0 })
 const lifecycleFilter = ref<ListLifecycleFilter>('active')
 const isAdmin = computed(() => isSystemAdmin(auth.user ?? undefined))
 const canCreateList = computed(() => Boolean(auth.user && !isSystemViewer(auth.user)))
@@ -98,6 +103,10 @@ function goList(id: string, name: string) {
   openTab(`listDetail:${id}`, title, id)
 }
 
+function selectDashboardTab(tab: DashboardSection) {
+  activeDashboardTab.value = tab
+}
+
 async function onCreate(data: { name: string; listType: string; description?: string }) {
   await store.createList(data)
   lifecycleFilter.value = 'active'
@@ -110,62 +119,109 @@ async function onCreate(data: { name: string; listType: string; description?: st
   <div class="page dashboard">
     <PnwPageHeader title="仪表盘">
       <template #actions>
-        <el-button v-if="canCreateList" type="primary" @click="showCreate = true" data-tour="dashboard-create">
-          <el-icon><Plus /></el-icon> 新建列表
-        </el-button>
-        <div class="dashboard-view-filters" data-tour="dashboard-views">
-          <span class="filter-label">范围</span>
-          <el-radio-group v-model="listScope" size="small" @change="switchScope">
-            <el-radio-button value="mine">我的</el-radio-button>
-            <el-radio-button v-if="isAdmin" value="all">所有</el-radio-button>
-          </el-radio-group>
-          <span class="filter-label">状态</span>
-          <el-radio-group v-model="lifecycleFilter" size="small">
-            <el-radio-button value="active">正常</el-radio-button>
-            <el-radio-button value="archived">已归档</el-radio-button>
-          </el-radio-group>
-        </div>
+        <nav class="dashboard-header-tabs" role="tablist" aria-label="仪表盘视图">
+          <button
+            type="button"
+            role="tab"
+            :aria-selected="activeDashboardTab === 'overview'"
+            aria-controls="dashboard-panel-overview"
+            :class="{ 'is-active': activeDashboardTab === 'overview' }"
+            @click="selectDashboardTab('overview')"
+          >概览</button>
+          <button
+            type="button"
+            role="tab"
+            :aria-selected="activeDashboardTab === 'incoming'"
+            aria-controls="dashboard-panel-incoming"
+            :class="{ 'is-active': activeDashboardTab === 'incoming' }"
+            @click="selectDashboardTab('incoming')"
+          >待我处理 <span>{{ dashboardTaskCounts.incoming }}</span></button>
+          <button
+            type="button"
+            role="tab"
+            :aria-selected="activeDashboardTab === 'outgoing'"
+            aria-controls="dashboard-panel-outgoing"
+            :class="{ 'is-active': activeDashboardTab === 'outgoing' }"
+            @click="selectDashboardTab('outgoing')"
+          >我发起的 <span>{{ dashboardTaskCounts.outgoing }}</span></button>
+          <button
+            v-if="isAdmin"
+            type="button"
+            role="tab"
+            :aria-selected="activeDashboardTab === 'admin'"
+            aria-controls="dashboard-panel-admin"
+            :class="{ 'is-active': activeDashboardTab === 'admin' }"
+            @click="selectDashboardTab('admin')"
+          >管理审批 <span>{{ dashboardTaskCounts.admin }}</span></button>
+        </nav>
       </template>
       <template #help><PageHelpButton page-id="dashboard" /></template>
     </PnwPageHeader>
 
-    <div v-loading="store.loading">
-      <el-empty v-if="!displayedLists.length && !store.loading" :description="emptyDescription" />
+    <DashboardTaskCenter
+      v-model:active-tab="activeDashboardTab"
+      @counts-change="dashboardTaskCounts = $event"
+    >
+      <template #overview>
+        <section class="dashboard-overview" aria-label="列表概览">
+          <div class="dashboard-overview-toolbar">
+            <el-button v-if="canCreateList" type="primary" @click="showCreate = true" data-tour="dashboard-create">
+              <el-icon><Plus /></el-icon> 新建列表
+            </el-button>
+            <div class="dashboard-view-filters" data-tour="dashboard-views">
+              <span class="filter-label">范围</span>
+              <el-radio-group v-model="listScope" size="small" @change="switchScope">
+                <el-radio-button value="mine">我的</el-radio-button>
+                <el-radio-button v-if="isAdmin" value="all">所有</el-radio-button>
+              </el-radio-group>
+              <span class="filter-label">状态</span>
+              <el-radio-group v-model="lifecycleFilter" size="small">
+                <el-radio-button value="active">正常</el-radio-button>
+                <el-radio-button value="archived">已归档</el-radio-button>
+              </el-radio-group>
+            </div>
+          </div>
 
-      <div class="list-cards" data-tour="dashboard-cards">
-        <div
-          v-for="list in displayedLists" :key="list.id"
-          class="list-card"
-          @click="goList(list.id, list.name)"
-        >
-          <div class="card-type" :style="{ background: listTypeDict.color(list.listType) }">
-            {{ listTypeDict.label(list.listType) }}
-          </div>
-          <div class="card-body">
-            <div class="card-title-row">
-              <h3>{{ list.name }}</h3>
-              <el-tag :type="listLifecycleStatus(list).type" size="small">
-                {{ listLifecycleStatus(list).label }}
-              </el-tag>
+          <div v-loading="store.loading">
+            <el-empty v-if="!displayedLists.length && !store.loading" :description="emptyDescription" />
+
+            <div class="list-cards" data-tour="dashboard-cards">
+              <div
+                v-for="list in displayedLists" :key="list.id"
+                class="list-card"
+                @click="goList(list.id, list.name)"
+              >
+                <div class="card-type" :style="{ background: listTypeDict.color(list.listType) }">
+                  {{ listTypeDict.label(list.listType) }}
+                </div>
+                <div class="card-body">
+                  <div class="card-title-row">
+                    <h3>{{ list.name }}</h3>
+                    <el-tag :type="listLifecycleStatus(list).type" size="small">
+                      {{ listLifecycleStatus(list).label }}
+                    </el-tag>
+                  </div>
+                  <p v-if="list.description">{{ list.description }}</p>
+                  <div class="card-info">
+                    <span v-if="(list as any).ownerName">👤 {{ (list as any).ownerName }}</span>
+                    <span>👥 {{ (list as any).memberCount || 0 }} 人</span>
+                  </div>
+                </div>
+                <div class="card-meta">
+                  {{ new Date(list.updatedAt).toLocaleDateString('zh-CN') }}
+                  <el-button
+                    v-if="canArchive(list)"
+                    link size="small" :type="list.archived ? 'primary' : 'warning'"
+                    @click.stop="onArchive(list.id, list.name, !Boolean(list.archived))"
+                    :title="list.archived ? '取消归档' : '归档此列表'"
+                  >{{ list.archived ? '取消归档' : '归档' }}</el-button>
+                </div>
+              </div>
             </div>
-            <p v-if="list.description">{{ list.description }}</p>
-            <div class="card-info">
-              <span v-if="(list as any).ownerName">👤 {{ (list as any).ownerName }}</span>
-              <span>👥 {{ (list as any).memberCount || 0 }} 人</span>
-            </div>
           </div>
-          <div class="card-meta">
-            {{ new Date(list.updatedAt).toLocaleDateString('zh-CN') }}
-            <el-button
-              v-if="canArchive(list)"
-              link size="small" :type="list.archived ? 'primary' : 'warning'"
-              @click.stop="onArchive(list.id, list.name, !Boolean(list.archived))"
-              :title="list.archived ? '取消归档' : '归档此列表'"
-            >{{ list.archived ? '取消归档' : '归档' }}</el-button>
-          </div>
-        </div>
-      </div>
-    </div>
+        </section>
+      </template>
+    </DashboardTaskCenter>
 
     <ListFormDialog v-if="showCreate" @confirm="onCreate" @close="showCreate = false" />
 
@@ -194,15 +250,64 @@ async function onCreate(data: { name: string; listType: string; description?: st
 </template>
 
 <style scoped>
-.page-head {
+.dashboard :deep(.pnw-head-row) {
+  grid-template-columns: auto minmax(0, 1fr) auto;
+}
+.dashboard :deep(.pnw-head-actions) {
+  justify-self: start;
+}
+.dashboard-header-tabs {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.dashboard-header-tabs button {
+  min-height: 30px;
+  padding: 4px 12px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--pnw-workbench-text, var(--el-text-color-primary));
+  font: inherit;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.dashboard-header-tabs button:hover {
+  color: var(--el-color-primary);
+  background: var(--el-fill-color-light);
+}
+.dashboard-header-tabs button.is-active {
+  color: var(--el-color-primary);
+  background: var(--el-color-primary-light-9);
+}
+.dashboard-header-tabs button:focus-visible {
+  outline: 2px solid var(--el-color-primary-light-5);
+  outline-offset: 1px;
+}
+.dashboard-header-tabs span {
+  display: inline-grid;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 3px;
+  padding: 0 5px;
+  box-sizing: border-box;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--el-fill-color);
+  color: var(--el-text-color-secondary);
+  font-size: 0.7rem;
+  line-height: 18px;
+}
+.dashboard-overview-toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
-}
-.head-actions {
-  display: flex;
+  flex-wrap: wrap;
   gap: 8px;
+  margin-bottom: 16px;
 }
 .dashboard-view-filters {
   display: flex;
@@ -211,13 +316,9 @@ async function onCreate(data: { name: string; listType: string; description?: st
   gap: 6px;
 }
 .filter-label {
-  color: #909399;
+  color: var(--pnw-workbench-muted, var(--el-text-color-secondary, #64748b));
   font-size: 0.75rem;
   white-space: nowrap;
-}
-.page-head h2 {
-  font-size: 1.3rem;
-  font-weight: 650;
 }
 .list-cards {
   display: grid;
@@ -225,15 +326,15 @@ async function onCreate(data: { name: string; listType: string; description?: st
   gap: 16px;
 }
 .list-card {
-  background: #fff;
+  background: var(--pnw-workbench-surface, var(--el-bg-color, #fff));
   border-radius: 10px;
-  border: 1px solid #ebeef5;
+  border: 1px solid var(--pnw-workbench-border, var(--el-border-color-lighter, #ebeef5));
   cursor: pointer;
   overflow: hidden;
   transition: box-shadow 0.2s, transform 0.15s;
 }
 .list-card:hover {
-  box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+  box-shadow: var(--el-box-shadow-light, 0 4px 16px rgba(0,0,0,0.08));
   transform: translateY(-2px);
 }
 .card-type {
@@ -264,10 +365,11 @@ async function onCreate(data: { name: string; listType: string; description?: st
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  color: var(--pnw-workbench-text, var(--el-text-color-primary));
 }
 .card-body p {
   font-size: 0.82rem;
-  color: #909399;
+  color: var(--pnw-workbench-muted, var(--el-text-color-secondary, #909399));
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -277,7 +379,7 @@ async function onCreate(data: { name: string; listType: string; description?: st
   gap: 12px;
   margin-top: 6px;
   font-size: 0.75rem;
-  color: #909399;
+  color: var(--pnw-workbench-muted, var(--el-text-color-secondary, #909399));
 }
 .card-meta {
   display: flex;
@@ -285,16 +387,11 @@ async function onCreate(data: { name: string; listType: string; description?: st
   align-items: center;
   padding: 8px 16px 12px;
   font-size: 0.72rem;
-  color: #c0c4cc;
+  color: var(--el-text-color-placeholder, #c0c4cc);
 }
 @media (max-width: 900px) {
-  .dashboard :deep(.pnw-head-row) {
-    grid-template-columns: 1fr auto;
-  }
-  .dashboard :deep(.pnw-head-actions) {
-    grid-column: 1 / -1;
-    grid-row: 2;
-    flex-wrap: wrap;
+  .dashboard-overview-toolbar {
+    align-items: flex-start;
     justify-content: flex-start;
   }
 }

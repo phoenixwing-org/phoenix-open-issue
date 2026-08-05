@@ -1,0 +1,47 @@
+{
+  "name": "@open-issue/admin-plugin",
+  "version": "0.7.0",
+  "private": true,
+  "type": "module",
+  "license": "Apache-2.0",
+  "description": "Phoenix Admin / COOL 双端业务模块源码包",
+  "repository": {
+    "type": "git",
+    "url": "https://gitee.com/phoenixwing/phoenix-open-issue.git",
+    "directory": "packages/admin-plugin"
+  },
+  "files": [
+    "README.md",
+    "manifest.json",
+    "midway/phoenix-open-issue/",
+    "vue/phoenix-open-issue/",
+    "!vue/phoenix-open-issue/**/*.test.ts"
+  ],
+  "scripts": {
+    "sync:issue-ui": "node ../../scripts/sync-admin-plugin-ui.mjs --apply",
+    "adapt:issue-imports": "node ../../scripts/adapt-admin-plugin-imports.mjs --apply",
+    "verify:issue-closure": "node ../../scripts/verify-admin-plugin-module-closure.mjs",
+    "verify:issue-ui": "node ../../scripts/verify-admin-plugin-ui-fidelity.mjs",
+    "build:browser-runtime": "node ../../scripts/build-admin-plugin-browser-runtime.mjs",
+    "verify:browser-runtime": "node ../../scripts/verify-admin-plugin-browser-runtime.mjs",
+    "verify:pack": "node ../../scripts/verify-admin-plugin-pack.mjs",
+    "test:core": "../../../phoenix-admin-vue/node_modules/.bin/vitest run --config vue/vitest.config.ts"
+  },
+  "devDependencies": {
+    "driver.js": "1.6.0"
+  },
+  "peerDependencies": {
+    "@cool-midway/core": ">=8.0.7 <9",
+    "@element-plus/icons-vue": ">=2.3.0 <3",
+    "@midwayjs/core": ">=3.20.3 <4",
+    "@midwayjs/koa": ">=3.20.3 <4",
+    "@midwayjs/typeorm": ">=3.20.3 <4",
+    "element-plus": ">=2.10.0 <3",
+    "phoenix-wing": ">=0.6.2 <0.7.0",
+    "pinia": ">=2.3.0 <3",
+    "typeorm": ">=0.3.20 <0.4",
+    "vue": ">=3.5.0 <4",
+    "vue-router": ">=4.5.0 <5",
+    "xlsx": ">=0.18.5 <0.19"
+  }
+}

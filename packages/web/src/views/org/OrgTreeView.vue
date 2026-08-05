@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute } from 'vue-router'
 import { useOrgUnitStore } from '@/stores/orgUnits'
 import { useDictStore } from '@/stores/dict'
 import { useSettingsStore } from '@/stores/settings'
@@ -32,7 +33,10 @@ import { pnwPromptChoice } from 'phoenix-wing'
 import type { ExternalBindRequestAdminView, ExternalIdentityAdminView, SystemRole } from '@open-issue/core'
 import { isSystemAdmin } from '@open-issue/core'
 import { useAuthStore } from '@/stores/auth'
+import PoiOrgPrimary from '@/components/workbench/PoiOrgPrimary.vue'
+import { usePoiViewContribution } from '@/layout/workbench/poiViewContributions'
 
+const route = useRoute()
 const auth = useAuthStore()
 const isAdmin = computed(() => isSystemAdmin(auth.user ?? undefined))
 
@@ -43,7 +47,6 @@ const SYSTEM_ROLE_OPTIONS: { value: SystemRole; label: string }[] = [
 ]
 
 const store = useOrgUnitStore()
-const treeRef = ref<any>(null)
 const unitUsers = ref<any[]>([])
 const selectedUnit = ref<any>(null)
 const showCreate = ref(false)
@@ -83,8 +86,6 @@ onMounted(async () => {
   selectedUnit.value = allRootSelection()
   await loadAllUsers()
   if (isAdmin.value) await loadBindRequests()
-  await nextTick()
-  treeRef.value?.setCurrentKey(ALL_ROOT_ID)
 })
 
 const bindRequests = ref<ExternalBindRequestAdminView[]>([])
@@ -391,7 +392,23 @@ async function onSaveUnit() {
   await reloadUsers()
 }
 
-const unitTypeLabel: Record<string, string> = { all: '全部' }
+function unitTypeLabel(unitType: string): string {
+  return unitType === 'all' ? '全部' : dict.getLabel('orgUnitType', unitType)
+}
+
+usePoiViewContribution(() => route.fullPath, {
+  primary: {
+    component: PoiOrgPrimary,
+    props: computed(() => ({
+      nodes: treeDisplayData.value,
+      loading: store.loading,
+      activeNodeId: selectedUnit.value?.id ?? ALL_ROOT_ID,
+      unitTypeLabel,
+      unitTypeColor: (unitType: string) => dict.getGroupColor('orgUnitType', unitType),
+      onSelect: onNodeClick,
+    })),
+  },
+})
 
 function orgName(orgUnitId: string | null | undefined) {
   if (!orgUnitId) return '—'
@@ -477,28 +494,6 @@ function systemRoleLabel(role: string | undefined) {
     </div>
 
     <div class="org-layout">
-      <div class="org-tree-panel" data-tour="org-tree">
-        <el-tree
-          ref="treeRef"
-          :data="treeDisplayData"
-          :props="{ children: 'children', label: 'name' }"
-          node-key="id"
-          highlight-current
-          :default-expanded-keys="[ALL_ROOT_ID]"
-          @node-click="onNodeClick"
-          v-loading="store.loading"
-        >
-          <template #default="{ data }">
-            <span class="tree-node" :class="{ 'tree-node-all': data.isAllRoot }">
-              <el-tag :color="data.unitType === 'all' ? '#409eff' : dict.getGroupColor('orgUnitType', data.unitType)" size="small" style="color:#fff;border:none">
-                {{ unitTypeLabel[data.unitType] ?? dict.getLabel('orgUnitType', data.unitType) }}
-              </el-tag>
-              <span style="margin-left:6px">{{ data.name }}</span>
-            </span>
-          </template>
-        </el-tree>
-      </div>
-
       <div class="org-detail-panel" data-tour="org-detail">
         <template v-if="selectedUnit && !editingUnit">
           <h3>{{ selectedUnit.name }}</h3>
@@ -765,9 +760,7 @@ function systemRoleLabel(role: string | undefined) {
 .page-head h2 { font-size: 1.3rem; font-weight: 650; }
 .bind-requests-panel { background: #fff; border-radius: 8px; border: 1px solid #ebeef5; padding: 12px 16px; margin-bottom: 16px; }
 .bind-requests-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
-.org-layout { display: flex; gap: 24px; }
-.org-tree-panel { width: 280px; flex-shrink: 0; background: #fff; border-radius: 8px; border: 1px solid #ebeef5; padding: 12px; }
-.tree-node-all { font-weight: 600; }
+.org-layout { min-width: 0; }
 .org-detail-panel { flex: 1; background: #fff; border-radius: 8px; border: 1px solid #ebeef5; padding: 16px; min-height: 300px; }
 .org-detail-panel h3 { font-size: 1.1rem; margin-bottom: 8px; }
 .panel-hint { margin: 0 0 4px; font-size: 0.85rem; color: #909399; }
@@ -779,9 +772,4 @@ function systemRoleLabel(role: string | undefined) {
 .external-identities-admin { min-height: 28px; }
 .external-identity-admin { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 8px 10px; margin-top: 8px; border: 1px solid #ebeef5; border-radius: 6px; }
 .external-identity-admin p { margin: 3px 0 0; color: #909399; font-size: 11px; }
-@media (max-width: 768px) {
-  .org-layout { flex-direction: column; }
-  .org-tree-panel { width: 100%; }
-  .org-detail-panel { min-height: 0; }
-}
 </style>

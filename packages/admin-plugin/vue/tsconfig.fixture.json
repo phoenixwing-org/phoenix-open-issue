@@ -1,0 +1,33 @@
+{
+  "extends": "../../../tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "baseUrl": ".",
+    "jsx": "preserve",
+    "jsxImportSource": "vue",
+    "paths": {
+      "/$/phoenix-open-issue/*": ["./phoenix-open-issue/*"],
+      "/$/base": ["./fixture-base.ts"],
+      "/@/cool": ["./fixture-cool.ts"],
+      "/@/pah/PahViewContributions": ["./fixture-pah.ts"],
+      "/@/pah/PahWorkbenchOutput": ["./fixture-pah-output.ts"],
+      "@element-plus/icons-vue": ["../../../../phoenix-admin-vue/node_modules/@element-plus/icons-vue"],
+      "axios": ["../../../../phoenix-admin-vue/node_modules/axios"],
+      "element-plus": ["../../../../phoenix-admin-vue/node_modules/element-plus"],
+      "phoenix-wing": ["../../../../phoenix-admin-vue/node_modules/phoenix-wing/dist/index.d.ts"],
+      "phoenix-wing/components/*.vue": ["../../../../phoenix-admin-vue/node_modules/phoenix-wing/dist/components/*.vue.d.ts"],
+      "phoenix-wing/layout/*.vue": ["../../../../phoenix-admin-vue/node_modules/phoenix-wing/dist/layout/*.vue.d.ts"],
+      "pinia": ["../../../../phoenix-admin-vue/node_modules/pinia"],
+      "vitest": ["../../../../phoenix-admin-vue/node_modules/vitest"],
+      "vue": ["../../../../phoenix-admin-vue/node_modules/vue"],
+      "vue-router": ["../../../../phoenix-admin-vue/node_modules/vue-router"],
+      "xlsx": ["../../../../phoenix-admin-vue/node_modules/xlsx"]
+    }
+  },
+  "include": [
+    "phoenix-open-issue/**/*.ts",
+    "phoenix-open-issue/**/*.vue",
+    "fixture-*.ts",
+    "fixture-host.d.ts"
+  ]
+}

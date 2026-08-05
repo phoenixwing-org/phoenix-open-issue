@@ -15,7 +15,10 @@ const DICT_USAGE: Record<string, { table: string; column: string; label: string 
     { table: 'issues', column: 'detectionPhase', label: 'Issue 发现阶段' },
   ],
   severity: [
-    { table: 'issues', column: 'severity', label: 'Issue 严重度' },
+    { table: 'issues', column: 'severity', label: 'Issue 重要度' },
+  ],
+  priority: [
+    { table: 'issues', column: 'priority', label: 'Issue 紧急度' },
   ],
   closeReason: [
     { table: 'issues', column: 'closeReason', label: 'Issue 关闭理由' },
@@ -80,7 +83,7 @@ export class DictController {
     if (await dictService.isCore(id)) {
       res.status(403).json({
         error: '内置字典项不可删除',
-        message: '年度、月度、项目、自定义为系统内置类型，不可删除',
+        message: '系统固定字典项不可删除；重要度和紧急度仅允许修改显示名',
       })
       return
     }

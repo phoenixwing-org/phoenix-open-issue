@@ -1,18 +1,29 @@
+import path from 'node:path'
 import type { PnwDbConfig } from './pnwDbTypes.js'
 
-export function pnwResolveDbConfig(
-  env: NodeJS.ProcessEnv,
-  defaultSqlitePath: string,
-): PnwDbConfig {
-  const driver = (env.DB_DRIVER || 'sqlite').trim().toLowerCase()
+export function pnwResolveDbConfig(env: NodeJS.ProcessEnv): PnwDbConfig {
+  const driver = (env.DB_DRIVER || 'postgres').trim().toLowerCase()
 
   if (driver === 'sqlite') {
-    const dbPath = (env.DB_PATH || defaultSqlitePath).trim()
-    if (!dbPath) throw new Error('SQLite 模式需要 DB_PATH')
-    return { driver: 'sqlite', path: dbPath }
+    if ((env.NODE_ENV || '').trim().toLowerCase() === 'production') {
+      throw new Error('生产运行时禁止 SQLite；legacy 导入演练必须在隔离的非生产环境操作副本')
+    }
+    if (!parseBoolean(env.ALLOW_LEGACY_SQLITE, false, 'ALLOW_LEGACY_SQLITE')) {
+      throw new Error('SQLite 仅用于 legacy 恢复；必须显式设置 ALLOW_LEGACY_SQLITE=true')
+    }
+    if (env.DATABASE_URL?.trim()) {
+      throw new Error('SQLite legacy 模式不能同时设置 DATABASE_URL')
+    }
+    const dbPath = env.DB_PATH?.trim()
+    if (!dbPath) throw new Error('SQLite legacy 模式需要显式 DB_PATH，且只能指向已登记归档的工作副本')
+    if (!path.isAbsolute(dbPath)) throw new Error('SQLite legacy 模式的 DB_PATH 必须是绝对路径')
+    return { driver: 'sqlite', path: path.normalize(dbPath) }
   }
 
   if (driver === 'postgres' || driver === 'pg') {
+    if (env.DB_PATH?.trim()) {
+      throw new Error('PostgreSQL 模式不能设置 DB_PATH')
+    }
     const connectionString = env.DATABASE_URL?.trim()
     if (!connectionString) throw new Error('PostgreSQL 模式需要 DATABASE_URL')
 

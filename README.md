@@ -22,15 +22,15 @@ Open Issue List 的目标是提供一个 **轻量、标准对齐、开箱即用*
 | **VDA 6.3**    | 过程审核 — 问题分级与追踪         |
 
 
-核心字段对标：严重度（S）、优先级（P）、发现阶段、责任人、计划完成日、实际完成日、点检记录等。
+核心字段对标：严重度（S）、优先级（P）、发现阶段、责任人、截止日、实际完成日、点检记录等。
 
 ## 核心优势
 
-- **标准字段** — 21 个汽车行业字段，开箱即用，无需配置
-- **组织推送** — 按层级（小组 → 科室 → 部门）逐级推送 Issue，支持覆盖/合并策略
+- **稳定核心字段** — 通用 Issue 使用重要度 × 紧急度等字段；8D 作为可选附属报告独立维护
+- **协作推送** — 可推送到有权访问的列表，也可定向推送给用户，由接收人决定接收到哪个工作列表
 - **点检时间线** — 每个 Issue 可追加多条点检记录，逾期项高亮提醒
 - **多视图** — 简单/复杂/跟踪三种视图，适配点检会议、审计追溯等不同场景
-- **零配置启动** — SQLite 单文件数据库，`pnpm dev` 一键运行
+- **PostgreSQL 持久化** — 正式运行统一使用 PostgreSQL；旧本地数据库兼容按独立清理门禁退出
 - **按需演示** — 首次登录弹窗询问是否添加演示数据，拒绝后不再打扰
 
 
@@ -52,6 +52,15 @@ pnpm dev              # 一键启动 core + server + web（首次启动自动创
 
 > CLI 强制重填：`pnpm seed`（或 `pnpm seed force` 清空后重填）
 
+## Phoenix Admin 插件部署
+
+Open Issue 同时保留独立 Web 与 Phoenix Admin 插件源码。插件部署分为两种模式：
+
+- **开发模式**：用 `pnpm admin-plugin:mount-dev-host` 将 Vue/Node 模块以软链接挂载到本机 Host，并通过各 Host 的 `.git/info/exclude` 保持产品源码不进入框架仓；
+- **正式安装模式**：交付冻结的不可变制品，通过 Pah 完成 manifest 校验、迁移 dry-run、可信备份、受控安装和启用，禁止使用开发链接或 TypeORM `synchronize`。
+
+命令、目录、卸载和正式发布门禁见 [Phoenix Admin 插件部署](doc/PhoenixAdmin插件部署.md)。
+
 
 
 ## 项目结构
@@ -60,9 +69,9 @@ pnpm dev              # 一键启动 core + server + web（首次启动自动创
 | 路径                 | 说明                                    |
 | ------------------ | ------------------------------------- |
 | `packages/core/`   | 纯 TypeScript 类型 + 算法（零框架依赖，可独立发布 npm） |
-| `packages/server/` | Express + node-sqlite3-wasm 后端（MVC）   |
+| `packages/server/` | Express + PostgreSQL 后端（MVC）   |
 | `packages/web/`    | Vue 3 + Element Plus 前端               |
-| `data/`            | SQLite 数据库文件（自动生成）                    |
+| `data/`            | 旧本地数据库资产目录（弃用过渡期，待归档清理）                    |
 | `doc/`             | 文档                                    |
 
 
@@ -75,7 +84,7 @@ pnpm dev              # 一键启动 core + server + web（首次启动自动创
 | ---- | ---------------------------- | -------------------- |
 | 前端   | Vue 3 + Element Plus + Pinia | 同 desk-tools 风格      |
 | 后端   | Express + TypeScript         | 当前生产与开发 API           |
-| 数据库  | SQLite / PostgreSQL          | adapter 隔离；SQLite 零配置，PG 用于服务部署 |
+| 数据库  | PostgreSQL                   | 唯一正式支持；旧库/测试兼容按整改 TODO 后续移除 |
 | 核心算法 | `@open-issue/core`           | 纯 TS，可独立发布 npm       |
 | 包管理  | pnpm workspaces              | monorepo             |
 
@@ -92,7 +101,7 @@ pnpm dev              # 一键启动 core + server + web（首次启动自动创
 
 ### 议题 (Issue)
 
-每个列表下的追踪条目，有状态（待处理 → 进行中 → 已解决 → 已关闭）和优先级（低 / 中 / 高 / 紧急）。
+每个列表下的追踪条目，有状态（待处理 → 处理中 → 待验收 → 已完成，或已取消）、重要度（较低 → 关键）和紧急度（可延后 → 立即）。
 
 ### 点检 (Checkpoint)
 
@@ -100,19 +109,25 @@ pnpm dev              # 一键启动 core + server + web（首次启动自动创
 
 ### 推送 (Push)
 
-**逐条 Issue 推送**（不是整个表）。把某个 Issue 从列表 A 推送到列表 B。目标列表成员确认后，Issue 进入目标列表全员可见；拒绝则关闭，可下次重推。小组 → 科室 → 部级依此类推。要求源和目标列表至少有 1 个共同成员。
+**逐条 Issue 推送**（不是整个表）。列表模式把 Issue 从列表 A 推送到列表 B，并由目标列表 owner/admin 审批；用户模式只指定接收人，对方接受时再选择自己管理的列表。两种模式都通过链接共享同一 Issue，不复制正文。
+
+### 8D 附属报告
+
+8D 报告独立于 Issue 核心表单，可单独存在，也可通过可空 `relatedIssueId` 关联一个 Issue。D3/D4/D5-D6 保持专业语义，通用周点检、例会和开发/测试列表无需承担这些专用字段。
 
 ## 命令参考
 
 ```bash
 pnpm dev             # 一键启动 core + server + web
+pnpm dev:local-wing  # 使用并列 ../phoenix-wing 构建制品验证源码候选
 pnpm dev:web         # 仅启动前端 :5183
 pnpm dev:server      # 仅启动后端 :3400
 pnpm build           # 全部构建
+pnpm build:local-wing # 使用并列 Wing 工作区完成三段构建
 pnpm seed            # CLI 重新填充演示数据（force 追加可清空）
 ```
 
-> 本仓前后端精确消费 npm Registry `phoenix-wing@0.5.1`，聚合 UI 使用统一编译出口且不排除 Vite 预构建；不探测或引用相邻本地仓库。消费者版本由本仓 manifest、lockfile 与验证门禁负责，不依赖 Wing 维护版本矩阵。详见 [phoenix-wing 依赖配置](doc/phoenix-wing依赖配置.md)。
+> 本仓前后端 manifest 与 lockfile 精确消费 npm Registry `phoenix-wing@0.6.0`。另提供显式 `*:local-wing` 命令，在单次进程内验证标准并列 `../phoenix-wing` 的源码候选；普通命令仍不探测相邻源码。详见 [phoenix-wing 依赖配置](doc/phoenix-wing依赖配置.md)。
 
 
 
@@ -123,16 +138,18 @@ pnpm seed            # CLI 重新填充演示数据（force 追加可清空）
 | -------------------------------------------- | -------------------- |
 | [文档索引](doc/文档索引.md)                       | 当前说明、草案与历史证据的唯一导航 |
 | [当前路线](doc/current-roadmap.md)                | 当前优先级与联合治理消费者责任 |
-| [更新日志](doc/CHANGELOG.md)                     | v0.4.0 版本变更摘要        |
-| [架构设计](doc/架构设计.md)                          | 架构 + 数据流             |
+| [更新日志](doc/CHANGELOG.md)                     | v0.7.0 版本变更摘要        |
+| [早期架构设计（历史）](doc/架构设计.md)                  | v0.x Express + 本地数据库架构快照 |
 | [API参考](doc/API参考.md)                        | REST API 全部端点        |
 | [数据字典配置](doc/数据字典配置.md)                      | 下拉选项枚举值，汽车/软件预设      |
 | [已知问题](doc/已知问题.md)                         | 当前 workaround 与关闭条件    |
 | [phoenix-wing 依赖配置](doc/phoenix-wing依赖配置.md) | npm 固定版本与升级规则      |
-| [Linux 测试部署](doc/Linux测试部署.md)               | 构建、配置、systemd 与升级检查 |
-| [SQLite/PG 双数据库计划](doc/v0.4-PG双数据库适配计划.md) | PnwDbAdapter、迁移与双库测试方案 |
-| [PostgreSQL 部署与迁移](doc/PostgreSQL部署与迁移.md) | Linux 配置、SQLite JSON 迁移、校验与回滚 |
+| [Linux 测试部署（历史）](doc/Linux测试部署.md)           | v0.4 单机本地数据库部署快照 |
+| [本地库/PG 双数据库计划（历史）](doc/v0.4-PG双数据库适配计划.md) | PnwDbAdapter 早期迁移与双库测试方案 |
+| [PostgreSQL 部署与迁移（草案）](doc/PostgreSQL部署与迁移.md) | legacy 本地库一次性导入门禁与待验证流程 |
+| [Phoenix Admin 插件部署](doc/PhoenixAdmin插件部署.md) | 开发 Link 挂载与正式 Pah 安装流程 |
 | [多人权限与列表筛选加固](doc/多人权限与列表筛选加固.md) | 系统/列表权限矩阵、筛选分页、认证和回归测试 |
+| [Issue 扩展能力：定向推送与附属关联](doc/附属功能与Issue关联计划.md) | 用户定向推送、8D 可空关联、权限与迁移边界 |
 
 ## 路线图
 
@@ -140,8 +157,8 @@ pnpm seed            # CLI 重新填充演示数据（force 追加可清空）
 
 ## 相关项目
 
-- [phoenix-desk-tools](https://gitee.com/PhoenixWing321/phoenix-desk-tools) — Phoenix 桌面辅助工具（布局参考）
-- [phoenix-wing](https://gitee.com/PhoenixWing321/phoenix-wing) — Phoenix npm 插件
+- [phoenix-desk-tools](https://gitee.com/phoenixwing/phoenix-desk-tools) — Phoenix 桌面辅助工具（布局参考）
+- [phoenix-wing](https://gitee.com/phoenixwing/phoenix-wing) — Phoenix npm 插件
 
 ## 许可证
 

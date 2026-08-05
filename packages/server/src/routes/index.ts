@@ -11,6 +11,8 @@ import { DictController } from '../controller/DictController.js'
 import { BackupController } from '../controller/BackupController.js'
 import { FunctionController } from '../controller/FunctionController.js'
 import { TestController } from '../controller/TestController.js'
+import { EightDReportController } from '../controller/EightDReportController.js'
+import { DashboardTaskController } from '../controller/DashboardTaskController.js'
 import { authMiddleware } from '../middleware/auth.js'
 import { createRateLimit } from '../middleware/rate-limit.js'
 
@@ -27,6 +29,8 @@ const dictCtrl = new DictController()
 const backupCtrl = new BackupController()
 const funcCtrl = new FunctionController()
 const testCtrl = new TestController()
+const eightDCtrl = new EightDReportController()
+const dashboardTaskCtrl = new DashboardTaskController()
 const oauthStartLimit = createRateLimit({ windowMs: 5 * 60_000, max: 30, message: '第三方登录请求过于频繁，请稍后重试' })
 const oauthCallbackLimit = createRateLimit({ windowMs: 5 * 60_000, max: 60, message: '第三方登录回调过于频繁，请稍后重试' })
 const oauthTicketLimit = createRateLimit({ windowMs: 5 * 60_000, max: 30, message: '登录票据交换过于频繁，请稍后重试' })
@@ -129,6 +133,15 @@ router.patch('/issue/:id/status', authMiddleware, wrap((req, res) => issueCtrl.u
 router.delete('/issue/:id',     authMiddleware, wrap((req, res) => issueCtrl.delete(req, res)))
 router.patch('/list/:listId/issue/:issueId/attention', authMiddleware, wrap((req, res) => issueCtrl.setAttention(req, res)))
 
+// ═══ 8D 附属报告 ═══
+router.get('/eight-d-reports',                    authMiddleware, wrap((req, res) => eightDCtrl.list(req, res)))
+router.get('/eight-d-reports/issue-options',      authMiddleware, wrap((req, res) => eightDCtrl.issueOptions(req, res)))
+router.get('/issue/:issueId/eight-d-reports',     authMiddleware, wrap((req, res) => eightDCtrl.getByIssue(req, res)))
+router.get('/eight-d-report/:id',                 authMiddleware, wrap((req, res) => eightDCtrl.getById(req, res)))
+router.post('/eight-d-report',                    authMiddleware, wrap((req, res) => eightDCtrl.create(req, res)))
+router.put('/eight-d-report/:id',                 authMiddleware, wrap((req, res) => eightDCtrl.update(req, res)))
+router.delete('/eight-d-report/:id',              authMiddleware, wrap((req, res) => eightDCtrl.delete(req, res)))
+
 // ═══ Checkpoint ═══
 router.get('/list/:listId/checkpoints',    authMiddleware, wrap((req, res) => cpCtrl.getByListId(req, res)))
 router.get('/issue/:issueId/checkpoints',  authMiddleware, wrap((req, res) => cpCtrl.getByIssueId(req, res)))
@@ -137,12 +150,15 @@ router.put('/checkpoint/:id',              authMiddleware, wrap((req, res) => cp
 router.delete('/checkpoint/:id',           authMiddleware, wrap((req, res) => cpCtrl.delete(req, res)))
 
 // ═══ Push ═══
+router.get('/dashboard/tasks', authMiddleware, wrap((req, res) => dashboardTaskCtrl.getTasks(req, res)))
 router.get('/push/preview',  authMiddleware, wrap((req, res) => pushCtrl.preview(req, res)))
 router.post('/push',         authMiddleware, wrap((req, res) => pushCtrl.push(req, res)))
 router.get('/list/:listId/push-history',    authMiddleware, wrap((req, res) => pushCtrl.getListPushHistory(req, res)))
 router.get('/push/history',                authMiddleware, wrap((req, res) => pushCtrl.getMyPushHistory(req, res)))
 router.get('/list/:listId/incoming-pushes', authMiddleware, wrap((req, res) => pushCtrl.getIncomingPushes(req, res)))
+router.get('/push/:id/target-lists',        authMiddleware, wrap((req, res) => pushCtrl.getTargetLists(req, res)))
 router.patch('/push/:id/handle',           authMiddleware, wrap((req, res) => pushCtrl.handlePush(req, res)))
+router.patch('/push/:id/withdraw',         authMiddleware, wrap((req, res) => pushCtrl.withdrawPush(req, res)))
 
 // ═══ Backup ═══
 router.get('/db/export',    authMiddleware, wrap((req, res) => backupCtrl.exportDb(req, res)))
