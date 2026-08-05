@@ -2,7 +2,7 @@
 
 状态：current
 
-适用插件：`phoenix-open-issue@0.6.2-admin.0`
+适用插件：`phoenix-open-issue@0.7.0`
 
 本页是 Open Issue 接入 Phoenix Admin 的部署入口。开发模式与正式安装解决的问题不同，不得混用。
 
@@ -85,12 +85,12 @@ git -C ../phoenix-admin-node check-ignore -v src/modules/phoenix-open-issue
 # runtime build → descriptor/integrity → source pack → immutable business package
 pnpm admin-plugin:release-package
 
-# 独立复核已生成包；默认路径为 dist/admin-plugin/phoenix-open-issue-0.6.2-admin.0.phoenix.cool
+# 独立复核已生成包；默认路径为 dist/admin-plugin/phoenix-open-issue-0.7.0.phoenix.cool
 pnpm admin-plugin:verify-production-package
 
 # 以两个冻结且 clean 的 Host 根目录装配到普通一次性目录
 pnpm admin-plugin:assemble-clean-host -- \
-  --archive /absolute/path/phoenix-open-issue-0.6.2-admin.0.phoenix.cool \
+  --archive /absolute/path/phoenix-open-issue-0.7.0.phoenix.cool \
   --node-host /absolute/path/clean-admin-node \
   --vue-host /absolute/path/clean-admin-vue \
   --output /absolute/path/new-empty-assembly
@@ -115,6 +115,6 @@ pnpm admin-plugin:assemble-clean-host -- \
 
 ## 3. 当前发布边界
 
-不可变 `.phoenix.cool` 的 build/verify、全文件 SHA、确定性与原子不覆盖门禁已经落地；Node clean Host production build 也已通过，并复制出 Pah descriptor 与两条 SQL。两个专用隔离 PostgreSQL 16 库已完成 `0.6.1 → 0.6.2`、真实备份/恢复、停用、普通卸载保留 9 张表/7 类字典/ledger/assignment 和重装不重放 migration 的闭环。Phoenix Wing 0.6.2 已进入公开 Registry，正式装配仍必须使用精确 Registry 版本并通过当次 clean Host production build；禁止用临时 `file:`/override 或相邻源码冒充生产通过。
+不可变 `.phoenix.cool` 的 build/verify、全文件 SHA、确定性与原子不覆盖门禁已经落地；Node clean Host production build 也已通过，并复制出 Pah descriptor 与两条 SQL。两个专用隔离 PostgreSQL 16 库已完成 `0.6.1 → 0.6.2`、真实备份/恢复、停用、普通卸载保留 9 张表/7 类字典/ledger/assignment 和重装不重放 migration 的历史闭环。`0.7.0` 又在生产模拟 Admin 中初步跑通安装、启用、停用和普通卸载，但操作步骤仍较多，同版本重装与跨版本升级继续作为独立验收项，不把本次初步验证写成全自动生产发布完成。Phoenix Wing 0.6.2 已进入公开 Registry，正式装配仍必须使用精确 Registry 版本并通过当次 clean Host production build；禁止用临时 `file:`/override 或相邻源码冒充生产通过。
 
 详细验收状态见 [迁移审计](admin-plugin-rectification/迁移审计.md) 和 [用户点检表](admin-plugin-rectification/用户点检表.md)。开发挂载的命名与联调背景见 [Phoenix Admin 开发联调](admin-plugin-rectification/开发联调.md)。

@@ -4,14 +4,14 @@
 
 Owner：Open Issue maintainers
 
-适用版本：0.6.x
+适用版本：0.7.x
 
-最后核验：2026-07-31
+最后核验：2026-08-05
 
 ## 已完成基线
 
 - v0.1–v0.4 已覆盖基础 CRUD、多列表关联、汽车行业字段、推送/点检、数据字典、Linux 部署、数据保护与双数据库 adapter；该 adapter 现仅作历史迁移兼容。
-- **当前包版本 `0.6.1`**：含飞书 OAuth 二期、Wing 工作台接入、完整 View contribution、Issue 状态/点检时间改进、用户定向推送，以及首个独立 8D 附属报告；见 [CHANGELOG](CHANGELOG.md)。
+- **当前包版本 `0.7.0`**：Open Issue 已收敛为 Phoenix Admin 声明式业务插件，使用 `.phoenix.cool` 不可变制品；保留既有 Issue 工作台、数据迁移、字典适配、用户定向推送和独立 8D 能力，详见 [CHANGELOG](CHANGELOG.md)。
 - 8D 使用可空 `eightDReports.relatedIssueId` 验证附属能力，不建设通用关联表；Issue 新增 `extensions JSONB` 只承载轻量扩展属性，不保存附属关系或动态表单。只有出现多目标、关系元数据或跨模块统一查询时再升级关联模型。实现边界见[扩展能力计划](附属功能与Issue关联计划.md)。
 - 仪表盘已增加[待办中心](仪表盘待办中心.md)，按责任视角聚合待我处理、我发起的推送和管理员审批；不建设重复的通用任务表。
 - 前端和服务端精确消费 Registry `phoenix-wing@0.6.0`，不依赖相邻源码；singleton、Ribbon/Tree 工作台、View contribution、依赖来源、自动测试和三段构建已进入 `verify:ci`。

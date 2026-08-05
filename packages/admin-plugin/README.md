@@ -37,7 +37,7 @@ pnpm admin-plugin:unmount-dev-host
 pnpm admin-plugin:release-package
 pnpm admin-plugin:verify-production-package
 pnpm admin-plugin:assemble-clean-host -- \
-  --archive /absolute/path/phoenix-open-issue-0.6.2-admin.0.phoenix.cool \
+  --archive /absolute/path/phoenix-open-issue-0.7.0.phoenix.cool \
   --node-host /absolute/path/clean-admin-node \
   --vue-host /absolute/path/clean-admin-vue \
   --output /absolute/path/new-empty-assembly

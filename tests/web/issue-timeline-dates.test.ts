@@ -57,7 +57,7 @@ describe('Issue 与点检时间语义', () => {
     expect(form).not.toContain('createdAt')
   })
 
-  it('工作区包版本统一为 0.6.1，Wing 依赖仍精确锁定已发布的 0.6.0', () => {
+  it('工作区包版本统一为 0.7.0，Wing 依赖仍精确锁定已发布的 0.6.0', () => {
     const manifests = [
       'package.json',
       'packages/core/package.json',
@@ -65,7 +65,7 @@ describe('Issue 与点检时间语义', () => {
       'packages/web/package.json',
     ].map(file => JSON.parse(read(file)))
 
-    expect(manifests.map(manifest => manifest.version)).toEqual(Array(4).fill('0.6.1'))
+    expect(manifests.map(manifest => manifest.version)).toEqual(Array(4).fill('0.7.0'))
     expect(manifests[2].dependencies['phoenix-wing']).toBe('0.6.0')
     expect(manifests[3].dependencies['phoenix-wing']).toBe('0.6.0')
   })
