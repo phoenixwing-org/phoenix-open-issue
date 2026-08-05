@@ -8,8 +8,8 @@
     "path": "packages/admin-plugin/vue/vitest.config.ts",
     "sha256": "16c71f5c7cde5a7dabc07fe9535c86bfacfd4bce51d71c42621bcf3d3de9c333"
   },
-  "expectedFileCount": 22,
-  "expectedCaseCount": 130,
+  "expectedFileCount": 23,
+  "expectedCaseCount": 131,
   "tests": [
     {
       "id": "domain:function",
@@ -58,7 +58,7 @@
       "filePath": "packages/admin-plugin/test/phoenix-open-issue/domain/test-runner.test.ts",
       "packageName": "domain",
       "caseCount": 4,
-      "sha256": "184c28b0e40e0c4f5c4ac7926c6f0e167f691a13893c224b5d23edccd81379c8"
+      "sha256": "25658c1ddb452a22d18f009185c4a4f32283ff82fd33549e10b3ae693eefc173"
     },
     {
       "id": "service:access",
@@ -66,6 +66,13 @@
       "packageName": "service",
       "caseCount": 6,
       "sha256": "295741ce3435df31ffed45f5e5f790438cafdf60f5006108f911f149fc95f6cb"
+    },
+    {
+      "id": "service:issue-list",
+      "filePath": "packages/admin-plugin/test/phoenix-open-issue/service/issue-list.test.ts",
+      "packageName": "service",
+      "caseCount": 1,
+      "sha256": "52b3135e139710b5e402b475690a271a9b765d11ff48f43e7152817d89c29378"
     },
     {
       "id": "service:legacy-import",

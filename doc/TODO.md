@@ -65,6 +65,14 @@
 - [ ] 搜索与全文检索
 - [x] phoenix-wing 组件向 npm 包收敛
 
+## 🔜 生产打包与干净 Admin 生命周期
+
+- [x] 冻结双层包模型：Open Issue 交付 `kind=pah-business-module` 的 `.phoenix.cool` 声明式不可变包，Phoenix Admin 负责登记、migration、启停、卸载和 ledger；开发阶段拒绝旧 `.pah.cool`，COOL 原生 Hook 安装器不得执行该包。生产包无 `src/index.js` / `source/index.ts`、无测试/工具/`node_modules`，全文件 SHA-256 可复核。
+- [x] 提供可重复的 `release-package` / `verify-production-package` / `assemble-clean-host` 命令；发布入口固定执行 runtime build → 完整 `admin-plugin:verify`（integrity/pack/UI/闭包/双端 typecheck/全部测试）→ 最终不可变包，不能依赖人工先跑测试。相同输入两次包 SHA 一致，同名目标和发布边界并发占用均通过 hard-link no-replace 安全拒绝，竞争方字节不变且无临时目录残留。
+- [x] 默认卸载策略固化为保留 9 张 `oip_*` 表、7 类产品字典、migration/repair/dictionary ledger 与管理员导航 assignment；普通卸载无 purge endpoint，永久清理必须另走显式授权与可信备份流程。
+- [ ] 完成兼容 Host 的双端 clean production build：Node `0d94cbf` 已通过并包含 Pah descriptor/两条 SQL；Vue `52d25f4` 仍固定 `phoenix-wing@0.6.1`，低于插件要求的 `>=0.6.2`，装配器现会复制前 fail-closed。等待 Wing 0.6.2 及 companion packages 正式发布并由 clean Admin 锁定消费；不得用临时 `file:`/override 作为发布证据。
+- [x] 已在 clean Node 与两个专用隔离 PostgreSQL 16 库完成当前版卸载保留 → 安装 `0.6.1` → PG16 备份/恢复到第二库并逐项比对快照 → 只执行待定 `0002` 升级 → 停用 → 卸载保留表/字典/ledger/assignment → 重装。最终 9 张表、7 类/37 项字典、2 条 migration ledger、2 条导航 assignment 均保留，重装计划为 0 写入；未写正式数据库。完整 clean Admin 仍受上一项 Vue/Wing 依赖门禁约束。
+
 ## 🔜 字典显示与旧站数据迁移（等待开发者决策）
 
 ### 当前事实与前端显示缺口
@@ -72,11 +80,12 @@
 - [x] 已只读预检旧站 `migration-2026-08-03.json`：v1 / `full`，8 类 Issue 业务数据共 **41** 行；`users`（4）、`orgUnits`（5）、`dict`（52）被明确排除。
 - [x] 插件已通过 `host-dict.ts` 从 COOL namespaced 字典读取 7 个分组，并具备 Host 缺失时的内置中文 fallback。
 - [x] 已修正 Host 字典 label 解析：`name` 非空且不等于稳定 value 时才作为有效自定义显示名；`minor` 回退“一般”，`project` / `monthly` / `custom` 回退内置中文，真实 Host 自定义 label 仍优先。
-- [x] 插件 Pinia 字典缓存已只持久化 `groupName` / `value` / `label` / `sortOrder` / `enabled` / `tags` 非敏感显示元数据：启动同步恢复，进入已登录插件刷新 Host 字典，Host 全局登出清除；登出前在途响应不会回填。业务 API 继续只返回稳定 value，不为列表/Issue 查询重复拼接 label。适配与生命周期新增 5 项回归；连同导入判重门禁，插件受控清单共 23 文件 / 134 测试通过。
+- [x] 插件 Pinia 字典缓存已只持久化 `groupName` / `value` / `label` / `sortOrder` / `enabled` / `tags` 非敏感显示元数据：启动同步恢复，进入已登录插件刷新 Host 字典，Host 全局登出清除；登出前在途响应不会回填。业务 API 继续只返回稳定 value，不为列表/Issue 查询重复拼接 label。当前受控清单为 23 文件 / 131 测试；连同非受控 UI 状态回归，完整插件测试为 24 文件 / 135 项。
 - [x] 真实旧站 JSON 已通过服务端领域规划器：41 行、4 个核心用户引用、0 个组织引用、0 个结构阻断；旧版 IssueList 的 `orgUnitId` 未进入任何 View/编辑/筛选/权限或更新流程，迁移时统一置空且不导入 `orgUnits`。用户在维护页通过 Host 公共用户列表做唯一精确建议或手工映射，只提交 ID 对照，旧账号资料不上传。
 - [x] 8D 已降为不阻断的可选迁移通道：存在独立报告时以其为准；缺失时可从 Issue 内嵌三字段生成确定性报告；坏记录、创建人未映射或目标 8D 表不可用时只跳过并报告。目标记录按最终 ID 优先，否则按 `(relatedIssueId, containment, rootCause, correctiveAction)` 精确签名判重，已存在项不导入且进入计划审计。
 - [x] 已提供一次性简化导入：`POST /maintenance/legacy-import/plan` 验证核心协议、引用、完整的数字 Host 用户映射、目标冲突和快照。当前 Issue 仅处于少量测试数据阶段，相同 ID、`issueNo`、`(listId,userId)` 成员、`(issueId,listId)` 链接或 `(platform,externalId)` 功能均直接判重：逐条列出源/目标 ID、保留目标并跳过；`issueNo` 重复时把链接、点检、推送和 8D 简单改指向现有 Issue，功能重复时把 `functionId` 改指向现有功能，不做字段级复杂合并。计划 15 分钟且只能认领一次；Root 勾选“已有可恢复 PostgreSQL 备份”并二次确认后，`POST /maintenance/legacy-import/execute` 按固定依赖顺序以单事务写入剩余核心插件表，再独立尝试可选 8D 事务。核心失败自动回滚；8D 失败只报告且不回滚核心业务。不读取或修改 Host 私有用户表，不自动创建账号，也不由插件验证/生成整库备份。未来出现大规模迁移需求时再升级严格校验和人工冲突处置。
 - [x] 2026-08-04 已在本地 Hub/PostgreSQL 使用 41 行真实测试包完成两轮执行验收：首轮计划写入 40 行，核心写入 37、按相同 Issue 编号跳过 1、可选 8D 写入 3；第二轮核心写入 0、重复跳过 38，可选 8D 写入 0、已存在跳过 3。重复执行未新增数据，确定性判重与幂等导入正常。
+- [x] 修复导入后部分 IssueList 负责人显示为 `—`：数据中的 Host `ownerId` 与用户映射均正确，根因是列表服务只为当前登录人填充 `ownerName`。现改为单次批量读取 Host 公共用户名称，列表、详情和编辑统一显示；未知引用显示明确 ID，不自动补建用户或修改业务数据。已用 Hub 实际 7 行数据验证 `ownerId=3` 的两条列表均显示“李四”，其余管理员负责人不受影响。
 - [x] 维护中心新增幂等任务 `list-org-references`：dry-run 只统计 `oip_issue_list.orgUnitId` 非空行，确认执行后统一置空；第二次计划必须为 0，不修改 Host 组织，也不在普通维护操作中执行 DDL。
 
 ### 待开发者决定：字典作为独立迁移数据集

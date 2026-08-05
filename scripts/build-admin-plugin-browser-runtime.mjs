@@ -17,6 +17,14 @@ const runtimeRoot = path.join(
   pluginRoot,
   'vue/phoenix-open-issue/runtime',
 )
+const descriptorPath = path.join(runtimeRoot, 'browser-runtime.artifacts.json')
+const previousArtifacts = new Map()
+if (existsSync(descriptorPath)) {
+  const previousDescriptor = JSON.parse(readFileSync(descriptorPath, 'utf8'))
+  for (const artifact of previousDescriptor.artifacts ?? []) {
+    if (artifact?.id) previousArtifacts.set(artifact.id, artifact)
+  }
+}
 const packageJson = JSON.parse(
   readFileSync(path.join(pluginRoot, 'package.json'), 'utf8'),
 )
@@ -111,14 +119,23 @@ for (const [name, content] of outputs) {
 }
 
 function artifact(id, relativePath, format, content) {
+  const contentSha256 = sha256(content)
+  const previous = previousArtifacts.get(id)
+  const gzipBytes =
+    previous?.bytes === content.byteLength &&
+    previous?.sha256 === contentSha256 &&
+    Number.isSafeInteger(previous?.gzipBytes) &&
+    previous.gzipBytes > 0
+      ? previous.gzipBytes
+      : gzipSync(content, { level: 9 }).byteLength
   return {
     id,
     path: `runtime/${relativePath}`,
     format,
     runtime: 'browser',
     bytes: content.byteLength,
-    gzipBytes: gzipSync(content, { level: 9 }).byteLength,
-    sha256: sha256(content),
+    gzipBytes,
+    sha256: contentSha256,
     externalImports: 0,
   }
 }
@@ -152,7 +169,7 @@ const descriptor = {
 }
 
 writeFileSync(
-  path.join(runtimeRoot, 'browser-runtime.artifacts.json'),
+  descriptorPath,
   `${JSON.stringify(descriptor, null, 2)}\n`,
   'utf8',
 )

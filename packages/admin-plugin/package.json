@@ -5,6 +5,11 @@
   "type": "module",
   "license": "Apache-2.0",
   "description": "Phoenix Admin / COOL 双端业务模块源码包",
+  "repository": {
+    "type": "git",
+    "url": "https://gitee.com/phoenixwing/phoenix-open-issue.git",
+    "directory": "packages/admin-plugin"
+  },
   "files": [
     "README.md",
     "manifest.json",

@@ -18,6 +18,7 @@ import {
 import { OpenIssueListEntity } from '../entity/issue-list';
 import { OpenIssueListLinkEntity } from '../entity/issue-list-link';
 import { OpenIssueListMemberEntity } from '../entity/issue-list-member';
+import { OpenIssueHostUserService } from './host-user';
 
 type ListResult = OpenIssueListEntity & {
   memberCount: number;
@@ -46,6 +47,9 @@ export class OpenIssueListService {
 
   @InjectDataSource()
   dataSource: DataSource;
+
+  @Inject()
+  hostUserService: OpenIssueHostUserService;
 
   private actorId(): string {
     const value = this.ctx.admin?.userId;
@@ -137,10 +141,13 @@ export class OpenIssueListService {
           .getRawMany<{ listId: string; count: string }>()
       ).map(item => [item.listId, Number(item.count)])
     );
+    const ownerNames = await this.hostUserService.names(
+      lists.map(item => item.ownerId)
+    );
     return enrichIssueLists(lists, members, actorId, issueCounts).map(list => ({
       ...list,
       ownerName:
-        list.ownerId === actorId ? this.ctx.admin?.username : undefined,
+        ownerNames.get(list.ownerId) ?? `未知用户（ID ${list.ownerId}）`,
     })) as ListResult[];
   }
 

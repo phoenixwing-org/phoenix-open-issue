@@ -65,6 +65,13 @@ export const OPEN_ISSUE_CONTROLLED_TEST_FILES = Object.freeze([
     caseCount: 6,
   },
   {
+    id: "service:issue-list",
+    filePath:
+      "packages/admin-plugin/test/phoenix-open-issue/service/issue-list.test.ts",
+    packageName: "service",
+    caseCount: 1,
+  },
+  {
     id: "service:legacy-import",
     filePath:
       "packages/admin-plugin/test/phoenix-open-issue/service/legacy-import.test.ts",

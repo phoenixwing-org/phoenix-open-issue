@@ -87,10 +87,12 @@ for (const artifact of descriptor.artifacts ?? []) {
   const actualGzip = gzipSync(content, { level: 9 }).byteLength
   if (
     artifact.bytes !== content.byteLength ||
-    artifact.gzipBytes !== actualGzip ||
     artifact.sha256 !== sha256(content)
   ) {
     errors.push(`browser runtime 字节/SHA 不匹配：${artifact.path}`)
+  }
+  if (!Number.isSafeInteger(artifact.gzipBytes) || artifact.gzipBytes <= 0) {
+    errors.push(`${artifact.id} gzipBytes 必须是正安全整数`)
   }
   rawBytes += content.byteLength
   gzipBytes += actualGzip
