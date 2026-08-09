@@ -7,6 +7,66 @@
 - 增加 Vue/Node 双 Host 的普通权限 Junction 挂载、状态和卸载脚本，强制校验 `LinkType=Junction`、目标一致和本机 Git 排除。
 - 关闭 workspace 的 peer 自动安装；Phoenix Admin 运行时继续由 Host 提供，冻结锁文件安装不再因插件 peer importer 漂移失败。
 
+### Windows 测试整改归档（Open Issue 部分）
+
+归档日期：2026-08-09。问题来源为《Admin和Issue测试问题整理》和《Admin和Issue测试问题整改计划》；本节只归档 Open Issue 仓库负责的 F01、F04、F05，以及 R01～R06、R09、R13 中本仓可以完成的复检。目标 Windows 机器、真实 Junction 和已登录 Host 会话的联合复检不在本仓自动化结果中冒充通过。
+
+#### 版本与提交
+
+| 对象 | 结果 |
+| --- | --- |
+| 整改起点 | `b245527fa4941655222c420df565cb59d70c5d83`（`develop`，Open Issue `0.7.0`） |
+| 整改提交 | `3500fc52481466b6cdb851172e197916fbb0ee31`（`修复：完成 Windows 测试整改并升级至 0.7.1`） |
+| 构建锚点提交 | `75cefad9a048d84e513667a3fa282da0c0127098`（`构建：更新 Wing 0.6.3 联调锚点`） |
+| 插件版本 | `0.7.1`；该版本归档时尚未对外发布，因此不另升 `0.7.2` |
+| Wing | 本地类型检查精确锚点为 `0.6.3@4aa2a439bce89ca2827d991c650393eae54d85ac`；生产 peer 兼容范围仍为 `>=0.6.2 <0.7.0` |
+
+`75cefad9a0` 只更新仓库侧本地联调/类型检查锚点。`scripts/open-issue-wing-mode.mjs` 不在生产包清单中，未改变 manifest、DDL、业务源码或运行时 payload。
+
+#### 整改项收口
+
+| 项目 | 本仓结论 | 证据与边界 |
+| --- | --- | --- |
+| F01 / PPT 1.4 | 实现完成 | PostgreSQL 标识符白名单补入 `eightDReports`、`relatedIssueId`；空 schema 创建完整表后执行 `seedTestData`，断言 3 个列表、5 个 Issue、13 个点检、4 个关联 8D 和 1 条推送 |
+| F04 / PPT 1.3 | 文档完成 | 根 README 已明确 `packages/server/.env`、占位连接串、首次启动、单次 `Ctrl+C`、等待关闭和再次启动；未写入真实凭据 |
+| F05 / PPT 2.7 | 脚本与文档完成 | `scripts/mount-admin-plugin-dev.ps1` 使用 `New-Item -ItemType Junction`，覆盖 Vue/Node 两处 Mount/Status/Unmount，拒绝覆盖真实目录或外来 Junction，并校验 `LinkType`、目标和本机 Git exclude |
+
+#### 本仓复检记录
+
+| 编号 | 本仓结果 | 可复现证据 | 目标 Windows / Host 剩余点检 |
+| --- | --- | --- | --- |
+| R01 | 通过 | `pnpm install --frozen-lockfile --offline` 通过；仓库声明 `pnpm@10.15.1` | 在目标 Windows 使用 Node.js 22.x 和同一 pnpm 版本复跑在线/缓存安装 |
+| R02 | 部分通过 | `DATABASE_URL= pnpm test` 为 210 passed / 10 skipped，`pnpm build` 通过 | 实际启动 core/server/web，核对三进程成功与失败日志 |
+| R03 | 文档通过 | README 明确 `.env` 文件位置、必填 PostgreSQL/JWT/初始管理员占位项和启动顺序 | 由未配置过项目的 Windows 用户只按 README 首次启动 |
+| R04 | 文档通过 | README 明确按一次 `Ctrl+C`、等待数据库关闭和保留 `.env` 后重启 | 在 PowerShell 中完成真实停止与重启 |
+| R05 | 通过 | 独立 PostgreSQL 测试 schema 执行 `pnpm test:pg`，6/6 通过；完整示例数据含关联 8D，无 `42P01` | Windows UI 登录后点击添加示例数据 |
+| R06 | 自动化通过 | fresh-schema seed 对列表、Issue、点检、8D、推送和完成标记逐项断言；全仓测试、构建通过 | Windows 页面查看和操作示例数据 |
+| R09 | 静态契约通过 | `tests/scripts/windows-junction-mount.test.ts` 3/3 通过，校验双挂载、Junction-only、`LinkType`、目标和脱敏路径 | 普通权限 PowerShell 实际 Mount/Status/Unmount，两处均显示 `LinkType=Junction` |
+| R13 | manifest 门禁通过 | `pnpm admin-plugin:verify-manifest` 通过：`phoenix-open-issue`、`/open-issue`、2 条 SQL migration | 使用已登录管理员会话完成真实登记并保存脱敏结果 |
+
+因此，本仓 F01 实现与回归、F04 文档、F05 脚本/文档可以归档；Windows 联合复检 F07 仍由测试责任人在目标环境完成，不能由 macOS/Linux 的静态检查替代。
+
+#### 发布候选制品
+
+在 clean `75cefad9a0` 上执行 `pnpm admin-plugin:release-package`，固定顺序完成 browser runtime build、descriptor/integrity、pack、生产组包门禁、Midway/Vue 类型检查和 135 项插件核心测试；随后执行 `pnpm admin-plugin:verify-production-package` 独立验包。
+
+| 字段 | 值 |
+| --- | --- |
+| 文件 | `dist/admin-plugin/phoenix-open-issue-0.7.1.phoenix.cool`（`dist/` 已忽略，不进入 Git） |
+| 类型 | Pah 声明式 Phoenix 业务插件包；COOL 原生 Hook 安装器不兼容并 fail closed |
+| 文件数 | 132 |
+| 压缩字节 | 243,085 |
+| SHA-256 | `fe71571c491a216be8afa80090b3b5afafd171f2c095474ffef1d72dbca60c1a` |
+| 数据保留契约 | 普通卸载保留 9 张业务表和 7 类字典 |
+
+复验命令：
+
+```bash
+pnpm admin-plugin:verify-production-package
+```
+
+归档时只创建中文本地提交，未 push；日志、路径示例和配置示例均未保存用户名、密码、令牌或真实数据库连接串。
+
 ## v0.7.0（2026-08-05）
 
 - Open Issue 从独立站交付形态收敛为 Phoenix Admin 声明式业务插件；插件、根工作区及三个 legacy 兼容包统一使用 `0.7.0`，正式制品统一为 `phoenix-open-issue-0.7.0.phoenix.cool`。

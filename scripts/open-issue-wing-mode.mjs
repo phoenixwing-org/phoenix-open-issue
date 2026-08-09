@@ -2,8 +2,8 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { execFileSync } from 'node:child_process'
 
-export const OPEN_ISSUE_LOCAL_WING_VERSION = '0.6.2'
-export const OPEN_ISSUE_LOCAL_WING_COMMIT = 'dbdd70d4a95a2771b41fbec9ae17f979715ff076'
+export const OPEN_ISSUE_LOCAL_WING_VERSION = '0.6.3'
+export const OPEN_ISSUE_LOCAL_WING_COMMIT = '4aa2a439bce89ca2827d991c650393eae54d85ac'
 
 function gitOutput(worktreeRoot, args) {
   return execFileSync('git', args, {
