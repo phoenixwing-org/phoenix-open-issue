@@ -17,8 +17,11 @@ export async function getSystemFlag(key: string): Promise<string | undefined> {
   return row?.value
 }
 
-export async function setSystemFlag(key: string, value: string): Promise<void> {
-  const db = getAsyncDb()
+export async function setSystemFlag(
+  key: string,
+  value: string,
+  db: PnwDbExecutor = getAsyncDb(),
+): Promise<void> {
   await db.run(
     'INSERT INTO systemFlags (key, value) VALUES (?, ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value',
     [key, value],
@@ -200,8 +203,7 @@ export async function seedEssential(): Promise<string[]> {
 }
 
 // ═══════════════════ 测试数据：手动触发 ═══════════════════
-export async function seedTestData(): Promise<string[]> {
-  const db = getAsyncDb()
+export async function seedTestData(db: PnwDbExecutor = getAsyncDb()): Promise<string[]> {
   const logs: string[] = []
 
   // 检查是否已有测试数据
@@ -354,7 +356,7 @@ export async function seedTestData(): Promise<string[]> {
   console.log('  📤 1 demo push')
 
   // 标记已执行
-  await setSystemFlag('seedTestData', 'done')
+  await setSystemFlag('seedTestData', 'done', db)
 
   console.log('✅ Test data seeded!')
   logs.push('创建 2 测试用户: zhangsan / lisi (密码: 123456)')

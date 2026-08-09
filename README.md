@@ -37,9 +37,48 @@ Open Issue List 的目标是提供一个 **轻量、标准对齐、开箱即用*
 
 ## 快速启动
 
+### Windows PowerShell 首次启动
+
+仓库要求 Node.js 22.x 和 `package.json` 声明的 pnpm 版本。先准备一个空的 PostgreSQL 数据库和专用数据库用户；可以使用 pgAdmin 或组织规定的数据库工具创建，本文不提供真实凭据。
+
+在普通 PowerShell 中进入仓库根目录后执行：
+
+```powershell
+corepack enable
+pnpm --version
+Copy-Item .\packages\server\.env.postgres.example .\packages\server\.env
+notepad .\packages\server\.env
+```
+
+`pnpm --version` 应与 `package.json` 的 `packageManager` 一致。编辑 `packages/server/.env` 时至少确认以下配置已经替换为当前测试数据库的值；连接串中的特殊字符需要进行 URL 编码：
+
+```dotenv
+DB_DRIVER=postgres
+DATABASE_URL=postgresql://<db-user>:<db-password>@127.0.0.1:5432/<db-name>
+JWT_SECRET=<development-secret>
+INITIAL_ADMIN_PASSWORD=<development-admin-password>
+```
+
+`.env` 只保存在本机且已被 Git 忽略，不要提交密码、令牌或真实连接串。后端固定读取 `packages/server/.env`，放在仓库根目录的 `.env` 不能替代它。
+
+随后安装依赖并启动三项服务：
+
+```powershell
+pnpm install --frozen-lockfile
+pnpm dev
+```
+
+看到 core 编译完成、Server 启动并显示 `Database: PostgreSQL`、Web 可访问后，打开 [http://localhost:5183](http://localhost:5183)。首次启动会在空库中创建表、基础字典和管理员；演示数据由首次登录后的弹窗按需添加。
+
+需要停止时在运行 `pnpm dev` 的窗口按一次 `Ctrl+C`，等待 server 输出关闭数据库的日志并返回 PowerShell 提示符。不要删除 `packages/server/.env`；仍在仓库根目录直接再次执行 `pnpm dev`，core、server、web 应全部恢复。若提示缺少 `DATABASE_URL`，优先确认文件名是 `packages/server/.env`，并确认连接串指向已经创建且可访问的 PostgreSQL 数据库。
+
+### macOS / Linux
+
 ```bash
-pnpm install          # 安装所有依赖
-pnpm dev              # 一键启动 core + server + web（首次启动自动创建管理员账号）
+cp packages/server/.env.postgres.example packages/server/.env
+# 编辑 packages/server/.env，填写脱敏模板对应的 PostgreSQL 连接与本地开发密钥
+pnpm install --frozen-lockfile
+pnpm dev
 ```
 
 打开 [http://localhost:5183](http://localhost:5183) 即可使用。
@@ -56,7 +95,7 @@ pnpm dev              # 一键启动 core + server + web（首次启动自动创
 
 Open Issue 同时保留独立 Web 与 Phoenix Admin 插件源码。插件部署分为两种模式：
 
-- **开发模式**：用 `pnpm admin-plugin:mount-dev-host` 将 Vue/Node 模块以软链接挂载到本机 Host，并通过各 Host 的 `.git/info/exclude` 保持产品源码不进入框架仓；
+- **开发模式**：macOS/Linux 用 `pnpm admin-plugin:mount-dev-host` 创建目录软链接；Windows PowerShell 用仓库脚本创建无需管理员权限的 Junction。两种方式都只挂载 Vue/Node 模块，并通过各 Host 的 `.git/info/exclude` 保持产品源码不进入框架仓；
 - **正式安装模式**：交付冻结的不可变制品，通过 Pah 完成 manifest 校验、迁移 dry-run、可信备份、受控安装和启用，禁止使用开发链接或 TypeORM `synchronize`。
 
 命令、目录、卸载和正式发布门禁见 [Phoenix Admin 插件部署](doc/PhoenixAdmin插件部署.md)。
@@ -138,7 +177,7 @@ pnpm seed            # CLI 重新填充演示数据（force 追加可清空）
 | -------------------------------------------- | -------------------- |
 | [文档索引](doc/文档索引.md)                       | 当前说明、草案与历史证据的唯一导航 |
 | [当前路线](doc/current-roadmap.md)                | 当前优先级与联合治理消费者责任 |
-| [更新日志](doc/CHANGELOG.md)                     | v0.7.0 版本变更摘要        |
+| [更新日志](doc/CHANGELOG.md)                     | v0.7.1 版本变更摘要        |
 | [早期架构设计（历史）](doc/架构设计.md)                  | v0.x Express + 本地数据库架构快照 |
 | [API参考](doc/API参考.md)                        | REST API 全部端点        |
 | [数据字典配置](doc/数据字典配置.md)                      | 下拉选项枚举值，汽车/软件预设      |

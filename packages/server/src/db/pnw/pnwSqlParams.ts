@@ -5,14 +5,14 @@ export interface PnwCompiledSql {
 
 const PROJECT_IDENTIFIERS = new Set([
   'users', 'orgUnits', 'issueLists', 'issueListMembers', 'issues', 'checkpoints',
-  'pushRecords', 'issueListLinks', 'dict', 'systemFlags', 'poiFunctions', 'schemaMigrations',
+  'pushRecords', 'issueListLinks', 'eightDReports', 'dict', 'systemFlags', 'poiFunctions', 'schemaMigrations',
   'externalIdentities', 'oauthLoginAttempts', 'oauthLoginTickets', 'externalBindRequests',
   'id', 'username', 'email', 'passwordHash', 'displayName', 'orgUnitId', 'approved',
   'disabled', 'systemRole', 'tokenVersion', 'createdAt', 'updatedAt', 'name', 'unitType', 'parentId',
   'description', 'listType', 'ownerId', 'archived', 'isDeleted', 'deletedAt', 'listId',
   'userId', 'role', 'joinedAt', 'issueNo', 'title', 'status', 'closeReason', 'closedBy',
   'priority', 'severity', 'category', 'detectionPhase', 'reporterId', 'assigneeId',
-  'dueDate', 'completedAt', 'containment', 'rootCause', 'correctiveAction', 'sortOrder',
+  'dueDate', 'completedAt', 'relatedIssueId', 'containment', 'rootCause', 'correctiveAction', 'sortOrder',
   'extensions', 'listCount',
   'functionId', 'createdBy', 'issueId', 'checkpointDate', 'deadline', 'responsibleUserId',
   'fromListId', 'toListId', 'pushedBy', 'pushedAt', 'handledBy', 'handledAt',
