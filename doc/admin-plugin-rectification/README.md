@@ -45,6 +45,7 @@ Owner：Open Issue maintainers / Phoenix Admin Host maintainers
 - [用户点检表](用户点检表.md)：每轮完成后由用户验证开发挂载、插件生命周期、页面保真和当前允许失败项。
 - [Admin 插件迁移 TODO](TODO.md)：Issue 业务闭包、图标能力和 COOL/Wing 复用研究。
 - [统一迁移审计](迁移审计.md)：UI、算法、测试、代码量、交付尺寸和框架收益的统一口径及 Issue 当前快照。
+- [v0.7.1 Windows 测试整改归档](../CHANGELOG.md#windows-测试整改归档open-issue-部分)：F01/F04/F05、本仓可执行复检、版本决策、提交与不可变制品证据；目标 Windows 联合复检仍单列，不用静态门禁冒充。
 
 详细审计底稿和 Issue/Function/Bom3 的纵向统计归档到同级 `phoenix-ai-workspaces`；源码仓库只保存会影响实现、CI 或验收的入口材料。
 
