@@ -2,31 +2,68 @@
 
 状态：current
 
-适用插件：`phoenix-open-issue@0.7.0`
+适用插件：`phoenix-open-issue@0.7.1`
 
 本页是 Open Issue 接入 Phoenix Admin 的部署入口。开发模式与正式安装解决的问题不同，不得混用。
 
 | 模式 | 用途 | 代码进入 Host 的方式 | 数据库处理 |
 | --- | --- | --- | --- |
-| 开发模式 | 本机联调、HMR、页面和接口迁移 | 软链接（Link）挂载，产品源码仍只归 Open Issue 仓库 | 只登记、校验和查看 dry-run；不得用 `synchronize` 代替迁移 |
+| 开发模式 | 本机联调、HMR、页面和接口迁移 | macOS/Linux 使用目录软链接；Windows 使用 Junction。产品源码仍只归 Open Issue 仓库 | 只登记、校验和查看 dry-run；不得用 `synchronize` 代替迁移 |
 | 正式安装模式 | 测试、预发布和生产交付 | 冻结版本的 `.phoenix.cool` Phoenix 业务插件包，由 Phoenix Admin 受控装配 | manifest v2 迁移计划、可信备份、事务执行和 ledger 全部留证 |
 
-## 1. 开发模式：Link 挂载
+## 1. 开发模式：目录挂载
 
 默认目录结构是三个并列仓库：
 
 ```text
-phoenix-open-issue-admin/
+phoenix-open-issue/
 phoenix-admin-vue/
 phoenix-admin-node/
 ```
 
-如 Host 不在默认位置，可设置 `PHOENIX_ADMIN_VUE_ROOT`、`PHOENIX_ADMIN_NODE_ROOT`。先在 Open Issue Admin worktree 安装依赖，再执行：
+### 1.1 macOS / Linux：目录软链接
+
+如 Host 不在默认位置，可设置 `PHOENIX_ADMIN_VUE_ROOT`、`PHOENIX_ADMIN_NODE_ROOT`。先在 Open Issue worktree 安装依赖，再执行：
 
 ```bash
 pnpm admin-plugin:mount-dev-host
 pnpm admin-plugin:status-dev-host
 ```
+
+### 1.2 Windows PowerShell：Junction
+
+Windows 不使用 `SymbolicLink`，避免开发者模式或管理员权限要求；仓库脚本沿用 `linkWinb64.ps1` / `LinkWinb64Common.ps1` 的 `New-Item -ItemType Junction` 模式，并在创建后强制校验 `LinkType` 与目标目录。脚本拒绝覆盖真实目录、文件或指向其它源码的 Junction。
+
+三个仓库按默认方式并列时，在**普通权限** PowerShell 中进入 Open Issue 根目录后执行：
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\mount-admin-plugin-dev.ps1 -Action Mount
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\mount-admin-plugin-dev.ps1 -Action Status
+```
+
+Host 不在默认并列目录时，用变量传参，不要把个人绝对路径写入仓库：
+
+```powershell
+$OpenIssueRoot = (Resolve-Path .).Path
+$WorkspaceRoot = Split-Path -Parent $OpenIssueRoot
+$VueHostRoot = Join-Path $WorkspaceRoot 'phoenix-admin-vue'
+$NodeHostRoot = Join-Path $WorkspaceRoot 'phoenix-admin-node'
+
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\mount-admin-plugin-dev.ps1 `
+  -Action Mount `
+  -VueHostRoot $VueHostRoot `
+  -NodeHostRoot $NodeHostRoot
+```
+
+`Status` 必须同时输出 Vue Host、Node Host 的 `LinkType=Junction`、目标匹配和 Git 本机排除有效。也可手工复核：
+
+```powershell
+$VueMount = Join-Path $VueHostRoot 'src\modules\phoenix-open-issue'
+$NodeMount = Join-Path $NodeHostRoot 'src\modules\phoenix-open-issue'
+Get-Item -Force $VueMount, $NodeMount | Select-Object FullName, LinkType, Target
+```
+
+两行 `LinkType` 都必须是 `Junction`。如源目录位于网络共享或文件系统不支持 Junction，脚本会失败并保留既有目标；不要退回需要提权的 `SymbolicLink` 冒充通过。
 
 脚本建立两条源码链接：
 
@@ -40,7 +77,7 @@ phoenix-admin-node/src/modules/phoenix-open-issue
 
 插件自有的 `driver.js` 会按需桥接到 Vue Host；Vue、Vue Router、Pinia、Element Plus、Phoenix Wing 等运行时必须继续由 Host 提供单例。
 
-挂载脚本还会把精确产品路径写入两个 Host 本机的 `.git/info/exclude`。因此：
+两种挂载脚本都会把精确产品路径写入两个 Host 本机的 `.git/info/exclude`。因此：
 
 - Host Git 不归档产品源码、链接或产品名配置；
 - 不修改 Host 的 tracked `.gitignore`、`package.json` 或锁文件；
@@ -55,15 +92,21 @@ phoenix-admin-node/src/modules/phoenix-open-issue
 http://127.0.0.1:9000/open-issue/
 ```
 
-开发完成后卸载本机链接：
+开发完成后卸载本机目录挂载。macOS/Linux 执行：
 
 ```bash
 pnpm admin-plugin:unmount-dev-host
 ```
 
+Windows PowerShell 执行：
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\mount-admin-plugin-dev.ps1 -Action Unmount
+```
+
 该命令只移除仍指向本插件的链接及其 `.git/info/exclude` 标记，不卸载 Pah 记录，也不删除业务数据。需要先在 `/pah/plugins` 停用插件，避免 Host 保留无法加载的菜单。
 
-### 开发挂载点检
+### 1.3 开发挂载与 manifest 登记点检
 
 ```bash
 pnpm admin-plugin:status-dev-host
@@ -75,6 +118,8 @@ git -C ../phoenix-admin-node check-ignore -v src/modules/phoenix-open-issue
 
 两个 `git status` 都不应因挂载出现产品文件；`check-ignore` 必须指向各仓本机 `.git/info/exclude`。
 
+仓内先执行 `pnpm admin-plugin:verify-manifest`。随后重启 Vue/Node Host，在 `/pah/plugins` 使用已登录的管理员会话选择 Open Issue 仓内的 `packages/admin-plugin/manifest.json` 完成校验与登记；不要在文档、命令历史或复检证据中粘贴 Cookie、令牌或真实连接串。登记后记录 Host 返回的脱敏 module/version/status，并继续按 migration dry-run、可信备份和受控生命周期操作。
+
 ## 2. 正式安装模式：不可变制品 + Pah
 
 正式环境禁止使用开发软链接、`link:`、`file:`、`workspace:` override 或直接复制到 Host 主工作树。`*.phoenix.cool` 是 Phoenix 声明式业务插件包，不是 COOL 原生可执行 Hook 包；开发阶段只接受这一后缀，旧 `.pah.cool` 一律拒绝。包内没有 `src/index.js` 或 `source/index.ts`，上传到旧 `/helper/plugins` 安装器必须因格式不完整而安全拒绝，不能执行包内脚本。
@@ -85,12 +130,12 @@ git -C ../phoenix-admin-node check-ignore -v src/modules/phoenix-open-issue
 # runtime build → descriptor/integrity → source pack → immutable business package
 pnpm admin-plugin:release-package
 
-# 独立复核已生成包；默认路径为 dist/admin-plugin/phoenix-open-issue-0.7.0.phoenix.cool
+# 独立复核已生成包；默认路径为 dist/admin-plugin/phoenix-open-issue-0.7.1.phoenix.cool
 pnpm admin-plugin:verify-production-package
 
 # 以两个冻结且 clean 的 Host 根目录装配到普通一次性目录
 pnpm admin-plugin:assemble-clean-host -- \
-  --archive /absolute/path/phoenix-open-issue-0.7.0.phoenix.cool \
+  --archive /absolute/path/phoenix-open-issue-0.7.1.phoenix.cool \
   --node-host /absolute/path/clean-admin-node \
   --vue-host /absolute/path/clean-admin-vue \
   --output /absolute/path/new-empty-assembly

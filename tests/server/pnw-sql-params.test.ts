@@ -19,6 +19,16 @@ describe('pnwCompilePostgresParams', () => {
     )
   })
 
+  it('自动引用示例数据使用的 8D 表和关联 Issue 字段', () => {
+    const result = pnwCompilePostgresParams(
+      'INSERT INTO eightDReports (id, relatedIssueId, title) VALUES (?, ?, ?)',
+    )
+    expect(result).toEqual({
+      text: 'INSERT INTO "eightDReports" ("id", "relatedIssueId", "title") VALUES ($1, $2, $3)',
+      parameterCount: 3,
+    })
+  })
+
   it('自动引用第三方登录表和身份字段', () => {
     const result = pnwCompilePostgresParams(
       'SELECT providerSubject, tenantKey FROM externalIdentities WHERE userId = ?',

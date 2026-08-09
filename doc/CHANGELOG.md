@@ -1,5 +1,12 @@
 # 更新日志
 
+## v0.7.1（2026-08-09）
+
+- 修复 PostgreSQL 示例数据初始化时 `eightDReports` / `relatedIssueId` 未按混合大小写标识符引用导致的 `42P01`，并增加空 PostgreSQL schema 的完整 seed 回归。
+- 完善 Windows PowerShell 首次启动、`packages/server/.env`、PostgreSQL 连接、`Ctrl+C` 停止与重启步骤，示例只使用占位凭据。
+- 增加 Vue/Node 双 Host 的普通权限 Junction 挂载、状态和卸载脚本，强制校验 `LinkType=Junction`、目标一致和本机 Git 排除。
+- 关闭 workspace 的 peer 自动安装；Phoenix Admin 运行时继续由 Host 提供，冻结锁文件安装不再因插件 peer importer 漂移失败。
+
 ## v0.7.0（2026-08-05）
 
 - Open Issue 从独立站交付形态收敛为 Phoenix Admin 声明式业务插件；插件、根工作区及三个 legacy 兼容包统一使用 `0.7.0`，正式制品统一为 `phoenix-open-issue-0.7.0.phoenix.cool`。

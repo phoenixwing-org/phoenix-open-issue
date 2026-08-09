@@ -23,7 +23,7 @@ Host 只需提供插件声明的 peer dependencies。页面导引依赖的 `driv
 
 ## 开发挂载与正式安装
 
-本机联调使用仓库提供的安全 Link 脚本：
+macOS/Linux 本机联调使用仓库提供的安全 Link 脚本：
 
 ```bash
 pnpm admin-plugin:mount-dev-host
@@ -31,13 +31,15 @@ pnpm admin-plugin:status-dev-host
 pnpm admin-plugin:unmount-dev-host
 ```
 
-开发链接只写入本机 Host 工作区和 `.git/info/exclude`，不能作为正式安装产物。正式环境必须使用冻结的不可变 `.phoenix.cool` Phoenix 业务插件包，通过 Phoenix Admin 的 manifest、migration dry-run、可信备份和受控生命周期安装。开发阶段不兼容旧 `.pah.cool` 后缀：
+Windows PowerShell 使用 `scripts/mount-admin-plugin-dev.ps1` 创建并校验 Vue/Node 两处 `Junction`，普通权限即可执行；不要改用需要开发者模式或提权的 `SymbolicLink`。参数化命令、`LinkType` 点检和卸载步骤统一见 [Phoenix Admin 插件部署](../../doc/PhoenixAdmin插件部署.md)。
+
+开发目录挂载只写入本机 Host 工作区和 `.git/info/exclude`，不能作为正式安装产物。正式环境必须使用冻结的不可变 `.phoenix.cool` Phoenix 业务插件包，通过 Phoenix Admin 的 manifest、migration dry-run、可信备份和受控生命周期安装。开发阶段不兼容旧 `.pah.cool` 后缀：
 
 ```bash
 pnpm admin-plugin:release-package
 pnpm admin-plugin:verify-production-package
 pnpm admin-plugin:assemble-clean-host -- \
-  --archive /absolute/path/phoenix-open-issue-0.7.0.phoenix.cool \
+  --archive /absolute/path/phoenix-open-issue-0.7.1.phoenix.cool \
   --node-host /absolute/path/clean-admin-node \
   --vue-host /absolute/path/clean-admin-vue \
   --output /absolute/path/new-empty-assembly

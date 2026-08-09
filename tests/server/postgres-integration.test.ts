@@ -140,3 +140,64 @@ describePostgres('PostgreSQL integration', () => {
     expect(issue?.originListName).toBe('Source')
   })
 })
+
+describePostgres('PostgreSQL fresh schema sample data', () => {
+  const schemaName = `open_issue_seed_${randomUUID().replaceAll('-', '')}`
+  let adminDb: PnwPostgresAdapter
+  let seedDb: PnwPostgresAdapter
+  let seedTestData: typeof import('../../packages/server/src/seed.js').seedTestData
+
+  beforeAll(async () => {
+    adminDb = new PnwPostgresAdapter({
+      driver: 'postgres',
+      connectionString: connectionString!,
+      ssl: false,
+      poolMax: 1,
+    })
+    await adminDb.exec(`CREATE SCHEMA "${schemaName}"`)
+    seedDb = new PnwPostgresAdapter({
+      connectionString: connectionString!,
+      max: 2,
+      options: `-c search_path=${schemaName}`,
+    })
+    await pnwRunSchema(seedDb)
+    await seedDb.run(
+      'INSERT INTO users (id, username, passwordHash, displayName, approved, systemRole) VALUES (?, ?, ?, ?, ?, ?)',
+      [`seed-admin-${schemaName}`, 'admin', 'test-only-hash', 'Test Admin', 1, 'admin'],
+    )
+
+    process.env.DATABASE_URL ||= connectionString!
+    ;({ seedTestData } = await import('../../packages/server/src/seed.js'))
+  })
+
+  afterAll(async () => {
+    if (seedDb) await seedDb.close()
+    if (adminDb) {
+      await adminDb.exec(`DROP SCHEMA IF EXISTS "${schemaName}" CASCADE`)
+      await adminDb.close()
+    }
+  })
+
+  it('adds the complete sample dataset including linked 8D reports', async () => {
+    const logs = await seedTestData(seedDb)
+    const reports = await seedDb.get<{ count: number }>(
+      'SELECT COUNT(*) AS count FROM eightDReports WHERE relatedIssueId IS NOT NULL',
+    )
+    const lists = await seedDb.get<{ count: number }>('SELECT COUNT(*) AS count FROM issueLists')
+    const issues = await seedDb.get<{ count: number }>('SELECT COUNT(*) AS count FROM issues')
+    const checkpoints = await seedDb.get<{ count: number }>('SELECT COUNT(*) AS count FROM checkpoints')
+    const pushes = await seedDb.get<{ count: number }>('SELECT COUNT(*) AS count FROM pushRecords')
+    const flag = await seedDb.get<{ value: string }>(
+      'SELECT value FROM systemFlags WHERE key = ?',
+      ['seedTestData'],
+    )
+
+    expect(logs).toContain('创建 5 条 Issue + 点检 + 1 条演示推送')
+    expect(lists?.count).toBe(3)
+    expect(issues?.count).toBe(5)
+    expect(checkpoints?.count).toBe(13)
+    expect(reports?.count).toBe(4)
+    expect(pushes?.count).toBe(1)
+    expect(flag?.value).toBe('done')
+  })
+})
