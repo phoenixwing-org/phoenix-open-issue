@@ -1,12 +1,12 @@
 /** 由 Vitest JSON 报告生成独立 HTML（新标签页打开，不依赖 SPA） */
 
 interface VitestAssertion {
-  ancestorTitles: string[]
+  ancestorTitles?: string[]
   fullName: string
   status: string
   title: string
-  duration: number
-  failureMessages: string[]
+  duration?: number
+  failureMessages?: string[]
 }
 
 interface VitestFileResult {
@@ -42,32 +42,34 @@ function relPath(absPath: string, repoRoot: string): string {
 
 export function buildTestReportHtml(report: VitestJsonReport, repoRoot: string, ranAt: string): string {
   const durationMs = report.testResults.reduce((sum, f) => {
-    return sum + f.assertionResults.reduce((s, a) => s + (a.duration || 0), 0)
+    return sum + (f.assertionResults ?? []).reduce((s, a) => s + (a.duration ?? 0), 0)
   }, 0)
 
   const fileSections = report.testResults.map((file) => {
+    const assertions = file.assertionResults ?? []
     const filePath = relPath(file.name, repoRoot)
-    const passed = file.assertionResults.filter(a => a.status === 'passed').length
-    const failed = file.assertionResults.filter(a => a.status === 'failed').length
+    const passed = assertions.filter(a => a.status === 'passed').length
+    const failed = assertions.filter(a => a.status === 'failed').length
     const fileStatus = file.status === 'passed' ? 'pass' : 'fail'
 
-    const rows = file.assertionResults.map((a) => {
-      const suite = a.ancestorTitles.join(' › ')
+    const rows = assertions.map((a) => {
+      const suite = (a.ancestorTitles ?? []).join(' › ')
       const statusClass = a.status === 'passed' ? 'pass' : a.status === 'failed' ? 'fail' : 'skip'
       const failBlock = a.failureMessages?.length
         ? `<pre class="fail-msg">${esc(a.failureMessages.join('\n'))}</pre>`
         : ''
+      const durationMs = a.duration ?? 0
       return `<tr class="${statusClass}">
         <td class="status">${esc(a.status)}</td>
         <td>${esc(suite)}</td>
         <td>${esc(a.title)}</td>
-        <td class="num">${a.duration.toFixed(1)}ms</td>
+        <td class="num">${durationMs > 0 ? `${durationMs.toFixed(1)}ms` : '—'}</td>
       </tr>${failBlock ? `<tr class="fail-detail"><td colspan="4">${failBlock}</td></tr>` : ''}`
     }).join('')
 
     return `<section class="file ${fileStatus}">
       <h2><span class="badge ${fileStatus}">${fileStatus === 'pass' ? 'PASS' : 'FAIL'}</span> ${esc(filePath)}</h2>
-      <p class="file-meta">${passed} 通过${failed ? ` · ${failed} 失败` : ''} · ${file.assertionResults.length} 条</p>
+      <p class="file-meta">${passed} 通过${failed ? ` · ${failed} 失败` : ''} · ${assertions.length} 条</p>
       <table><thead><tr><th>状态</th><th>套件</th><th>用例</th><th>耗时</th></tr></thead><tbody>${rows}</tbody></table>
     </section>`
   }).join('')
