@@ -6,7 +6,7 @@ const script = readFileSync(
   'utf8',
 )
 const deploymentGuide = readFileSync(
-  new URL('../../doc/PhoenixAdmin插件部署.md', import.meta.url),
+  new URL('../../docs/PhoenixAdmin插件部署.md', import.meta.url),
   'utf8',
 )
 

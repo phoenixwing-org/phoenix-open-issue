@@ -98,7 +98,7 @@ Open Issue 同时保留独立 Web 与 Phoenix Admin 插件源码。插件部署�
 - **开发模式**：macOS/Linux 用 `pnpm admin-plugin:mount-dev-host` 创建目录软链接；Windows PowerShell 用仓库脚本创建无需管理员权限的 Junction。两种方式都只挂载 Vue/Node 模块，并通过各 Host 的 `.git/info/exclude` 保持产品源码不进入框架仓；
 - **正式安装模式**：交付冻结的不可变制品，通过 Pah 完成 manifest 校验、迁移 dry-run、可信备份、受控安装和启用，禁止使用开发链接或 TypeORM `synchronize`。
 
-命令、目录、卸载和正式发布门禁见 [Phoenix Admin 插件部署](doc/PhoenixAdmin插件部署.md)。
+命令、目录、卸载和正式发布门禁见 [Phoenix Admin 插件部署](docs/PhoenixAdmin插件部署.md)。
 
 
 
@@ -111,7 +111,7 @@ Open Issue 同时保留独立 Web 与 Phoenix Admin 插件源码。插件部署�
 | `packages/server/` | Express + PostgreSQL 后端（MVC）   |
 | `packages/web/`    | Vue 3 + Element Plus 前端               |
 | `data/`            | 旧本地数据库资产目录（弃用过渡期，待归档清理）                    |
-| `doc/`             | 文档                                    |
+| `docs/`             | 文档                                    |
 
 
 
@@ -166,7 +166,7 @@ pnpm build:local-wing # 使用并列 Wing 工作区完成三段构建
 pnpm seed            # CLI 重新填充演示数据（force 追加可清空）
 ```
 
-> 本仓前后端 manifest 与 lockfile 精确消费 npm Registry `phoenix-wing@0.6.0`。另提供显式 `*:local-wing` 命令，在单次进程内验证标准并列 `../phoenix-wing` 的源码候选；普通命令仍不探测相邻源码。详见 [phoenix-wing 依赖配置](doc/phoenix-wing依赖配置.md)。
+> 本仓前后端 manifest 与 lockfile 精确消费 npm Registry `phoenix-wing@0.6.0`。另提供显式 `*:local-wing` 命令，在单次进程内验证标准并列 `../phoenix-wing` 的源码候选；普通命令仍不探测相邻源码。详见 [phoenix-wing 依赖配置](docs/phoenix-wing依赖配置.md)。
 
 
 
@@ -175,30 +175,33 @@ pnpm seed            # CLI 重新填充演示数据（force 追加可清空）
 
 | 文档                                           | 说明                   |
 | -------------------------------------------- | -------------------- |
-| [文档索引](doc/文档索引.md)                       | 当前说明、草案与历史证据的唯一导航 |
-| [当前路线](doc/current-roadmap.md)                | 当前优先级与联合治理消费者责任 |
-| [更新日志](doc/CHANGELOG.md)                     | v0.7.1 版本变更摘要        |
-| [早期架构设计（历史）](doc/架构设计.md)                  | v0.x Express + 本地数据库架构快照 |
-| [API参考](doc/API参考.md)                        | REST API 全部端点        |
-| [数据字典配置](doc/数据字典配置.md)                      | 下拉选项枚举值，汽车/软件预设      |
-| [已知问题](doc/已知问题.md)                         | 当前 workaround 与关闭条件    |
-| [phoenix-wing 依赖配置](doc/phoenix-wing依赖配置.md) | npm 固定版本与升级规则      |
-| [Linux 测试部署（历史）](doc/Linux测试部署.md)           | v0.4 单机本地数据库部署快照 |
-| [本地库/PG 双数据库计划（历史）](doc/v0.4-PG双数据库适配计划.md) | PnwDbAdapter 早期迁移与双库测试方案 |
-| [PostgreSQL 部署与迁移（草案）](doc/PostgreSQL部署与迁移.md) | legacy 本地库一次性导入门禁与待验证流程 |
-| [Phoenix Admin 插件部署](doc/PhoenixAdmin插件部署.md) | 开发 Link 挂载与正式 Pah 安装流程 |
-| [多人权限与列表筛选加固](doc/多人权限与列表筛选加固.md) | 系统/列表权限矩阵、筛选分页、认证和回归测试 |
-| [Issue 扩展能力：定向推送与附属关联](doc/附属功能与Issue关联计划.md) | 用户定向推送、8D 可空关联、权限与迁移边界 |
+| [文档索引](docs/文档索引.md)                       | 当前说明、草案与历史证据的唯一导航 |
+| [当前路线](docs/current-roadmap.md)                | 当前优先级与联合治理消费者责任 |
+| [更新日志](docs/CHANGELOG.md)                     | v0.7.1 版本变更摘要        |
+| [早期架构设计（历史）](docs/架构设计.md)                  | v0.x Express + 本地数据库架构快照 |
+| [API参考](docs/API参考.md)                        | REST API 全部端点        |
+| [数据字典配置](docs/数据字典配置.md)                      | 下拉选项枚举值，汽车/软件预设      |
+| [已知问题](docs/已知问题.md)                         | 当前 workaround 与关闭条件    |
+| [phoenix-wing 依赖配置](docs/phoenix-wing依赖配置.md) | npm 固定版本与升级规则      |
+| [Linux 测试部署（历史）](docs/Linux测试部署.md)           | v0.4 单机本地数据库部署快照 |
+| [本地库/PG 双数据库计划（历史）](docs/v0.4-PG双数据库适配计划.md) | PnwDbAdapter 早期迁移与双库测试方案 |
+| [PostgreSQL 部署与迁移（草案）](docs/PostgreSQL部署与迁移.md) | legacy 本地库一次性导入门禁与待验证流程 |
+| [Phoenix Admin 插件部署](docs/PhoenixAdmin插件部署.md) | 开发 Link 挂载与正式 Pah 安装流程 |
+| [多人权限与列表筛选加固](docs/多人权限与列表筛选加固.md) | 系统/列表权限矩阵、筛选分页、认证和回归测试 |
+| [Issue 扩展能力：定向推送与附属关联](docs/附属功能与Issue关联计划.md) | 用户定向推送、8D 可空关联、权限与迁移边界 |
 
 ## 路线图
 
-已完成版本基线和当前未完成项统一见[当前路线](doc/current-roadmap.md)；旧 TODO、点检表和版本计划只保留为分类清单中的历史证据。
+已完成版本基线和当前未完成项统一见[当前路线](docs/current-roadmap.md)；旧 TODO、点检表和版本计划只保留为分类清单中的历史证据。
 
 ## 相关项目
 
 - [phoenix-desk-tools](https://gitee.com/phoenixwing/phoenix-desk-tools) — Phoenix 桌面辅助工具（布局参考）
 - [phoenix-wing](https://gitee.com/phoenixwing/phoenix-wing) — Phoenix npm 插件
 
-## 许可证
+## 仓库与许可
 
-Copyright © 2024–2026 上海锟钛。项目使用 [Apache License 2.0](LICENSE) 开源。
+正式仓库：[Gitee / phoenixwing / phoenix-open-issue](https://gitee.com/phoenixwing/phoenix-open-issue)
+
+Copyright © 2024–2026 凤凰之翼（PhoenixWing）贡献者。项目使用
+[Apache License 2.0](LICENSE) 开源。

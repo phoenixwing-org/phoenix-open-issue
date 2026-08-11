@@ -2,7 +2,7 @@
 
 状态：archived
 
-> 本文只用于识别和恢复 better-sqlite3 时代的 legacy 资产，不是当前运行手册。未经只读归档、SHA-256 清单、owner 确认和 SQLite→PostgreSQL 演练，不执行下列覆盖、删除或修正命令。当前门禁见 [`doc/admin-plugin-rectification/SQLite清理执行草案.md`](../doc/admin-plugin-rectification/SQLite清理执行草案.md)。
+> 本文只用于识别和恢复 better-sqlite3 时代的 legacy 资产，不是当前运行手册。未经只读归档、SHA-256 清单、owner 确认和 SQLite→PostgreSQL 演练，不执行下列覆盖、删除或修正命令。当前门禁见 [`docs/admin-plugin-rectification/SQLite清理执行草案.md`](../docs/admin-plugin-rectification/SQLite清理执行草案.md)。
 
 将 **better-sqlite3** 时代的旧库迁移到 **node-sqlite3-wasm**，通过宿主机原生 `sqlite3` 导出 SQL 再写入全新库文件。
 

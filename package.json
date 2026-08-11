@@ -1,7 +1,7 @@
 {
   "name": "phoenix-open-issue",
   "version": "0.7.1",
-  "author": "上海锟钛",
+  "author": "PhoenixWing contributors",
   "license": "Apache-2.0",
   "private": true,
   "description": "Open Issue List 管理 Web 应用 — 多列表协作、组织层级推送、点检追踪",

@@ -31,7 +31,7 @@ pnpm admin-plugin:status-dev-host
 pnpm admin-plugin:unmount-dev-host
 ```
 
-Windows PowerShell 使用 `scripts/mount-admin-plugin-dev.ps1` 创建并校验 Vue/Node 两处 `Junction`，普通权限即可执行；不要改用需要开发者模式或提权的 `SymbolicLink`。参数化命令、`LinkType` 点检和卸载步骤统一见 [Phoenix Admin 插件部署](../../doc/PhoenixAdmin插件部署.md)。
+Windows PowerShell 使用 `scripts/mount-admin-plugin-dev.ps1` 创建并校验 Vue/Node 两处 `Junction`，普通权限即可执行；不要改用需要开发者模式或提权的 `SymbolicLink`。参数化命令、`LinkType` 点检和卸载步骤统一见 [Phoenix Admin 插件部署](../../docs/PhoenixAdmin插件部署.md)。
 
 开发目录挂载只写入本机 Host 工作区和 `.git/info/exclude`，不能作为正式安装产物。正式环境必须使用冻结的不可变 `.phoenix.cool` Phoenix 业务插件包，通过 Phoenix Admin 的 manifest、migration dry-run、可信备份和受控生命周期安装。开发阶段不兼容旧 `.pah.cool` 后缀：
 
@@ -45,7 +45,7 @@ pnpm admin-plugin:assemble-clean-host -- \
   --output /absolute/path/new-empty-assembly
 ```
 
-发布命令强制 `browser runtime build → 完整 admin-plugin:verify → 最终不可变包`，其中完整门禁包含 descriptor/integrity、pack、确定性生产打包、UI/闭包、双端 typecheck 和全部插件测试；不能依赖发布者此前手工跑过测试。正式工作树必须 clean；包内绑定源码仓库 URL 与 40 位 commit，独立验包默认拒绝 dirty 制品；相同输入得到相同包 SHA，同名目标和并发占用目标均拒绝覆盖。包不含测试、工具、`node_modules` 或原生 Hook 入口。它不能上传到 COOL `/helper/plugins` 执行；`plugin.json` 明确 `kind=pah-business-module` 和 `coolNativeHook=false`，错误安装器必须 fail-closed。完整步骤见 [Phoenix Admin 插件部署](../../doc/PhoenixAdmin插件部署.md)。
+发布命令强制 `browser runtime build → 完整 admin-plugin:verify → 最终不可变包`，其中完整门禁包含 descriptor/integrity、pack、确定性生产打包、UI/闭包、双端 typecheck 和全部插件测试；不能依赖发布者此前手工跑过测试。正式工作树必须 clean；包内绑定源码仓库 URL 与 40 位 commit，独立验包默认拒绝 dirty 制品；相同输入得到相同包 SHA，同名目标和并发占用目标均拒绝覆盖。包不含测试、工具、`node_modules` 或原生 Hook 入口。它不能上传到 COOL `/helper/plugins` 执行；`plugin.json` 明确 `kind=pah-business-module` 和 `coolNativeHook=false`，错误安装器必须 fail-closed。完整步骤见 [Phoenix Admin 插件部署](../../docs/PhoenixAdmin插件部署.md)。
 
 生产环境不依赖 TypeORM `synchronize` 建表。Pah 先校验 SQL 制品并生成只读 dry-run，再由受控发布编排在可信备份通过后执行；默认缺少备份验证器时必须安全拒绝，不允许把开发环境自动建表当成生产迁移。
 

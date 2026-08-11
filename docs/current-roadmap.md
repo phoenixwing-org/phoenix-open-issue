@@ -17,7 +17,7 @@ Owner：Open Issue maintainers
 - 生产包声明 `phoenix-wing >=0.6.2 <0.7.0` 为 Host peer，不把相邻源码或 Wing 本地构建收入制品；Open Issue 本地类型检查精确使用 `phoenix-wing@0.6.3` 的冻结提交，singleton、Ribbon/Tree 工作台、View contribution、依赖来源和自动测试继续由门禁验证。
 - `codex/single-pnw-workbench` 已完成 `PnwWorkbenchShell` 真实消费者验证；受控并列 resolver 仅用于后续 Wing 源码候选联调，不修改 Registry 依赖图，也不与 `develop/admin-plugin` 迁移线合并语义。
 - `@open-issue/core` 保持纯 TypeScript，前后端共享类型和算法但不引入 Vue、Express 或数据库驱动。
-- 飞书 OAuth 二期设计归档：`doc/第三方登录/`；表结构点检纳入设置「表结构补全」。真实飞书点检已通过（2026-07-21）。
+- 飞书 OAuth 二期设计归档：`docs/第三方登录/`；表结构点检纳入设置「表结构补全」。真实飞书点检已通过（2026-07-21）。
 
 ## 当前优先级
 

@@ -94,7 +94,7 @@ async function main() {
   const check = process.argv.slice(2).includes('--check')
   const baselineCheck = process.argv.slice(2).includes('--baseline-check')
   const summaryOnly = process.argv.slice(2).includes('--summary')
-  const manifest = JSON.parse(await readFile(path.join(repoRoot, 'doc/document-manifest.json'), 'utf8'))
+  const manifest = JSON.parse(await readFile(path.join(repoRoot, 'docs/document-manifest.json'), 'utf8'))
   const currentDocs = new Set(
     manifest.entries.filter(entry => entry.status === 'current').map(entry => entry.path),
   )
