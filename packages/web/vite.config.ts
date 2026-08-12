@@ -18,7 +18,7 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: [
         ...openIssueLocalWingAliases(),
-        { find: '@', replacement: resolve(__dirname, 'src') },
+        { find: /^@\//, replacement: `${resolve(__dirname, 'src')}/` },
       ],
       dedupe: ['vue', 'phoenix-wing'],
     },

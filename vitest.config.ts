@@ -5,7 +5,12 @@ import { openIssueLocalWingAliases } from './scripts/open-issue-wing-mode.mjs'
 export default defineConfig({
   resolve: {
     alias: [
-      { find: '@', replacement: path.resolve(import.meta.dirname, 'packages/web/src') },
+      // 必须用 /^@\//：纯字符串 '@' 在 vitest/vite-node 下常不生效，
+      // 会把 '@/...' 当成 npm 包名并报 ERR_MODULE_NOT_FOUND
+      {
+        find: /^@\//,
+        replacement: `${path.resolve(import.meta.dirname, 'packages/web/src')}/`,
+      },
       ...openIssueLocalWingAliases(),
     ],
   },

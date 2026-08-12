@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { POI_AUTHENTICATED_WORKBENCH_ROUTES } from '@/router/workbenchRoutes'
+import { POI_AUTHENTICATED_WORKBENCH_ROUTES } from '../../router/workbenchRoutes'
 import {
   POI_WORKBENCH_PRIMARY_POLICIES,
   poiWorkbenchPrimaryPolicy,
