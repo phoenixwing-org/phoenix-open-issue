@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue'
 import { useDictGroup } from '/$/phoenix-open-issue/composables/useDictGroup'
 import { getAllUsers } from '/$/phoenix-open-issue/api/auth'
 import type { UserPublic } from '/$/phoenix-open-issue/core'
+import { formatUserLabel } from '/$/phoenix-open-issue/core'
 import { useIssueCapabilities } from '/$/phoenix-open-issue/composables/useIssueCapabilities'
 
 const props = defineProps<{
@@ -27,7 +28,7 @@ const isEdit = computed(() => !!props.initial)
 const userOptions = computed(() =>
   users.value.map(u => ({
     value: u.id,
-    label: u.displayName ? `${u.displayName} (${u.username})` : u.username,
+    label: formatUserLabel(u),
   })),
 )
 

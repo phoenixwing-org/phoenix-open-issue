@@ -61,6 +61,8 @@ export interface Issue {
   // 第五层：人员与日期
   reporterId: string | null           // 提出人（谁发现的）
   assigneeId: string | null           // 责任人（谁负责解决）
+  reporterName?: string | null        // 提出人展示标签（姓名/账号）
+  assigneeName?: string | null        // 责任人展示标签（姓名/账号）
   dueDate: string | null              // 计划完成日 YYYY-MM-DD
   completedAt: string | null          // 实际完成时间
 
@@ -71,6 +73,8 @@ export interface Issue {
   /** 当前关联的点检表数量；由 issueListLinks 数据库触发器维护。 */
   listCount: number
   createdBy: string
+  creatorName?: string | null         // 录入人展示标签（姓名/账号）
+  closedByName?: string | null        // 确认人展示标签（姓名/账号）
   createdAt: string
   updatedAt: string
 

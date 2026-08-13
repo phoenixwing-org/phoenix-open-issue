@@ -16,6 +16,7 @@ import { OpenIssueFunctionEntity } from "../entity/function";
 import { OpenIssueListEntity } from "../entity/issue-list";
 import { OpenIssueListLinkEntity } from "../entity/issue-list-link";
 import { OpenIssueAccessService } from "./access";
+import { OpenIssueHostUserService } from "./host-user";
 
 @Provide()
 export class OpenIssueService {
@@ -37,6 +38,9 @@ export class OpenIssueService {
   @InjectDataSource()
   dataSource: DataSource;
 
+  @Inject()
+  hostUsers: OpenIssueHostUserService;
+
   private failInput(error: unknown): never {
     throw new CoolCommException(
       error instanceof Error ? error.message : "请求数据无效",
@@ -45,7 +49,7 @@ export class OpenIssueService {
   }
 
   private async decorate(issue: OpenIssueEntity, listId = issue.listId) {
-    const [origin, link, count, originRole, currentRole, func] =
+    const [origin, link, count, originRole, currentRole, func, names] =
       await Promise.all([
         this.listRepository.findOneBy({ id: issue.listId }),
         this.linkRepository.findOneBy({ issueId: issue.id, listId }),
@@ -57,6 +61,12 @@ export class OpenIssueService {
         issue.functionId
           ? this.functionRepository.findOneBy({ id: issue.functionId })
           : null,
+        this.hostUsers.names([
+          issue.reporterId,
+          issue.assigneeId,
+          issue.createdBy,
+          issue.closedBy,
+        ]),
       ]);
     return {
       ...issue,
@@ -72,6 +82,10 @@ export class OpenIssueService {
       _functionName: func?.functionName ?? null,
       _functionPlatform: func?.platform ?? null,
       _functionExternalId: func?.externalId ?? null,
+      reporterName: issue.reporterId ? names.get(issue.reporterId) ?? null : null,
+      assigneeName: issue.assigneeId ? names.get(issue.assigneeId) ?? null : null,
+      creatorName: names.get(issue.createdBy) ?? null,
+      closedByName: issue.closedBy ? names.get(issue.closedBy) ?? null : null,
     };
   }
 
@@ -153,6 +167,14 @@ export class OpenIssueService {
       ? await this.functionRepository.findBy({ id: In(functionIds) })
       : [];
     const functionsById = new Map(functions.map((item) => [item.id, item]));
+    const userNames = await this.hostUsers.names(
+      entities.flatMap(issue => [
+        issue.reporterId,
+        issue.assigneeId,
+        issue.createdBy,
+        issue.closedBy,
+      ])
+    );
     const originNames = new Map(origins.map((item) => [item.id, item.name]));
     const originRoles = new Map(
       await Promise.all(
@@ -179,6 +201,16 @@ export class OpenIssueService {
         _functionName: func?.functionName ?? null,
         _functionPlatform: func?.platform ?? null,
         _functionExternalId: func?.externalId ?? null,
+        reporterName: issue.reporterId
+          ? userNames.get(issue.reporterId) ?? null
+          : null,
+        assigneeName: issue.assigneeId
+          ? userNames.get(issue.assigneeId) ?? null
+          : null,
+        creatorName: userNames.get(issue.createdBy) ?? null,
+        closedByName: issue.closedBy
+          ? userNames.get(issue.closedBy) ?? null
+          : null,
       };
     });
     return { items, total };

@@ -35,6 +35,7 @@ import {
 } from '/$/phoenix-open-issue/api/test'
 import {
   createLegacyBusinessSubmission,
+  formatUserLabel,
   LEGACY_BUSINESS_TABLES,
   previewLegacyMigrationPackage,
   suggestLegacyUserMappings,
@@ -199,10 +200,7 @@ const legacyImportCanExecute = computed(() => Boolean(
 ))
 
 function hostUserLabel(user: HostUserIdentity) {
-  const display = user.displayName && user.displayName !== user.username
-    ? `${user.username} / ${user.displayName}`
-    : user.username
-  return `${display} · ${user.id}${user.disabled ? '（已停用）' : ''}`
+  return `${formatUserLabel(user)} · ${user.id}${user.disabled ? '（已停用）' : ''}`
 }
 
 function dictionaryItemCount(

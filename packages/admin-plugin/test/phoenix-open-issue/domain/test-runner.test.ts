@@ -138,7 +138,7 @@ function createRunnerFixture(): RunnerFixture {
       "if (forbidden) process.exit(41);",
       "if (process.argv[2] !== 'run' || process.argv[3] !== '--config' ||",
       "    process.argv[5] !== '--reporter=basic' || process.argv.slice(6).length !== 23) process.exit(42);",
-      "process.stdout.write(' Test Files  23 passed (23)\\n Tests  131 passed (131)\\n');",
+      "process.stdout.write(' Test Files  23 passed (23)\\n Tests  134 passed (134)\\n');",
       "",
     ].join("\n"),
     "utf8"
@@ -241,7 +241,7 @@ function resolveFixture(
 }
 
 describe("Open Issue 受控测试运行器算法", () => {
-  it("只统计固定 23 文件 / 131 用例且无 Profile 与 production 均 fail-closed", () => {
+  it("只统计固定 23 文件 / 134 用例且无 Profile 与 production 均 fail-closed", () => {
     const source =
       "describe('x', () => { " +
       "it" +
@@ -250,7 +250,7 @@ describe("Open Issue 受控测试运行器算法", () => {
       "('b', () => {}) })";
     expect(countDeclaredTestCases(source)).toBe(2);
     expect(OPEN_ISSUE_CONTROLLED_TEST_FILE_COUNT).toBe(23);
-    expect(OPEN_ISSUE_CONTROLLED_TEST_CASE_COUNT).toBe(131);
+    expect(OPEN_ISSUE_CONTROLLED_TEST_CASE_COUNT).toBe(134);
     expect(OPEN_ISSUE_TEST_RUNNER_MAX_CONCURRENCY).toBe(1);
     expect(OPEN_ISSUE_TEST_RUNNER_TIMEOUT_MS).toBe(180_000);
     expect(OPEN_ISSUE_TEST_RUNNER_MAX_OUTPUT_BYTES).toBe(2 * 1024 * 1024);
@@ -273,7 +273,7 @@ describe("Open Issue 受控测试运行器算法", () => {
       available: false,
       reasonCode: "PROFILE_MISSING",
       fileCount: 23,
-      caseCount: 131,
+      caseCount: 134,
     });
     const production = resolveOpenIssueTestRunnerContext({
       productRoot: REPO_ROOT,
@@ -284,7 +284,7 @@ describe("Open Issue 受控测试运行器算法", () => {
       available: false,
       reasonCode: "PRODUCTION_DISABLED",
       fileCount: 23,
-      caseCount: 131,
+      caseCount: 134,
     });
   });
 
@@ -295,7 +295,7 @@ describe("Open Issue 受控测试运行器算法", () => {
         available: true,
         reasonCode: null,
         fileCount: 23,
-        caseCount: 131,
+        caseCount: 134,
       });
       if (!context.available) throw new Error(context.reasonCode);
       const plan = buildOpenIssueTestExecutionPlan(context, {
@@ -333,8 +333,8 @@ describe("Open Issue 受控测试运行器算法", () => {
       ).toMatchObject({
         filesTotal: 23,
         filesPassed: 23,
-        total: 131,
-        passed: 131,
+        total: 134,
+        passed: 134,
         success: true,
       });
     });

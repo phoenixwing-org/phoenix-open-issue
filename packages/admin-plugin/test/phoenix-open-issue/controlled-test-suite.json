@@ -9,7 +9,7 @@
     "sha256": "16c71f5c7cde5a7dabc07fe9535c86bfacfd4bce51d71c42621bcf3d3de9c333"
   },
   "expectedFileCount": 23,
-  "expectedCaseCount": 131,
+  "expectedCaseCount": 134,
   "tests": [
     {
       "id": "domain:function",
@@ -58,7 +58,7 @@
       "filePath": "packages/admin-plugin/test/phoenix-open-issue/domain/test-runner.test.ts",
       "packageName": "domain",
       "caseCount": 4,
-      "sha256": "25658c1ddb452a22d18f009185c4a4f32283ff82fd33549e10b3ae693eefc173"
+      "sha256": "83dd4ee751e30af7e4e67cf9233c06dbff4455028fa13622934fad85a6734c18"
     },
     {
       "id": "service:access",
@@ -71,8 +71,8 @@
       "id": "service:issue-list",
       "filePath": "packages/admin-plugin/test/phoenix-open-issue/service/issue-list.test.ts",
       "packageName": "service",
-      "caseCount": 1,
-      "sha256": "52b3135e139710b5e402b475690a271a9b765d11ff48f43e7152817d89c29378"
+      "caseCount": 4,
+      "sha256": "7804479a191ad75b436089de708128e0b6141be9eb264806d7b81c65fcf13862"
     },
     {
       "id": "service:legacy-import",
