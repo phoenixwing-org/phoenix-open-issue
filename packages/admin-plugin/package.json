@@ -28,7 +28,8 @@
     "test:core": "../../../phoenix-admin-vue/node_modules/.bin/vitest run --config vue/vitest.config.ts"
   },
   "devDependencies": {
-    "driver.js": "1.6.0"
+    "driver.js": "1.6.0",
+    "phoenix-wing": "0.7.0"
   },
   "peerDependencies": {
     "@cool-midway/core": ">=8.0.7 <9",
@@ -37,7 +38,7 @@
     "@midwayjs/koa": ">=3.20.3 <4",
     "@midwayjs/typeorm": ">=3.20.3 <4",
     "element-plus": ">=2.10.0 <3",
-    "phoenix-wing": ">=0.6.2 <0.7.0",
+    "phoenix-wing": "0.7.0",
     "pinia": ">=2.3.0 <3",
     "typeorm": ">=0.3.20 <0.4",
     "vue": ">=3.5.0 <4",

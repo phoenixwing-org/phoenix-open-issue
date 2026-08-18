@@ -6,7 +6,7 @@ import { useAuthStore } from '@/stores/auth'
 import { canPerformListAction, isSystemAdmin, isSystemViewer } from '@open-issue/core'
 import type { MemberRole } from '@open-issue/core'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
+import PnwPageLayout from 'phoenix-wing/layout/PnwPageLayout.vue'
 import PageHelpButton from "@/components/PageHelpButton.vue"
 import ListFormDialog from '@/components/ListFormDialog.vue'
 import { useDictGroup } from '@/composables/useDictGroup'
@@ -183,9 +183,8 @@ async function onRestore(id: string, name: string) {
 </script>
 
 <template>
-  <div class="page">
-    <PnwPageHeader title="列表管理">
-      <template #actions>
+  <PnwPageLayout class="page" title="列表管理">
+    <template #actions>
         <el-button v-if="['all', 'active'].includes(listView) && canCreateList" type="primary" @click="showCreate = true" data-tour="lists-create">
           <el-icon><Plus /></el-icon> 新建列表
         </el-button>
@@ -200,9 +199,8 @@ async function onRestore(id: string, name: string) {
           <el-radio-button value="archived">已归档</el-radio-button>
           <el-radio-button v-if="isAdmin" value="deleted">已删除</el-radio-button>
         </el-radio-group>
-      </template>
-      <template #help><PageHelpButton page-id="lists" /></template>
-    </PnwPageHeader>
+    </template>
+    <template #help><PageHelpButton page-id="lists" /></template>
 
     <el-table :data="paginatedLists" v-loading="store.loading" stripe data-tour="lists-table">
       <el-table-column type="index" :index="(index: number) => (currentPage - 1) * pageSize + index + 1" label="#" width="50" align="center" fixed />
@@ -298,7 +296,7 @@ async function onRestore(id: string, name: string) {
       @confirm="onEdit"
       @close="editTarget = null"
     />
-  </div>
+  </PnwPageLayout>
 </template>
 
 <style scoped>

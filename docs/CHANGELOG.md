@@ -1,5 +1,10 @@
 # 更新日志
 
+## 未发布（2026-08-18）
+
+- Phoenix Wing 根 UI 包由 Registry `0.6.0` 精确升级至 `0.7.0`；未变更的 `@phoenix-wing/code-core` 与 `@phoenix-wing/db-node` 由根包按正式发布矩阵解析为 `0.6.3`。
+- 删除相邻 Wing 源码 resolver、本地构建/验证命令和 LOCAL 环境分支，独立 Web、Server 与 Admin 插件类型门禁统一只接受 Registry 制品。
+
 ## v0.7.1（2026-08-09）
 
 - 修复 PostgreSQL 示例数据初始化时 `eightDReports` / `relatedIssueId` 未按混合大小写标识符引用导致的 `42P01`，并增加空 PostgreSQL schema 的完整 seed 回归。

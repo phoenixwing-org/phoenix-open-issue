@@ -2,15 +2,15 @@ import { isProxy, isReactive, reactive } from 'vue'
 import { describe, expect, it } from 'vitest'
 import type { VNode } from 'vue'
 
-interface PoiLocalViewContributionRegistry<TContribution> {
+interface PoiViewContributionRegistry<TContribution> {
   set(viewId: string, contribution: TContribution): void
   get(viewId?: string | null): TContribution | undefined
 }
 
-interface PoiLocalWingViewContributionApi {
-  pnwCreateViewContributionRegistry<TContribution>(): PoiLocalViewContributionRegistry<TContribution>
+interface PoiWingViewContributionApi {
+  pnwCreateViewContributionRegistry<TContribution>(): PoiViewContributionRegistry<TContribution>
   pnwCreateViewContributionRegistration<TContribution>(
-    registry: PoiLocalViewContributionRegistry<TContribution>,
+    registry: PoiViewContributionRegistry<TContribution>,
     viewId: () => string,
     contribution: TContribution,
   ): {
@@ -26,8 +26,8 @@ interface PoiLocalWingViewContributionApi {
   ): object
 }
 
-async function importPoiLocalWing(): Promise<PoiLocalWingViewContributionApi> {
-  return await import('phoenix-wing') as unknown as PoiLocalWingViewContributionApi
+async function importPoiWing(): Promise<PoiWingViewContributionApi> {
+  return await import('phoenix-wing') as unknown as PoiWingViewContributionApi
 }
 
 function poiFindVNodes(node: unknown, type: string): VNode[] {
@@ -40,11 +40,7 @@ function poiFindVNodes(node: unknown, type: string): VNode[] {
   ]
 }
 
-const localDescribe = import.meta.env.VITE_PHOENIX_WING_SOURCE === 'LOCAL'
-  ? describe
-  : describe.skip
-
-localDescribe('Wing LOCAL View contribution 契约', () => {
+describe('Wing Registry View contribution 契约', () => {
   it('静态导航树及图标组件不会被 Vue 深度响应式代理', async () => {
     const { createOpenIssueNavigationNodes } = await import(
       './layout/workbench/openIssueNavigation'
@@ -69,7 +65,7 @@ localDescribe('Wing LOCAL View contribution 契约', () => {
     const {
       pnwCreateViewContributionRegistry,
       pnwCreateViewContributionRegistration,
-    } = await importPoiLocalWing()
+    } = await importPoiWing()
     let viewId = '/dashboard'
     const contribution = { primary: { component: 'dashboard-filter' } }
     const registry = pnwCreateViewContributionRegistry<typeof contribution>()
@@ -101,7 +97,7 @@ localDescribe('Wing LOCAL View contribution 契约', () => {
     const {
       pnwCreateViewContributionRegistry,
       pnwResolveWorkbenchResponsiveState,
-    } = await importPoiLocalWing()
+    } = await importPoiWing()
     const registry = pnwCreateViewContributionRegistry<object>()
     registry.set('/settings', { bottom: true })
 

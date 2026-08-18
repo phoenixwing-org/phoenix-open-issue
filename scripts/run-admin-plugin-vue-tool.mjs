@@ -1,11 +1,10 @@
 #!/usr/bin/env node
 
-import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import path from 'node:path'
 import { spawnSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
-import { resolveOpenIssueLocalWingRoot } from './open-issue-wing-mode.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const action = process.argv[2]
@@ -37,6 +36,15 @@ if (!hostRoot) {
 }
 
 const binary = path.join(hostRoot, 'node_modules/.bin', binaryName)
+const wingRoot = path.join(repoRoot, 'packages/admin-plugin/node_modules/phoenix-wing')
+const wingManifestPath = path.join(wingRoot, 'package.json')
+if (!existsSync(wingManifestPath)) {
+  throw new Error('未安装 Open Issue 锁定的 Registry phoenix-wing；请先在仓库根目录执行 pnpm install')
+}
+const wingManifest = JSON.parse(readFileSync(wingManifestPath, 'utf8'))
+if (wingManifest.version !== '0.7.0') {
+  throw new Error(`Admin Vue typecheck 只接受 Registry phoenix-wing@0.7.0，实际为 ${wingManifest.version}`)
+}
 let temporaryRoot = null
 
 try {
@@ -51,15 +59,11 @@ try {
     temporaryRoot = mkdtempSync(path.join(tmpdir(), 'open-issue-admin-vue-tool-'))
     const fixtureRoot = path.join(repoRoot, 'packages/admin-plugin/vue')
     const hostDependency = name => path.join(hostRoot, 'node_modules', name)
-    const wing = resolveOpenIssueLocalWingRoot(repoRoot, {
-      ...process.env,
-      PHOENIX_WING_ROOT: process.env.PHOENIX_WING_ROOT || path.join(homedir(), 'phoenix/phoenix-wing'),
-    })
-    const wingDist = path.join(wing.root, 'dist')
+    const wingDist = path.join(wingRoot, 'dist')
     if (!existsSync(path.join(wingDist, 'index.d.ts'))) {
-      throw new Error(`本地 Phoenix Wing 尚未构建：${wing.root}`)
+      throw new Error(`Registry phoenix-wing@0.7.0 缺少类型制品：${wingDist}`)
     }
-    console.log(`Admin Vue typecheck Wing：${wing.root} (${wing.version})`)
+    console.log(`Admin Vue typecheck Wing：Registry ${wingManifest.version}`)
     const runtimeConfig = {
       extends: path.join(fixtureRoot, 'tsconfig.fixture.json'),
       compilerOptions: {

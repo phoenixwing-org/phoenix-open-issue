@@ -1,7 +1,6 @@
 import { defineConfig, loadEnv } from 'vite'
 import vue from '@vitejs/plugin-vue'
 import { resolve } from 'path'
-import { openIssueLocalWingAliases } from '../../scripts/open-issue-wing-mode.mjs'
 
 const webRoot = resolve(__dirname)
 
@@ -17,7 +16,6 @@ export default defineConfig(({ mode }) => {
     envDir: webRoot,
     resolve: {
       alias: [
-        ...openIssueLocalWingAliases(),
         { find: '@', replacement: resolve(__dirname, 'src') },
       ],
       dedupe: ['vue', 'phoenix-wing'],

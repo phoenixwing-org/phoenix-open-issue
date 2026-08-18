@@ -144,15 +144,37 @@ describe('Open Issue 本地 Pnw 工作台适配', () => {
     expect(shell).toContain(':presentation="workbenchStore.presentation"')
   })
 
-  it('受控本地 Wing 命令不污染 Registry 0.6.0 依赖图', () => {
+  it('Dashboard、列表与设置使用 Wing 页面布局，并让 Shell 取消旧 Editor inset', () => {
+    const shell = read('packages/web/src/layout/AppShell.vue')
+    const pages = [
+      read('packages/web/src/views/DashboardView.vue'),
+      read('packages/web/src/views/lists/ListIndexView.vue'),
+      read('packages/web/src/views/SettingsView.vue'),
+    ]
+
+    expect(shell).toContain("['dashboard', 'lists', 'settings']")
+    expect(shell).toContain("'open-issue-editor--wing-page-layout': usesWingPageLayout")
+    expect(shell).toContain('.open-issue-editor--wing-page-layout')
+    for (const source of pages) {
+      expect(source).toContain("phoenix-wing/layout/PnwPageLayout.vue")
+      expect(source).toContain('<PnwPageLayout')
+      expect(source).not.toContain('phoenix-wing/layout/PnwPageHeader.vue')
+      expect(source).not.toContain(':deep(.pnw-head-')
+    }
+  })
+
+  it('仅消费 Registry 0.7.0，且不保留本地 Wing resolver', () => {
     const rootManifest = JSON.parse(read('package.json'))
     const webManifest = JSON.parse(read('packages/web/package.json'))
     const serverManifest = JSON.parse(read('packages/server/package.json'))
 
-    expect(webManifest.dependencies['phoenix-wing']).toBe('0.6.0')
-    expect(serverManifest.dependencies['phoenix-wing']).toBe('0.6.0')
-    expect(rootManifest.scripts['dev:local-wing']).toContain('run-with-phoenix-wing.mjs')
-    expect(rootManifest.scripts['verify:local-wing']).toContain('run-with-phoenix-wing.mjs')
+    const pluginManifest = JSON.parse(read('packages/admin-plugin/package.json'))
+
+    expect(webManifest.dependencies['phoenix-wing']).toBe('0.7.0')
+    expect(serverManifest.dependencies['phoenix-wing']).toBe('0.7.0')
+    expect(pluginManifest.peerDependencies['phoenix-wing']).toBe('0.7.0')
+    expect(Object.keys(rootManifest.scripts).some(name => name.includes('local-wing'))).toBe(false)
+    expect(() => read('scripts/open-issue-wing-mode.mjs')).toThrow()
   })
 
   it('使用归一化显示偏好 envelope，并让最后一个 Tab 关闭后保持空工作台', () => {

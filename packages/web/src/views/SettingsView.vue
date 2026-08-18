@@ -16,7 +16,7 @@ import { exportDb, importDb, runDbRepair, type RepairTaskId, type RepairTaskResu
 import { importFunctions } from '@/api/functions'
 import { isIssueSystemDictGroup, mapXlsxRow, parseDictTags } from '@open-issue/core'
 import * as XLSX from 'xlsx'
-import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
+import PnwPageLayout from 'phoenix-wing/layout/PnwPageLayout.vue'
 import PageHelpButton from "@/components/PageHelpButton.vue"
 import type { DictItem, ExternalAuthProviderInfo, ExternalIdentityPublic, LoginPolicy } from '@open-issue/core'
 import { useDictStore, DICT_GROUPS } from '@/stores/dict'
@@ -592,10 +592,8 @@ async function onFuncImportConfirm() {
 </script>
 
 <template>
-  <div class="page">
-    <PnwPageHeader title="设置">
-      <template #help><PageHelpButton page-id="settings" /></template>
-    </PnwPageHeader>
+  <PnwPageLayout class="page" title="设置">
+    <template #help><PageHelpButton page-id="settings" /></template>
 
     <el-tabs v-model="activeTab" data-tour="settings-tabs">
       <!-- ═══ 数据字典 ═══ -->
@@ -936,7 +934,7 @@ async function onFuncImportConfirm() {
         </el-dialog>
       </el-tab-pane>
     </el-tabs>
-  </div>
+  </PnwPageLayout>
 </template>
 
 <style scoped>

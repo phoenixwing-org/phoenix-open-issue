@@ -8,6 +8,7 @@ const manifestFiles = [
   "packages/core/package.json",
   "packages/server/package.json",
   "packages/web/package.json",
+  "packages/admin-plugin/package.json",
 ];
 const dependencySections = [
   "dependencies",
@@ -15,7 +16,11 @@ const dependencySections = [
   "optionalDependencies",
   "peerDependencies",
 ];
-const expectedWingVersion = "0.6.0";
+const expectedWingVersion = "0.7.0";
+const expectedPublishedDependencies = {
+  "@phoenix-wing/code-core": "0.6.3",
+  "@phoenix-wing/db-node": "0.6.3",
+};
 const wingDependencies = new Map();
 
 for (const relative of manifestFiles) {
@@ -46,12 +51,44 @@ if (![...versions].every((version) => version === expectedWingVersion)) {
 }
 
 const lockfile = fs.readFileSync(path.join(root, "pnpm-lock.yaml"), "utf8");
+const hasLockResolution = (name, version) =>
+  lockfile.includes(`  '${name}@${version}':`) || lockfile.includes(`  ${name}@${version}:`);
 if (/(?:link|file):[^\n]*phoenix-wing/iu.test(lockfile)) {
   throw new Error("pnpm-lock.yaml must not resolve Wing from a local path");
 }
 for (const { name, specifier } of wingDependencies.values()) {
-  if (!lockfile.includes(`'${name}@${specifier}':`) && !lockfile.includes(`  ${name}@${specifier}:`)) {
+  if (!hasLockResolution(name, specifier)) {
     throw new Error(`pnpm-lock.yaml is missing Registry resolution ${name}@${specifier}`);
+  }
+}
+
+const installedWingManifestPath = path.join(
+  root,
+  "packages/web/node_modules/phoenix-wing/package.json",
+);
+const installedWingRealPath = fs.realpathSync(installedWingManifestPath);
+const registryStoreRoot = `${path.join(root, "node_modules/.pnpm")}${path.sep}`;
+if (!installedWingRealPath.startsWith(registryStoreRoot)) {
+  throw new Error(`phoenix-wing must resolve through the pnpm Registry store, got ${installedWingRealPath}`);
+}
+const installedWingManifest = JSON.parse(fs.readFileSync(installedWingManifestPath, "utf8"));
+if (installedWingManifest.version !== expectedWingVersion) {
+  throw new Error(
+    `Installed phoenix-wing must be ${expectedWingVersion}, got ${installedWingManifest.version ?? "missing"}`,
+  );
+}
+for (const [name, expectedVersion] of Object.entries(expectedPublishedDependencies)) {
+  const publishedVersion = installedWingManifest.dependencies?.[name];
+  if (publishedVersion !== expectedVersion) {
+    throw new Error(
+      `phoenix-wing@${expectedWingVersion} must declare ${name}@${expectedVersion}, got ${publishedVersion ?? "missing"}`,
+    );
+  }
+  if (!hasLockResolution(name, expectedVersion)) {
+    throw new Error(`pnpm-lock.yaml is missing the published release dependency ${name}@${expectedVersion}`);
+  }
+  if (hasLockResolution(name, expectedWingVersion)) {
+    throw new Error(`${name} must not be inferred as ${expectedWingVersion}`);
   }
 }
 
@@ -61,5 +98,9 @@ if (/exclude\s*:\s*\[[^\]]*["']phoenix-wing["']/su.test(viteConfig)) {
 }
 
 process.stdout.write(
-  `[verify] ${wingDependencies.size} Wing manifest references use Registry ${[...versions][0]} with no local overrides\n`,
+  `[verify] ${wingDependencies.size} Wing manifest references use Registry ${[
+    ...versions,
+  ][0]}; published scoped dependencies remain ${Object.entries(expectedPublishedDependencies)
+    .map(([name, version]) => `${name}@${version}`)
+    .join(", ")}\n`,
 );
