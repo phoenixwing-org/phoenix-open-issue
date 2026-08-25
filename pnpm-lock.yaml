@@ -21,8 +21,8 @@ importers:
         specifier: 1.6.0
         version: 1.6.0
       phoenix-wing:
-        specifier: 0.7.0
-        version: 0.7.0(pinia@3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3)))(vue@3.5.39(typescript@5.7.3))
+        specifier: 0.7.1
+        version: 0.7.1(pinia@3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3)))(vue@3.5.39(typescript@5.7.3))
 
   packages/core:
     devDependencies:
@@ -60,8 +60,8 @@ importers:
         specifier: ^8.22.0
         version: 8.22.0
       phoenix-wing:
-        specifier: 0.7.0
-        version: 0.7.0(pinia@3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3)))(vue@3.5.39(typescript@5.7.3))
+        specifier: 0.7.1
+        version: 0.7.1(pinia@3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3)))(vue@3.5.39(typescript@5.7.3))
       uuid:
         specifier: ^11.1.0
         version: 11.1.1
@@ -109,8 +109,8 @@ importers:
         specifier: ^2.10.2
         version: 2.14.2(vue@3.5.39(typescript@5.7.3))
       phoenix-wing:
-        specifier: 0.7.0
-        version: 0.7.0(pinia@3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3)))(vue@3.5.39(typescript@5.7.3))
+        specifier: 0.7.1
+        version: 0.7.1(pinia@3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3)))(vue@3.5.39(typescript@5.7.3))
       pinia:
         specifier: ^3.0.4
         version: 3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3))
@@ -583,8 +583,8 @@ packages:
     resolution: {integrity: sha512-tmmZ3lQxAe/k/+rNnXQRawJ4NjxO2hqiOLTHvWchtGZULp4RyFeh6aU4XdOYBFe2KE1oShQTv4AblOs2iOrNnQ==}
     engines: {node: '>= 10.0.0'}
 
-  '@phoenix-wing/code-core@0.6.3':
-    resolution: {integrity: sha512-7B5sWDhx11wDLssTm9QrhR7SdTnJT8R17M0I7jPAX9z8W4ENqE0Go+vSGN1ayxPrjEjFKuLvxWGEeO5v1Oywvg==}
+  '@phoenix-wing/code-core@0.6.4':
+    resolution: {integrity: sha512-JwR5rB9pfY0CdSsDkT1fskiYj6H7WhrIgx3fWDYtv5+1z4VPgfQlpdIPvBL/SDfQMJxuAspnuCVQB6I2Q/pMPA==}
 
   '@phoenix-wing/db-node@0.6.3':
     resolution: {integrity: sha512-wX3IxX1iB4ulVZO1cmh5KZOl64lULTKhWmDieWc3RKGxVbXJPbAn0Yydq/9ZQdDpKuE6UaBrb4d/iTRvxONyYw==}
@@ -1501,8 +1501,8 @@ packages:
   pgpass@1.0.5:
     resolution: {integrity: sha512-FdW9r/jQZhSeohs1Z3sI1yxFQNFvMcnmfuj4WBMUTxOrAyLMaTcE1aAMBiTlbMNaXvBCQuVi0R7hd8udDSP7ug==}
 
-  phoenix-wing@0.7.0:
-    resolution: {integrity: sha512-V6GTUABx6oVnxHUKLpS0LTRLAj5T1r+qUhtuo3k8GLLsiAHcpEaEG2C6f+K0I7Z4VbzeghcnwPnczG14k5YJAw==}
+  phoenix-wing@0.7.1:
+    resolution: {integrity: sha512-1SHBYhhqRn7nrFMIe//5aZ5jpN26E6+NBF3o9INyIGcOCTi8EIJ5sJkbA0U+F2Ob1pH9onXW5uOHTH/3g+jxiA==}
     peerDependencies:
       pinia: ^2.0.0 || ^3.0.0
       vue: ^3.0.0
@@ -2308,7 +2308,7 @@ snapshots:
       '@parcel/watcher-win32-x64': 2.5.6
     optional: true
 
-  '@phoenix-wing/code-core@0.6.3': {}
+  '@phoenix-wing/code-core@0.6.4': {}
 
   '@phoenix-wing/db-node@0.6.3':
     dependencies:
@@ -3273,9 +3273,9 @@ snapshots:
     dependencies:
       split2: 4.2.0
 
-  phoenix-wing@0.7.0(pinia@3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3)))(vue@3.5.39(typescript@5.7.3)):
+  phoenix-wing@0.7.1(pinia@3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3)))(vue@3.5.39(typescript@5.7.3)):
     dependencies:
-      '@phoenix-wing/code-core': 0.6.3
+      '@phoenix-wing/code-core': 0.6.4
       '@phoenix-wing/db-node': 0.6.3
       element-plus: 2.14.2(vue@3.5.39(typescript@5.7.3))
     optionalDependencies:

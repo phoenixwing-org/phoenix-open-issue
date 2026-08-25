@@ -2,10 +2,10 @@
 
 ## 依赖原则
 
-npm Registry 已发布 `phoenix-wing@0.7.0`。Open Issue 前后端 package manifests、Admin 插件 peer 与开发门禁统一精确锁定该根包版本；消费者当前版本由本仓 manifest、lockfile 和验证门禁自行维护。
+npm Registry 已发布 `phoenix-wing@0.7.1`。Open Issue 前后端 package manifests、Admin 插件 peer 与开发门禁统一精确锁定该根包版本；消费者当前版本由本仓 manifest、lockfile 和验证门禁自行维护。
 
-- `packages/server/package.json`、`packages/web/package.json` 与 Admin 插件开发依赖都写明 `"phoenix-wing": "0.7.0"`，插件 peer 同样精确要求 `0.7.0`。
-- 根包在 Registry 的传递依赖是 `@phoenix-wing/code-core@0.6.3` 与 `@phoenix-wing/db-node@0.6.3`；scoped 包没有不存在的 `0.7.0` 发布物。
+- `packages/server/package.json`、`packages/web/package.json` 与 Admin 插件开发依赖都写明 `"phoenix-wing": "0.7.1"`，插件 peer 同样精确要求 `0.7.1`。
+- 根包在 Registry 的传递依赖是 `@phoenix-wing/code-core@0.6.4` 与 `@phoenix-wing/db-node@0.6.3`；scoped 包按各自独立版本发布。
 - Vite 不探测相邻的 `phoenix-wing` 仓库，也不配置本地源码 alias。
 - 不使用 `pnpm link`、`file:`、`workspace:` 等本地引用。
 - 相邻目录中 Wing 的源码、分支或依赖发生变化，不应影响 Open Issue 的安装、测试和构建。
@@ -28,7 +28,7 @@ readlink packages/web/node_modules/phoenix-wing
 readlink packages/server/node_modules/phoenix-wing
 ```
 
-当前预期各消费者都解析为 `0.7.0`，符号链接目标位于 pnpm 的 `node_modules/.pnpm/phoenix-wing@0.7.0...` 目录；不应指向相邻的 `phoenix-wing` 项目。`pnpm verify:ci` 会检查精确 Registry 版本、本地 override/lockfile 回退、旧 Vite workaround 回退、工作台契约、自动测试和 core/server/web 生产构建；精确测试数量由当次 CI 结果提供，不在本文固化。
+当前预期各消费者都解析为 `0.7.1`，符号链接目标位于 pnpm 的 `node_modules/.pnpm/phoenix-wing@0.7.1...` 目录；不应指向相邻的 `phoenix-wing` 项目。`pnpm verify:ci` 会检查精确 Registry 版本、本地 override/lockfile 回退、旧 Vite workaround 回退、工作台契约、自动测试和 core/server/web 生产构建；精确测试数量由当次 CI 结果提供，不在本文固化。
 
 ## 升级规则
 

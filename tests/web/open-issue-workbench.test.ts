@@ -163,16 +163,16 @@ describe('Open Issue 本地 Pnw 工作台适配', () => {
     }
   })
 
-  it('仅消费 Registry 0.7.0，且不保留本地 Wing resolver', () => {
+  it('仅消费 Registry 0.7.1，且不保留本地 Wing resolver', () => {
     const rootManifest = JSON.parse(read('package.json'))
     const webManifest = JSON.parse(read('packages/web/package.json'))
     const serverManifest = JSON.parse(read('packages/server/package.json'))
 
     const pluginManifest = JSON.parse(read('packages/admin-plugin/package.json'))
 
-    expect(webManifest.dependencies['phoenix-wing']).toBe('0.7.0')
-    expect(serverManifest.dependencies['phoenix-wing']).toBe('0.7.0')
-    expect(pluginManifest.peerDependencies['phoenix-wing']).toBe('0.7.0')
+    expect(webManifest.dependencies['phoenix-wing']).toBe('0.7.1')
+    expect(serverManifest.dependencies['phoenix-wing']).toBe('0.7.1')
+    expect(pluginManifest.peerDependencies['phoenix-wing']).toBe('0.7.1')
     expect(Object.keys(rootManifest.scripts).some(name => name.includes('local-wing'))).toBe(false)
     expect(() => read('scripts/open-issue-wing-mode.mjs')).toThrow()
   })

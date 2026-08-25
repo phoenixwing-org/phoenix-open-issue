@@ -74,6 +74,7 @@ pnpm admin-plugin:verify-production-package
 
 ## v0.7.0（2026-08-05）
 
+- Phoenix Wing 根 UI 包进一步升级至 Registry `0.7.1`，同步消费 `@phoenix-wing/code-core@0.6.4` 与 `@phoenix-wing/db-node@0.6.3`，并完成前后端及 Admin 插件门禁复检。
 - Open Issue 从独立站交付形态收敛为 Phoenix Admin 声明式业务插件；插件、根工作区及三个 legacy 兼容包统一使用 `0.7.0`，正式制品统一为 `phoenix-open-issue-0.7.0.phoenix.cool`。
 - 建立可重复的 runtime build → descriptor/integrity → 完整门禁 → immutable package → clean Host assembly 流程；制品记录源码 commit，拒绝脏工作树、旧 `.pah.cool` 后缀、同名覆盖和发布边界并发覆盖。
 - 已在独立 PostgreSQL 与生产模拟 Admin 中初步跑通验包、可信备份/恢复、安装、启用、停用和普通卸载；普通卸载保留 9 张 `oip_*` 表、7 类字典、migration/repair/dictionary ledger 与管理员导航 assignment。当前人工步骤仍较多，后续继续收敛为 Host 受控编排。

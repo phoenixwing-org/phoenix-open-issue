@@ -42,8 +42,8 @@ if (!existsSync(wingManifestPath)) {
   throw new Error('未安装 Open Issue 锁定的 Registry phoenix-wing；请先在仓库根目录执行 pnpm install')
 }
 const wingManifest = JSON.parse(readFileSync(wingManifestPath, 'utf8'))
-if (wingManifest.version !== '0.7.0') {
-  throw new Error(`Admin Vue typecheck 只接受 Registry phoenix-wing@0.7.0，实际为 ${wingManifest.version}`)
+if (wingManifest.version !== '0.7.1') {
+  throw new Error(`Admin Vue typecheck 只接受 Registry phoenix-wing@0.7.1，实际为 ${wingManifest.version}`)
 }
 let temporaryRoot = null
 
@@ -61,7 +61,7 @@ try {
     const hostDependency = name => path.join(hostRoot, 'node_modules', name)
     const wingDist = path.join(wingRoot, 'dist')
     if (!existsSync(path.join(wingDist, 'index.d.ts'))) {
-      throw new Error(`Registry phoenix-wing@0.7.0 缺少类型制品：${wingDist}`)
+      throw new Error(`Registry phoenix-wing@0.7.1 缺少类型制品：${wingDist}`)
     }
     console.log(`Admin Vue typecheck Wing：Registry ${wingManifest.version}`)
     const runtimeConfig = {

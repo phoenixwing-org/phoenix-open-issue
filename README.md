@@ -164,7 +164,7 @@ pnpm build           # 全部构建
 pnpm seed            # CLI 重新填充演示数据（force 追加可清空）
 ```
 
-> 本仓前后端与 Admin 插件开发门禁精确消费 npm Registry `phoenix-wing@0.7.0`；不探测相邻源码，不提供本地 resolver。根包传递依赖的 `@phoenix-wing/code-core` 与 `@phoenix-wing/db-node` 按 Registry 发布矩阵解析为 `0.6.3`。详见 [phoenix-wing 依赖配置](docs/phoenix-wing依赖配置.md)。
+> 本仓前后端与 Admin 插件开发门禁精确消费 npm Registry `phoenix-wing@0.7.1`；不探测相邻源码，不提供本地 resolver。根包传递依赖按 Registry 发布矩阵解析为 `@phoenix-wing/code-core@0.6.4` 与 `@phoenix-wing/db-node@0.6.3`。详见 [phoenix-wing 依赖配置](docs/phoenix-wing依赖配置.md)。
 
 
 
