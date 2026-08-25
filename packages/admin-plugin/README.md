@@ -39,7 +39,7 @@ Windows PowerShell 使用 `scripts/mount-admin-plugin-dev.ps1` 创建并校验 V
 pnpm admin-plugin:release-package
 pnpm admin-plugin:verify-production-package
 pnpm admin-plugin:assemble-clean-host -- \
-  --archive /absolute/path/phoenix-open-issue-0.7.1.phoenix.cool \
+  --archive /absolute/path/phoenix-open-issue-0.7.2.phoenix.cool \
   --node-host /absolute/path/clean-admin-node \
   --vue-host /absolute/path/clean-admin-vue \
   --output /absolute/path/new-empty-assembly

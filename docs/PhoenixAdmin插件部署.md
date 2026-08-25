@@ -2,7 +2,7 @@
 
 状态：current
 
-适用插件：`phoenix-open-issue@0.7.1`
+适用插件：`phoenix-open-issue@0.7.2`
 
 本页是 Open Issue 接入 Phoenix Admin 的部署入口。开发模式与正式安装解决的问题不同，不得混用。
 
@@ -130,12 +130,12 @@ git -C ../phoenix-admin-node check-ignore -v src/modules/phoenix-open-issue
 # runtime build → descriptor/integrity → source pack → immutable business package
 pnpm admin-plugin:release-package
 
-# 独立复核已生成包；默认路径为 dist/admin-plugin/phoenix-open-issue-0.7.1.phoenix.cool
+# 独立复核已生成包；默认路径为 dist/admin-plugin/phoenix-open-issue-0.7.2.phoenix.cool
 pnpm admin-plugin:verify-production-package
 
 # 以两个冻结且 clean 的 Host 根目录装配到普通一次性目录
 pnpm admin-plugin:assemble-clean-host -- \
-  --archive /absolute/path/phoenix-open-issue-0.7.1.phoenix.cool \
+  --archive /absolute/path/phoenix-open-issue-0.7.2.phoenix.cool \
   --node-host /absolute/path/clean-admin-node \
   --vue-host /absolute/path/clean-admin-vue \
   --output /absolute/path/new-empty-assembly
