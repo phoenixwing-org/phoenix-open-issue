@@ -10,7 +10,7 @@ describe('SQLite cleanup source audit', () => {
     const currentDocs = new Set(['README.md'])
     expect(classifySqliteEvidence('packages/server/src/db/connection.ts', currentDocs)).toBe('production')
     expect(classifySqliteEvidence('README.md', currentDocs)).toBe('currentDocs')
-    expect(classifySqliteEvidence('doc/legacy.md', currentDocs)).toBe('historicalOrDraftDocs')
+    expect(classifySqliteEvidence('docs/legacy.md', currentDocs)).toBe('historicalOrDraftDocs')
     expect(classifySqliteEvidence('scripts/import-legacy.ts', currentDocs)).toBe('testsToolsOrImporter')
   })
 

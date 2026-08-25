@@ -15,7 +15,7 @@ import IssueCheckpointTimeline from '@/components/IssueCheckpointTimeline.vue'
 import EightDReportDialog from '@/components/EightDReportDialog.vue'
 import { createEightDReport, deleteEightDReport, getIssueEightDReports, updateEightDReport } from '@/api/eightDReports'
 import { usePoiViewContribution } from '@/layout/workbench/poiViewContributions'
-import { ISSUE_IMPORTANCE_DICT, ISSUE_URGENCY_DICT } from '@open-issue/core'
+import { ISSUE_IMPORTANCE_DICT, ISSUE_URGENCY_DICT, resolveUserLabel } from '@open-issue/core'
 import type { EightDReport, EightDReportInput, EightDReportIssueOption } from '@open-issue/core'
 
 const dict = useDictStore()
@@ -167,10 +167,8 @@ onMounted(async () => {
 
 const activeUsers = computed(() => allUsers.value.filter((user: any) => !user.disabled))
 
-function getUserName(id: string | null): string {
-  if (!id) return '-'
-  const user = allUsers.value.find((item: any) => item.id === id)
-  return user?.displayName || user?.username || id.slice(0, 8)
+function getUserName(id: string | null, resolvedName?: string | null): string {
+  return resolvedName || resolveUserLabel(allUsers.value, id)
 }
 
 function formatDate(d: string | null): string {
@@ -321,15 +319,15 @@ async function removeReport(report: ReportView) {
       <!-- 人员与日期 -->
       <el-descriptions id="issue-people" title="人员与日期" :column="2" border size="small" class="detail-desc-block">
         <el-descriptions-item label="提出人">
-          <template v-if="issueStore.currentIssue.reporterId">👤{{ getUserName(issueStore.currentIssue.reporterId) }}</template>
+          <template v-if="issueStore.currentIssue.reporterId">👤{{ getUserName(issueStore.currentIssue.reporterId, issueStore.currentIssue.reporterName) }}</template>
           <span v-else>—</span>
         </el-descriptions-item>
         <el-descriptions-item label="责任人">
-          <template v-if="issueStore.currentIssue.assigneeId">👤{{ getUserName(issueStore.currentIssue.assigneeId) }}</template>
+          <template v-if="issueStore.currentIssue.assigneeId">👤{{ getUserName(issueStore.currentIssue.assigneeId, issueStore.currentIssue.assigneeName) }}</template>
           <span v-else>—</span>
         </el-descriptions-item>
         <el-descriptions-item label="录入人">
-          <template v-if="issueStore.currentIssue.createdBy">👤{{ getUserName(issueStore.currentIssue.createdBy) }}</template>
+          <template v-if="issueStore.currentIssue.createdBy">👤{{ getUserName(issueStore.currentIssue.createdBy, issueStore.currentIssue.creatorName) }}</template>
           <span v-else>—</span>
         </el-descriptions-item>
         <el-descriptions-item label="截止日">{{ formatDate(issueStore.currentIssue.dueDate) }}</el-descriptions-item>
@@ -345,7 +343,7 @@ async function removeReport(report: ReportView) {
           </el-tag>
           <span v-else>—</span>
         </el-descriptions-item>
-        <el-descriptions-item label="确认人">{{ getUserName(issueStore.currentIssue.closedBy) }}</el-descriptions-item>
+        <el-descriptions-item label="确认人">{{ getUserName(issueStore.currentIssue.closedBy, issueStore.currentIssue.closedByName) }}</el-descriptions-item>
       </el-descriptions>
 
       <!-- 独立附属功能：关联只引用 Issue，不占用 Issue 主表字段。 -->

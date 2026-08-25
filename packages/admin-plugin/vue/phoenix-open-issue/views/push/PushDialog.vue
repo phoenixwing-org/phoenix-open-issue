@@ -5,6 +5,7 @@ import { useAuthStore } from '/$/phoenix-open-issue/stores/auth'
 import { getAllUsers } from '/$/phoenix-open-issue/api/auth'
 import { previewPush, pushIssues } from '/$/phoenix-open-issue/api/push'
 import { ElMessage } from 'element-plus'
+import { formatUserLabel } from '/$/phoenix-open-issue/core'
 import type { UserPublic } from '/$/phoenix-open-issue/core'
 import { useIssueCapabilities } from '/$/phoenix-open-issue/composables/useIssueCapabilities'
 
@@ -130,11 +131,10 @@ async function onPush() {
             <el-option
               v-for="user in targetUsers"
               :key="user.id"
-              :label="user.displayName || user.username"
+              :label="formatUserLabel(user)"
               :value="user.id"
             >
-              <span>{{ user.displayName || user.username }}</span>
-              <small v-if="user.displayName" class="username">{{ user.username }}</small>
+              <span>{{ formatUserLabel(user) }}</span>
             </el-option>
           </el-select>
         </el-form-item>
@@ -162,5 +162,4 @@ async function onPush() {
 .push-alert { margin-bottom: 12px; }
 .overlap-note { margin: 8px 0 0; color: var(--el-text-color-secondary); }
 .mode-note { margin: -2px 0 18px; }
-.username { float: right; margin-left: 18px; color: var(--el-text-color-secondary); }
 </style>

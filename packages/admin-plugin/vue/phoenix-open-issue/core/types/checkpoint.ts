@@ -8,6 +8,7 @@ export interface Checkpoint {
   description: string
   status: CheckpointStatus
   responsibleUserId: string | null
+  responsibleUserName?: string | null
   sortOrder: number
   createdAt: string
   updatedAt: string

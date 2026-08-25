@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { DocumentCopy, Plus, Sort } from '@element-plus/icons-vue'
 import type { Checkpoint, CheckpointStatus } from '/$/phoenix-open-issue/core'
-import { isOverdue } from '/$/phoenix-open-issue/core'
+import { isOverdue, resolveUserLabel } from '/$/phoenix-open-issue/core'
 import { getAllUsers } from '/$/phoenix-open-issue/api/auth'
 import { createCheckpoint, getCheckpoints, updateCheckpoint } from '/$/phoenix-open-issue/api/checkpoints'
 import { useSettingsStore } from '/$/phoenix-open-issue/stores/settings'
@@ -74,10 +74,8 @@ watch(
   { immediate: true },
 )
 
-function getUserName(id: string | null): string {
-  if (!id) return '—'
-  const user = allUsers.value.find((item: any) => item.id === id)
-  return user?.displayName || user?.username || id.slice(0, 8)
+function getUserName(id: string | null, resolvedName?: string | null): string {
+  return resolvedName || resolveUserLabel(allUsers.value, id)
 }
 
 function checkpointOverdue(checkpoint: Checkpoint): boolean {
@@ -137,7 +135,7 @@ function escapeCell(value: string): string {
 
 async function copyTimelineTable(): Promise<void> {
   const rows = sortedCheckpoints.value.map(checkpoint =>
-    `| ${checkpoint.deadline || '—'} | ${statusLabel[checkpoint.status]} | ${escapeCell(checkpoint.description)} | ${escapeCell(getUserName(checkpoint.responsibleUserId))} | ${checkpoint.checkpointDate} |`,
+    `| ${checkpoint.deadline || '—'} | ${statusLabel[checkpoint.status]} | ${escapeCell(checkpoint.description)} | ${escapeCell(getUserName(checkpoint.responsibleUserId, checkpoint.responsibleUserName))} | ${checkpoint.checkpointDate} |`,
   )
   const text = [
     `## ${props.issueNo ?? ''} ${props.issueTitle ?? ''}`.trim(),
@@ -235,9 +233,9 @@ async function copyTimelineTable(): Promise<void> {
               :disabled="!canUpdate"
               @change="onChangeStatus(checkpoint, $event)"
             />
-            <span class="checkpoint-owner" :title="`负责人：${getUserName(checkpoint.responsibleUserId)}`">
+            <span class="checkpoint-owner" :title="`负责人：${getUserName(checkpoint.responsibleUserId, checkpoint.responsibleUserName)}`">
               <span class="checkpoint-owner-label">负责人：</span>
-              <span class="checkpoint-owner-name">{{ getUserName(checkpoint.responsibleUserId) }}</span>
+              <span class="checkpoint-owner-name">{{ getUserName(checkpoint.responsibleUserId, checkpoint.responsibleUserName) }}</span>
             </span>
           </div>
           <p>{{ checkpoint.description }}</p>
@@ -268,8 +266,8 @@ async function copyTimelineTable(): Promise<void> {
       </el-table-column>
       <el-table-column label="负责人" min-width="84" show-overflow-tooltip>
         <template #default="{ row }">
-          <span :title="getUserName(row.responsibleUserId)">
-            {{ getUserName(row.responsibleUserId) }}
+          <span :title="getUserName(row.responsibleUserId, row.responsibleUserName)">
+            {{ getUserName(row.responsibleUserId, row.responsibleUserName) }}
           </span>
         </template>
       </el-table-column>

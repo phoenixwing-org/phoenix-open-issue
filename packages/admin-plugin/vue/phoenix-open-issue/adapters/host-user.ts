@@ -21,7 +21,7 @@ export function toIssueUser(user: HostUser | null | undefined): UserPublic | nul
     id: String(user.id),
     username: user.username,
     email: user.email ?? null,
-    displayName: user.nickName ?? user.name ?? null,
+    displayName: user.name?.trim() || user.nickName?.trim() || null,
     orgUnitId: user.departmentId == null ? null : String(user.departmentId),
     disabled: user.status === 0 ? 1 : 0,
     createdAt: user.createTime ?? '',

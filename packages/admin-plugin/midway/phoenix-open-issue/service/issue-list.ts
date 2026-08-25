@@ -27,6 +27,11 @@ type ListResult = OpenIssueListEntity & {
   ownerName?: string;
 };
 
+type MemberResult = OpenIssueListMemberEntity & {
+  username: string;
+  displayName: string | null;
+};
+
 function queryFlag(value: unknown): boolean {
   return value === true || value === 'true' || value === 1 || value === '1';
 }
@@ -295,6 +300,22 @@ export class OpenIssueListService {
     });
   }
 
+  private async decorateMembers(
+    members: OpenIssueListMemberEntity[]
+  ): Promise<MemberResult[]> {
+    const identities = await this.hostUserService.identities(
+      members.map(member => member.userId)
+    );
+    return members.map(member => {
+      const user = identities.get(member.userId);
+      return {
+        ...member,
+        username: user?.username ?? '',
+        displayName: user?.displayName ?? null,
+      };
+    });
+  }
+
   async transferOwner(id: string, value: unknown): Promise<ListResult> {
     const list = await this.requiredList(id);
     await this.assertManageable(list);
@@ -332,7 +353,7 @@ export class OpenIssueListService {
       joinedAt: new Date().toISOString(),
     });
     await this.memberRepository.save(member);
-    return { ...member, username: userId, displayName: null };
+    return (await this.decorateMembers([member]))[0];
   }
 
   async removeMember(id: string, userValue: unknown): Promise<void> {
@@ -373,7 +394,7 @@ export class OpenIssueListService {
     if (!member) throw new CoolCommException('列表成员不存在', 404);
     member.role = role;
     await this.memberRepository.save(member);
-    return { ...member, username: userId, displayName: null };
+    return (await this.decorateMembers([member]))[0];
   }
 
   async archive(id: string, archived: unknown): Promise<ListResult> {
@@ -412,20 +433,11 @@ export class OpenIssueListService {
   async members(id: string) {
     const list = await this.requiredList(id);
     await this.assertReadable(list);
-    const actorId = this.actorId();
-    return (
+    return this.decorateMembers(
       await this.memberRepository.find({
         where: { listId: id },
         order: { joinedAt: 'ASC' },
       })
-    ).map(member => ({
-      ...member,
-      username:
-        member.userId === actorId
-          ? this.ctx.admin?.username ?? member.userId
-          : member.userId,
-      displayName:
-        member.userId === actorId ? this.ctx.admin?.username ?? null : null,
-    }));
+    );
   }
 }

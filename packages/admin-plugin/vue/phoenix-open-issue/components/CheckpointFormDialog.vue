@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { formatUserLabel } from '/$/phoenix-open-issue/core'
 import type { Checkpoint, CheckpointStatus } from '/$/phoenix-open-issue/core'
 
 const props = defineProps<{
@@ -95,7 +96,7 @@ function submit() {
       </el-form-item>
       <el-form-item label="负责人">
         <el-select v-model="responsible" :teleported="false" placeholder="选择负责人" clearable style="width:100%">
-          <el-option v-for="u in props.users" :key="u.id" :label="u.displayName || u.username" :value="u.id" />
+          <el-option v-for="u in props.users" :key="u.id" :label="formatUserLabel(u)" :value="u.id" />
         </el-select>
       </el-form-item>
       <el-form-item v-if="isEdit" label="状态">

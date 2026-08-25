@@ -18,11 +18,9 @@ afterEach(() => {
   if (rootDialogOpen.value) pnwResolveChoice(null)
 })
 
-const expectedWingVersion = import.meta.env.VITE_PHOENIX_WING_VERSION
-  ?? webManifest.dependencies['phoenix-wing']
-const wingSource = import.meta.env.VITE_PHOENIX_WING_SOURCE === 'LOCAL' ? 'LOCAL' : 'Registry'
+const expectedWingVersion = webManifest.dependencies['phoenix-wing']
 
-describe(`Wing ${wingSource} 契约`, () => {
+describe('Wing Registry 契约', () => {
   it('根入口与组件内部 composable 子路径共享同一 singleton', async () => {
     expect(PNW_VERSION).toBe(expectedWingVersion)
     expect(rootDialogOpen).toBe(subpathDialogOpen)

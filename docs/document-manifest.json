@@ -17,119 +17,119 @@
       "lastVerified": "2026-08-03"
     },
     {
-      "path": "doc/代码规范.md",
+      "path": "docs/代码规范.md",
       "status": "current",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03"
     },
     {
-      "path": "doc/待办点检.md",
+      "path": "docs/待办点检.md",
       "status": "superseded",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03",
-      "sourceOfTruth": "doc/current-roadmap.md",
+      "sourceOfTruth": "docs/current-roadmap.md",
       "reason": "重叠计划与点检入口已合并为当前路线"
     },
     {
-      "path": "doc/第三方登录/飞书登录点检用例.md",
+      "path": "docs/第三方登录/飞书登录点检用例.md",
       "status": "current",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03"
     },
     {
-      "path": "doc/第三方登录/飞书OAuth设计.md",
+      "path": "docs/第三方登录/飞书OAuth设计.md",
       "status": "current",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03"
     },
     {
-      "path": "doc/第三方登录/管理员绑定与待审查计划.md",
+      "path": "docs/第三方登录/管理员绑定与待审查计划.md",
       "status": "archived",
       "owner": "Open Issue maintainers",
       "appliesTo": "historical",
       "lastVerified": "2026-08-03",
-      "sourceOfTruth": "doc/current-roadmap.md",
+      "sourceOfTruth": "docs/current-roadmap.md",
       "reason": "飞书二期已落地；本文仅保留实现与验收历史"
     },
     {
-      "path": "doc/第三方登录/配置示例.md",
+      "path": "docs/第三方登录/配置示例.md",
       "status": "current",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03"
     },
     {
-      "path": "doc/第三方登录/实施清单.md",
+      "path": "docs/第三方登录/实施清单.md",
       "status": "draft",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03",
-      "sourceOfTruth": "doc/current-roadmap.md",
+      "sourceOfTruth": "docs/current-roadmap.md",
       "reason": "尚未全部晋升为稳定产品契约的方案"
     },
     {
-      "path": "doc/第三方登录/README.md",
+      "path": "docs/第三方登录/README.md",
       "status": "current",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03"
     },
     {
-      "path": "doc/点检日期设计.md",
+      "path": "docs/点检日期设计.md",
       "status": "archived",
       "owner": "Open Issue maintainers",
       "appliesTo": "historical",
       "lastVerified": "2026-08-03",
-      "sourceOfTruth": "doc/current-roadmap.md",
+      "sourceOfTruth": "docs/current-roadmap.md",
       "reason": "已落地功能的设计、迁移和版本历史，只作追溯证据，不作为当前运行手册"
     },
     {
-      "path": "doc/多人权限与列表筛选加固.md",
+      "path": "docs/多人权限与列表筛选加固.md",
       "status": "current",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03"
     },
     {
-      "path": "doc/附属功能与Issue关联计划.md",
+      "path": "docs/附属功能与Issue关联计划.md",
       "status": "archived",
       "owner": "Open Issue maintainers",
       "appliesTo": "historical",
       "lastVerified": "2026-08-03",
-      "sourceOfTruth": "doc/current-roadmap.md",
+      "sourceOfTruth": "docs/current-roadmap.md",
       "reason": "已落地功能的设计、迁移和版本历史，只作追溯证据，不作为当前运行手册"
     },
     {
-      "path": "doc/功能表计划.md",
+      "path": "docs/功能表计划.md",
       "status": "superseded",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03",
-      "sourceOfTruth": "doc/current-roadmap.md",
+      "sourceOfTruth": "docs/current-roadmap.md",
       "reason": "重叠计划与点检入口已合并为当前路线"
     },
     {
-      "path": "doc/规则与约定.md",
+      "path": "docs/规则与约定.md",
       "status": "current",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03"
     },
     {
-      "path": "doc/计划.md",
+      "path": "docs/计划.md",
       "status": "superseded",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03",
-      "sourceOfTruth": "doc/current-roadmap.md",
+      "sourceOfTruth": "docs/current-roadmap.md",
       "reason": "重叠计划与点检入口已合并为当前路线"
     },
     {
-      "path": "doc/架构设计.md",
+      "path": "docs/架构设计.md",
       "status": "archived",
       "owner": "Open Issue maintainers",
       "appliesTo": "historical",
@@ -138,261 +138,261 @@
       "reason": "旧 standalone SQLite 部署与架构快照，仅保留历史恢复证据"
     },
     {
-      "path": "doc/界面巡游计划.md",
+      "path": "docs/界面巡游计划.md",
       "status": "archived",
       "owner": "Open Issue maintainers",
       "appliesTo": "historical",
       "lastVerified": "2026-08-03",
-      "sourceOfTruth": "doc/current-roadmap.md",
+      "sourceOfTruth": "docs/current-roadmap.md",
       "reason": "完成态 v0.4 实施与验收证据"
     },
     {
-      "path": "doc/开发计划.md",
+      "path": "docs/开发计划.md",
       "status": "superseded",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03",
-      "sourceOfTruth": "doc/current-roadmap.md",
+      "sourceOfTruth": "docs/current-roadmap.md",
       "reason": "重叠计划与点检入口已合并为当前路线"
     },
     {
-      "path": "doc/列表成员与负责人.md",
+      "path": "docs/列表成员与负责人.md",
       "status": "draft",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03",
-      "sourceOfTruth": "doc/current-roadmap.md",
+      "sourceOfTruth": "docs/current-roadmap.md",
       "reason": "尚未全部晋升为稳定产品契约的方案"
     },
     {
-      "path": "doc/使用手册.md",
+      "path": "docs/使用手册.md",
       "status": "current",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03"
     },
     {
-      "path": "doc/数据保护规则.md",
+      "path": "docs/数据保护规则.md",
       "status": "current",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03"
     },
     {
-      "path": "doc/数据字典配置.md",
+      "path": "docs/数据字典配置.md",
       "status": "current",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03"
     },
     {
-      "path": "doc/推送工作流.md",
+      "path": "docs/推送工作流.md",
       "status": "archived",
       "owner": "Open Issue maintainers",
       "appliesTo": "historical",
       "lastVerified": "2026-08-03",
-      "sourceOfTruth": "doc/current-roadmap.md",
+      "sourceOfTruth": "docs/current-roadmap.md",
       "reason": "完成态 v0.4 实施与验收证据"
     },
     {
-      "path": "doc/文档索引.md",
+      "path": "docs/文档索引.md",
       "status": "current",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03"
     },
     {
-      "path": "doc/仪表盘待办中心.md",
+      "path": "docs/仪表盘待办中心.md",
       "status": "current",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03"
     },
     {
-      "path": "doc/已知问题.md",
+      "path": "docs/已知问题.md",
       "status": "current",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03"
     },
     {
-      "path": "doc/admin-plugin-rectification/分阶段整改计划.md",
+      "path": "docs/admin-plugin-rectification/分阶段整改计划.md",
       "status": "draft",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03",
-      "sourceOfTruth": "doc/admin-plugin-rectification/TODO.md",
+      "sourceOfTruth": "docs/admin-plugin-rectification/TODO.md",
       "reason": "Admin 插件整改仍在进行，执行记录和边界说明不是已发布运行契约"
     },
     {
-      "path": "doc/admin-plugin-rectification/附属入口迁移归属.md",
+      "path": "docs/admin-plugin-rectification/附属入口迁移归属.md",
       "status": "draft",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03",
-      "sourceOfTruth": "doc/admin-plugin-rectification/TODO.md",
+      "sourceOfTruth": "docs/admin-plugin-rectification/TODO.md",
       "reason": "Admin 插件整改仍在进行，执行记录和边界说明不是已发布运行契约"
     },
     {
-      "path": "doc/admin-plugin-rectification/旧站JSON受控导入.md",
+      "path": "docs/admin-plugin-rectification/旧站JSON受控导入.md",
       "status": "draft",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03",
-      "sourceOfTruth": "doc/admin-plugin-rectification/TODO.md",
+      "sourceOfTruth": "docs/admin-plugin-rectification/TODO.md",
       "reason": "Admin 插件整改仍在进行，执行记录和边界说明不是已发布运行契约"
     },
     {
-      "path": "doc/admin-plugin-rectification/开发联调.md",
+      "path": "docs/admin-plugin-rectification/开发联调.md",
       "status": "draft",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03",
-      "sourceOfTruth": "doc/admin-plugin-rectification/TODO.md",
+      "sourceOfTruth": "docs/admin-plugin-rectification/TODO.md",
       "reason": "Admin 插件整改仍在进行，执行记录和边界说明不是已发布运行契约"
     },
     {
-      "path": "doc/admin-plugin-rectification/目标插件边界.md",
+      "path": "docs/admin-plugin-rectification/目标插件边界.md",
       "status": "draft",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03",
-      "sourceOfTruth": "doc/admin-plugin-rectification/TODO.md",
+      "sourceOfTruth": "docs/admin-plugin-rectification/TODO.md",
       "reason": "Admin 插件整改仍在进行，执行记录和边界说明不是已发布运行契约"
     },
     {
-      "path": "doc/admin-plugin-rectification/迁移审计.md",
+      "path": "docs/admin-plugin-rectification/迁移审计.md",
       "status": "draft",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03",
-      "sourceOfTruth": "doc/admin-plugin-rectification/TODO.md",
+      "sourceOfTruth": "docs/admin-plugin-rectification/TODO.md",
       "reason": "Admin 插件整改仍在进行，执行记录和边界说明不是已发布运行契约"
     },
     {
-      "path": "doc/admin-plugin-rectification/设置能力迁移边界.md",
+      "path": "docs/admin-plugin-rectification/设置能力迁移边界.md",
       "status": "draft",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03",
-      "sourceOfTruth": "doc/admin-plugin-rectification/TODO.md",
+      "sourceOfTruth": "docs/admin-plugin-rectification/TODO.md",
       "reason": "整改代码已开始，但真实数据库、权限、备份恢复与全仓清理证据尚未闭环"
     },
     {
-      "path": "doc/admin-plugin-rectification/现状与偏差.md",
+      "path": "docs/admin-plugin-rectification/现状与偏差.md",
       "status": "draft",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03",
-      "sourceOfTruth": "doc/admin-plugin-rectification/TODO.md",
+      "sourceOfTruth": "docs/admin-plugin-rectification/TODO.md",
       "reason": "Admin 插件整改仍在进行，执行记录和边界说明不是已发布运行契约"
     },
     {
-      "path": "doc/admin-plugin-rectification/页面保真验收.md",
+      "path": "docs/admin-plugin-rectification/页面保真验收.md",
       "status": "draft",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03",
-      "sourceOfTruth": "doc/admin-plugin-rectification/TODO.md",
+      "sourceOfTruth": "docs/admin-plugin-rectification/TODO.md",
       "reason": "Admin 插件整改仍在进行，执行记录和边界说明不是已发布运行契约"
     },
     {
-      "path": "doc/admin-plugin-rectification/用户点检表.md",
+      "path": "docs/admin-plugin-rectification/用户点检表.md",
       "status": "draft",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03",
-      "sourceOfTruth": "doc/admin-plugin-rectification/TODO.md",
+      "sourceOfTruth": "docs/admin-plugin-rectification/TODO.md",
       "reason": "Admin 插件整改仍在进行，执行记录和边界说明不是已发布运行契约"
     },
     {
-      "path": "doc/admin-plugin-rectification/Issue批量迁移执行记录.md",
+      "path": "docs/admin-plugin-rectification/Issue批量迁移执行记录.md",
       "status": "draft",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03",
-      "sourceOfTruth": "doc/admin-plugin-rectification/TODO.md",
+      "sourceOfTruth": "docs/admin-plugin-rectification/TODO.md",
       "reason": "Admin 插件整改仍在进行，执行记录和边界说明不是已发布运行契约"
     },
     {
-      "path": "doc/admin-plugin-rectification/README.md",
+      "path": "docs/admin-plugin-rectification/README.md",
       "status": "draft",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03",
-      "sourceOfTruth": "doc/admin-plugin-rectification/TODO.md",
+      "sourceOfTruth": "docs/admin-plugin-rectification/TODO.md",
       "reason": "Admin 插件整改仍在进行，执行记录和边界说明不是已发布运行契约"
     },
     {
-      "path": "doc/admin-plugin-rectification/SQLite清理执行草案.md",
+      "path": "docs/admin-plugin-rectification/SQLite清理执行草案.md",
       "status": "draft",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03",
-      "sourceOfTruth": "doc/admin-plugin-rectification/TODO.md",
+      "sourceOfTruth": "docs/admin-plugin-rectification/TODO.md",
       "reason": "整改代码已开始，但真实数据库、权限、备份恢复与全仓清理证据尚未闭环"
     },
     {
-      "path": "doc/admin-plugin-rectification/TODO.md",
+      "path": "docs/admin-plugin-rectification/TODO.md",
       "status": "draft",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03",
-      "sourceOfTruth": "doc/admin-plugin-rectification/TODO.md",
+      "sourceOfTruth": "docs/admin-plugin-rectification/TODO.md",
       "reason": "Admin 插件整改仍在进行，执行记录和边界说明不是已发布运行契约"
     },
     {
-      "path": "doc/API参考.md",
+      "path": "docs/API参考.md",
       "status": "current",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03"
     },
     {
-      "path": "doc/BUG日志.md",
+      "path": "docs/BUG日志.md",
       "status": "superseded",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03",
-      "sourceOfTruth": "doc/已知问题.md",
+      "sourceOfTruth": "docs/已知问题.md",
       "reason": "有效 workaround 与关闭条件已迁入当前已知问题"
     },
     {
-      "path": "doc/CHANGELOG.md",
+      "path": "docs/CHANGELOG.md",
       "status": "archived",
       "owner": "Open Issue maintainers",
       "appliesTo": "historical",
       "lastVerified": "2026-08-03",
-      "sourceOfTruth": "doc/current-roadmap.md",
+      "sourceOfTruth": "docs/current-roadmap.md",
       "reason": "已落地功能的设计、迁移和版本历史，只作追溯证据，不作为当前运行手册"
     },
     {
-      "path": "doc/current-roadmap.md",
+      "path": "docs/current-roadmap.md",
       "status": "current",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03"
     },
     {
-      "path": "doc/Issue列设计.md",
+      "path": "docs/Issue列设计.md",
       "status": "archived",
       "owner": "Open Issue maintainers",
       "appliesTo": "historical",
       "lastVerified": "2026-08-03",
-      "sourceOfTruth": "doc/current-roadmap.md",
+      "sourceOfTruth": "docs/current-roadmap.md",
       "reason": "完成态 v0.4 实施与验收证据"
     },
     {
-      "path": "doc/IssueListLink关注系数.md",
+      "path": "docs/IssueListLink关注系数.md",
       "status": "archived",
       "owner": "Open Issue maintainers",
       "appliesTo": "historical",
       "lastVerified": "2026-08-03",
-      "sourceOfTruth": "doc/current-roadmap.md",
+      "sourceOfTruth": "docs/current-roadmap.md",
       "reason": "完成态 v0.4 实施与验收证据"
     },
     {
-      "path": "doc/Linux测试部署.md",
+      "path": "docs/Linux测试部署.md",
       "status": "archived",
       "owner": "Open Issue maintainers",
       "appliesTo": "historical",
@@ -401,62 +401,62 @@
       "reason": "旧 standalone SQLite 部署与架构快照，仅保留历史恢复证据"
     },
     {
-      "path": "doc/phoenix-wing依赖配置.md",
+      "path": "docs/phoenix-wing依赖配置.md",
       "status": "current",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03"
     },
     {
-      "path": "doc/PhoenixAdmin插件部署.md",
+      "path": "docs/PhoenixAdmin插件部署.md",
       "status": "current",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03"
     },
     {
-      "path": "doc/PhoenixAdmin插件改造计划.md",
+      "path": "docs/PhoenixAdmin插件改造计划.md",
       "status": "draft",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03",
-      "sourceOfTruth": "doc/admin-plugin-rectification/TODO.md",
+      "sourceOfTruth": "docs/admin-plugin-rectification/TODO.md",
       "reason": "双产品线早期方案已被当前 Admin 插件整改边界取代"
     },
     {
-      "path": "doc/PostgreSQL部署与迁移.md",
+      "path": "docs/PostgreSQL部署与迁移.md",
       "status": "draft",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03",
-      "sourceOfTruth": "doc/admin-plugin-rectification/SQLite清理执行草案.md",
+      "sourceOfTruth": "docs/admin-plugin-rectification/SQLite清理执行草案.md",
       "reason": "legacy SQLite 到 PostgreSQL 的过渡导入方案尚未完成真实双库演练"
     },
     {
-      "path": "doc/TODO.md",
+      "path": "docs/TODO.md",
       "status": "superseded",
       "owner": "Open Issue maintainers",
       "appliesTo": "0.6.x",
       "lastVerified": "2026-08-03",
-      "sourceOfTruth": "doc/current-roadmap.md",
+      "sourceOfTruth": "docs/current-roadmap.md",
       "reason": "重叠计划与点检入口已合并为当前路线"
     },
     {
-      "path": "doc/v0.4-PG双数据库适配计划.md",
+      "path": "docs/v0.4-PG双数据库适配计划.md",
       "status": "archived",
       "owner": "Open Issue maintainers",
       "appliesTo": "historical",
       "lastVerified": "2026-08-03",
-      "sourceOfTruth": "doc/current-roadmap.md",
+      "sourceOfTruth": "docs/current-roadmap.md",
       "reason": "完成态 v0.4 实施与验收证据"
     },
     {
-      "path": "doc/v0.4发布改进计划.md",
+      "path": "docs/v0.4发布改进计划.md",
       "status": "archived",
       "owner": "Open Issue maintainers",
       "appliesTo": "historical",
       "lastVerified": "2026-08-03",
-      "sourceOfTruth": "doc/current-roadmap.md",
+      "sourceOfTruth": "docs/current-roadmap.md",
       "reason": "完成态 v0.4 实施与验收证据"
     },
     {
@@ -486,7 +486,7 @@
       "owner": "Open Issue maintainers",
       "appliesTo": "historical",
       "lastVerified": "2026-08-03",
-      "sourceOfTruth": "doc/admin-plugin-rectification/SQLite清理执行草案.md",
+      "sourceOfTruth": "docs/admin-plugin-rectification/SQLite清理执行草案.md",
       "reason": "better-sqlite3 到 node-sqlite3-wasm 的历史恢复说明，不是当前运行手册"
     },
     {

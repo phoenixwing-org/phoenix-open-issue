@@ -13,13 +13,16 @@ importers:
         version: 9.2.4
       vitest:
         specifier: ^4.1.10
-        version: 4.1.10(@types/node@26.1.0)(vite@6.4.3(@types/node@26.1.0)(sass-embedded@1.100.0)(sass@1.100.0)(tsx@4.22.4))
+        version: 4.1.10(@types/node@26.1.0)(sass-embedded@1.100.0)(sass@1.100.0)(tsx@4.22.4)
 
   packages/admin-plugin:
     devDependencies:
       driver.js:
         specifier: 1.6.0
         version: 1.6.0
+      phoenix-wing:
+        specifier: 0.7.1
+        version: 0.7.1(pinia@3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3)))(vue@3.5.39(typescript@5.7.3))
 
   packages/core:
     devDependencies:
@@ -28,7 +31,7 @@ importers:
         version: 5.7.3
       vitest:
         specifier: ^4.1.9
-        version: 4.1.9(@types/node@26.1.0)(vite@6.4.3(@types/node@26.1.0)(sass-embedded@1.100.0)(sass@1.100.0)(tsx@4.22.4))
+        version: 4.1.9(@types/node@26.1.0)(sass-embedded@1.100.0)(sass@1.100.0)(tsx@4.22.4)
 
   packages/server:
     dependencies:
@@ -57,8 +60,8 @@ importers:
         specifier: ^8.22.0
         version: 8.22.0
       phoenix-wing:
-        specifier: 0.6.0
-        version: 0.6.0(element-plus@2.14.2(vue@3.5.39(typescript@5.7.3)))(pinia@3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3)))(vue@3.5.39(typescript@5.7.3))
+        specifier: 0.7.1
+        version: 0.7.1(pinia@3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3)))(vue@3.5.39(typescript@5.7.3))
       uuid:
         specifier: ^11.1.0
         version: 11.1.1
@@ -106,8 +109,8 @@ importers:
         specifier: ^2.10.2
         version: 2.14.2(vue@3.5.39(typescript@5.7.3))
       phoenix-wing:
-        specifier: 0.6.0
-        version: 0.6.0(element-plus@2.14.2(vue@3.5.39(typescript@5.7.3)))(pinia@3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3)))(vue@3.5.39(typescript@5.7.3))
+        specifier: 0.7.1
+        version: 0.7.1(pinia@3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3)))(vue@3.5.39(typescript@5.7.3))
       pinia:
         specifier: ^3.0.4
         version: 3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3))
@@ -138,7 +141,7 @@ importers:
         version: 6.4.3(@types/node@26.1.0)(sass-embedded@1.100.0)(sass@1.100.0)(tsx@4.22.4)
       vitest:
         specifier: ^4.1.9
-        version: 4.1.9(@types/node@26.1.0)(vite@6.4.3(@types/node@26.1.0)(sass-embedded@1.100.0)(sass@1.100.0)(tsx@4.22.4))
+        version: 4.1.9(@types/node@26.1.0)(sass-embedded@1.100.0)(sass@1.100.0)(tsx@4.22.4)
       vue-tsc:
         specifier: ^2.2.8
         version: 2.2.12(typescript@5.7.3)
@@ -580,11 +583,11 @@ packages:
     resolution: {integrity: sha512-tmmZ3lQxAe/k/+rNnXQRawJ4NjxO2hqiOLTHvWchtGZULp4RyFeh6aU4XdOYBFe2KE1oShQTv4AblOs2iOrNnQ==}
     engines: {node: '>= 10.0.0'}
 
-  '@phoenix-wing/code-core@0.6.0':
-    resolution: {integrity: sha512-tCoP7BNDfTM/fBHPKz31jysazI0LtcuvHTrh04VXLm6mxnRXQkayU0cWS8IzE3vbnOwXP6DP5i5dALavCkapjQ==}
+  '@phoenix-wing/code-core@0.6.4':
+    resolution: {integrity: sha512-JwR5rB9pfY0CdSsDkT1fskiYj6H7WhrIgx3fWDYtv5+1z4VPgfQlpdIPvBL/SDfQMJxuAspnuCVQB6I2Q/pMPA==}
 
-  '@phoenix-wing/db-node@0.6.0':
-    resolution: {integrity: sha512-SjwIxxHIOI5CSP4QH7nlKkK2mCnddCrcKYTQmQv5/WQ3DemDzXDhi83Afc8JjXRXabBIpFA2Pujc+mxwEzVsIg==}
+  '@phoenix-wing/db-node@0.6.3':
+    resolution: {integrity: sha512-wX3IxX1iB4ulVZO1cmh5KZOl64lULTKhWmDieWc3RKGxVbXJPbAn0Yydq/9ZQdDpKuE6UaBrb4d/iTRvxONyYw==}
 
   '@rollup/rollup-android-arm-eabi@4.62.2':
     resolution: {integrity: sha512-6o7ZLZK+BeenkZCFNDXqpbjw9bD6nuWonvS/lwQJp7NoVVxm6p3qE7qQ5jGuBjiFsgvqjD8mZAU5oWxTmbOeOg==}
@@ -1498,15 +1501,12 @@ packages:
   pgpass@1.0.5:
     resolution: {integrity: sha512-FdW9r/jQZhSeohs1Z3sI1yxFQNFvMcnmfuj4WBMUTxOrAyLMaTcE1aAMBiTlbMNaXvBCQuVi0R7hd8udDSP7ug==}
 
-  phoenix-wing@0.6.0:
-    resolution: {integrity: sha512-O0fPuEi2zr06fd9ivSJEDOFjiHNoJO/l0NIST7uDBBJ4OI3KK0gJtJ1zCxJpnCBAxx3847aUP8lNlR62lvJHdw==}
+  phoenix-wing@0.7.1:
+    resolution: {integrity: sha512-1SHBYhhqRn7nrFMIe//5aZ5jpN26E6+NBF3o9INyIGcOCTi8EIJ5sJkbA0U+F2Ob1pH9onXW5uOHTH/3g+jxiA==}
     peerDependencies:
-      element-plus: ^2.0.0
       pinia: ^2.0.0 || ^3.0.0
       vue: ^3.0.0
     peerDependenciesMeta:
-      element-plus:
-        optional: true
       pinia:
         optional: true
       vue:
@@ -1522,15 +1522,6 @@ packages:
   picomatch@4.0.5:
     resolution: {integrity: sha512-RvwwcruNjI1ncT5xRakeyS9Lf8lcItv34KD+aif+VH9kduAyfYBipGh12274xtenIPZ119/R9BdTBa8gAwSh0A==}
     engines: {node: '>=12'}
-
-  pinia@2.3.1:
-    resolution: {integrity: sha512-khUlZSwt9xXCaTbbxFYBKDc/bWAGWJjOgvxETwkTN7KRm66EeT1ZdZj6i2ceh9sP2Pzqsbc704r2yngBrxBVug==}
-    peerDependencies:
-      typescript: '>=4.4.4'
-      vue: ^2.7.0 || ^3.5.11
-    peerDependenciesMeta:
-      typescript:
-        optional: true
 
   pinia@3.0.4:
     resolution: {integrity: sha512-l7pqLUFTI/+ESXn6k3nu30ZIzW5E2WZF/LaHJEpoq6ElcLD+wduZoB2kBN19du6K/4FDpPMazY2wJr+IndBtQw==}
@@ -1934,7 +1925,6 @@ packages:
       '@vitest/ui': 4.1.10
       happy-dom: '*'
       jsdom: '*'
-      vite: ^6.0.0 || ^7.0.0 || ^8.0.0
     peerDependenciesMeta:
       '@edge-runtime/vm':
         optional: true
@@ -1975,7 +1965,6 @@ packages:
       '@vitest/ui': 4.1.9
       happy-dom: '*'
       jsdom: '*'
-      vite: ^6.0.0 || ^7.0.0 || ^8.0.0
     peerDependenciesMeta:
       '@edge-runtime/vm':
         optional: true
@@ -2005,17 +1994,6 @@ packages:
 
   vue-component-type-helpers@3.3.5:
     resolution: {integrity: sha512-Fe1jyPJoUGpJOYKOri44jduR7My4yYINOMJISuMAbmrs+L5LbIDUc8NTWZYY3EJLK0yPLuCmcd5zoCsE4k2/KA==}
-
-  vue-demi@0.14.10:
-    resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
-    engines: {node: '>=12'}
-    hasBin: true
-    peerDependencies:
-      '@vue/composition-api': ^1.0.0-rc.1
-      vue: ^3.0.0-0 || ^2.6.0
-    peerDependenciesMeta:
-      '@vue/composition-api':
-        optional: true
 
   vue-router@4.6.4:
     resolution: {integrity: sha512-Hz9q5sa33Yhduglwz6g9skT8OBPii+4bFn88w6J+J4MfEo4KRRpmiNG/hHHkdbRFlLBOqxN8y8gf2Fb0MTUgVg==}
@@ -2330,9 +2308,9 @@ snapshots:
       '@parcel/watcher-win32-x64': 2.5.6
     optional: true
 
-  '@phoenix-wing/code-core@0.6.0': {}
+  '@phoenix-wing/code-core@0.6.4': {}
 
-  '@phoenix-wing/db-node@0.6.0':
+  '@phoenix-wing/db-node@0.6.3':
     dependencies:
       node-sqlite3-wasm: 0.8.60
 
@@ -3295,22 +3273,12 @@ snapshots:
     dependencies:
       split2: 4.2.0
 
-  phoenix-wing@0.6.0(element-plus@2.14.2(vue@3.5.39(typescript@5.7.3)))(pinia@2.3.1(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3)))(vue@3.5.39(typescript@5.7.3)):
+  phoenix-wing@0.7.1(pinia@3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3)))(vue@3.5.39(typescript@5.7.3)):
     dependencies:
-      '@phoenix-wing/code-core': 0.6.0
-      '@phoenix-wing/db-node': 0.6.0
-    optionalDependencies:
+      '@phoenix-wing/code-core': 0.6.4
+      '@phoenix-wing/db-node': 0.6.3
       element-plus: 2.14.2(vue@3.5.39(typescript@5.7.3))
-      node-sqlite3-wasm: 0.8.60
-      pinia: 2.3.1(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3))
-      vue: 3.5.39(typescript@5.7.3)
-
-  phoenix-wing@0.6.0(element-plus@2.14.2(vue@3.5.39(typescript@5.7.3)))(pinia@3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3)))(vue@3.5.39(typescript@5.7.3)):
-    dependencies:
-      '@phoenix-wing/code-core': 0.6.0
-      '@phoenix-wing/db-node': 0.6.0
     optionalDependencies:
-      element-plus: 2.14.2(vue@3.5.39(typescript@5.7.3))
       node-sqlite3-wasm: 0.8.60
       pinia: 3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3))
       vue: 3.5.39(typescript@5.7.3)
@@ -3320,16 +3288,6 @@ snapshots:
   picomatch@4.0.4: {}
 
   picomatch@4.0.5: {}
-
-  pinia@2.3.1(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3)):
-    dependencies:
-      '@vue/devtools-api': 6.6.4
-      vue: 3.5.39(typescript@5.7.3)
-      vue-demi: 0.14.10(vue@3.5.39(typescript@5.7.3))
-    optionalDependencies:
-      typescript: 5.7.3
-    transitivePeerDependencies:
-      - '@vue/composition-api'
 
   pinia@3.0.4(typescript@5.7.3)(vue@3.5.39(typescript@5.7.3)):
     dependencies:
@@ -3690,7 +3648,7 @@ snapshots:
       sass-embedded: 1.100.0
       tsx: 4.22.4
 
-  vitest@4.1.10(@types/node@26.1.0)(vite@6.4.3(@types/node@26.1.0)(sass-embedded@1.100.0)(sass@1.100.0)(tsx@4.22.4)):
+  vitest@4.1.10(@types/node@26.1.0)(sass-embedded@1.100.0)(sass@1.100.0)(tsx@4.22.4):
     dependencies:
       '@vitest/expect': 4.1.10
       '@vitest/mocker': 4.1.10(vite@6.4.3(@types/node@26.1.0)(sass-embedded@1.100.0)(sass@1.100.0)(tsx@4.22.4))
@@ -3715,9 +3673,19 @@ snapshots:
     optionalDependencies:
       '@types/node': 26.1.0
     transitivePeerDependencies:
+      - jiti
+      - less
+      - lightningcss
       - msw
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
+      - terser
+      - tsx
+      - yaml
 
-  vitest@4.1.9(@types/node@26.1.0)(vite@6.4.3(@types/node@26.1.0)(sass-embedded@1.100.0)(sass@1.100.0)(tsx@4.22.4)):
+  vitest@4.1.9(@types/node@26.1.0)(sass-embedded@1.100.0)(sass@1.100.0)(tsx@4.22.4):
     dependencies:
       '@vitest/expect': 4.1.9
       '@vitest/mocker': 4.1.9(vite@6.4.3(@types/node@26.1.0)(sass-embedded@1.100.0)(sass@1.100.0)(tsx@4.22.4))
@@ -3742,15 +3710,21 @@ snapshots:
     optionalDependencies:
       '@types/node': 26.1.0
     transitivePeerDependencies:
+      - jiti
+      - less
+      - lightningcss
       - msw
+      - sass
+      - sass-embedded
+      - stylus
+      - sugarss
+      - terser
+      - tsx
+      - yaml
 
   vscode-uri@3.1.0: {}
 
   vue-component-type-helpers@3.3.5: {}
-
-  vue-demi@0.14.10(vue@3.5.39(typescript@5.7.3)):
-    dependencies:
-      vue: 3.5.39(typescript@5.7.3)
 
   vue-router@4.6.4(vue@3.5.39(typescript@5.7.3)):
     dependencies:

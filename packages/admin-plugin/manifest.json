@@ -2,11 +2,11 @@
   "formatVersion": 2,
   "moduleId": "phoenix-open-issue",
   "name": "Open Issue",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "publisher": "PhoenixWing",
   "license": "Apache-2.0",
   "hostCompatibility": ">=0.1.0 <0.2.0",
-  "wingCompatibility": ">=0.6.2 <0.7.0",
+  "wingCompatibility": ">=0.7.1 <0.8.0",
   "activationMode": "restart",
   "routePrefix": "/open-issue",
   "entrypoints": {

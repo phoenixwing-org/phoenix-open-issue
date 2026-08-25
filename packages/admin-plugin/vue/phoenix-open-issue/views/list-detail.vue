@@ -32,7 +32,7 @@ const showIssueModal = ref(false)
 const modalIssueId = ref('')
 import PageHelpButton from "/$/phoenix-open-issue/components/PageHelpButton.vue"
 import PoiCompactEditorView from '/$/phoenix-open-issue/components/workbench/PoiCompactEditorView.vue'
-import { canPerformListAction, DEFAULT_ATTENTION_LEVEL, ISSUE_URGENCY_DICT } from '/$/phoenix-open-issue/core'
+import { canPerformListAction, DEFAULT_ATTENTION_LEVEL, ISSUE_URGENCY_DICT, formatUserLabel, unknownUserLabel } from '/$/phoenix-open-issue/core'
 import type { Checkpoint } from '/$/phoenix-open-issue/core'
 import IssueFormDialog from '/$/phoenix-open-issue/components/IssueFormDialog.vue'
 import IssueQuickEditDialog from '/$/phoenix-open-issue/components/IssueQuickEditDialog.vue'
@@ -186,8 +186,8 @@ const primaryOwnerName = computed(() => {
   if (!list?.ownerId) return ''
   if (list.ownerName) return list.ownerName
   const m = members.value.find(mem => mem.userId === list.ownerId)
-  if (m) return m.displayName || m.username
-  return userMap.value[list.ownerId] || ''
+  if (m) return formatUserLabel(m, unknownUserLabel(m.userId))
+  return userMap.value[list.ownerId] || unknownUserLabel(list.ownerId)
 })
 
 const headerSubtitle = computed(() => {
@@ -200,8 +200,24 @@ const headerSubtitle = computed(() => {
 // 用户 ID → 显示名映射
 const userMap = computed<Record<string, string>>(() => {
   const map: Record<string, string> = {}
+  for (const issue of issueStore.issues) {
+    if (issue.reporterId) {
+      map[issue.reporterId] = issue.reporterName || unknownUserLabel(issue.reporterId)
+    }
+    if (issue.assigneeId) {
+      map[issue.assigneeId] = issue.assigneeName || unknownUserLabel(issue.assigneeId)
+    }
+  }
+  for (const checkpoints of Object.values(checkpointMap.value)) {
+    for (const checkpoint of checkpoints) {
+      if (checkpoint.responsibleUserId) {
+        map[checkpoint.responsibleUserId] = checkpoint.responsibleUserName
+          || unknownUserLabel(checkpoint.responsibleUserId)
+      }
+    }
+  }
   for (const u of allUsers.value) {
-    map[u.id] = u.displayName || u.username
+    map[u.id] = formatUserLabel(u)
   }
   return map
 })
@@ -624,7 +640,9 @@ async function onUpdateMemberRole(userId: string, role: string) {
 
 async function onTransferOwner(userId: string) {
   const target = members.value.find(m => m.userId === userId)
-  const name = target?.displayName || target?.username || '该用户'
+  const name = target
+    ? formatUserLabel(target, unknownUserLabel(userId))
+    : unknownUserLabel(userId)
   const r = await pnwPromptChoice({
     title: '设为主负责人',
     message: `将主负责人设为「${name}」？\n仅变更列表展示与推送审批负责人，不改动各成员的权限级别。`,

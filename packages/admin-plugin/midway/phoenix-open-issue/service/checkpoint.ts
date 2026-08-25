@@ -10,6 +10,7 @@ import {
 import { OpenIssueCheckpointEntity } from '../entity/checkpoint';
 import { OpenIssueListLinkEntity } from '../entity/issue-list-link';
 import { OpenIssueAccessService } from './access';
+import { OpenIssueHostUserService } from './host-user';
 
 @Provide()
 export class OpenIssueCheckpointService {
@@ -21,6 +22,9 @@ export class OpenIssueCheckpointService {
 
   @InjectEntityModel(OpenIssueListLinkEntity)
   linkRepository: Repository<OpenIssueListLinkEntity>;
+
+  @Inject()
+  hostUsers: OpenIssueHostUserService;
 
   private failInput(error: unknown): never {
     throw new CoolCommException(
@@ -35,12 +39,24 @@ export class OpenIssueCheckpointService {
     return checkpoint;
   }
 
+  private async decorate(rows: OpenIssueCheckpointEntity[]) {
+    const names = await this.hostUsers.names(
+      rows.map(row => row.responsibleUserId)
+    );
+    return rows.map(row => ({
+      ...row,
+      responsibleUserName: row.responsibleUserId
+        ? names.get(row.responsibleUserId) ?? null
+        : null,
+    }));
+  }
+
   async byIssue(issueId: string) {
     await this.access.assertIssueReadable(issueId);
-    return this.checkpointRepository.find({
+    return this.decorate(await this.checkpointRepository.find({
       where: { issueId },
       order: { checkpointDate: 'DESC', sortOrder: 'DESC' },
-    });
+    }));
   }
 
   async byList(listId: string) {
@@ -56,7 +72,8 @@ export class OpenIssueCheckpointService {
       where: { issueId: In(issueIds) },
       order: { checkpointDate: 'DESC', sortOrder: 'DESC' },
     });
-    return rows.reduce<Record<string, OpenIssueCheckpointEntity[]>>(
+    const decorated = await this.decorate(rows);
+    return decorated.reduce<Record<string, typeof decorated>>(
       (grouped, item) => {
         (grouped[item.issueId] ??= []).push(item);
         return grouped;
@@ -77,7 +94,7 @@ export class OpenIssueCheckpointService {
     const maxSort = await this.checkpointRepository.maximum('sortOrder', {
       issueId,
     });
-    return this.checkpointRepository.save(
+    const checkpoint = await this.checkpointRepository.save(
       this.checkpointRepository.create({
         id: randomUUID(),
         issueId: issue.id,
@@ -91,6 +108,7 @@ export class OpenIssueCheckpointService {
         updatedAt: now,
       })
     );
+    return (await this.decorate([checkpoint]))[0];
   }
 
   async update(id: string, value: unknown) {
@@ -103,7 +121,8 @@ export class OpenIssueCheckpointService {
       this.failInput(error);
     }
     Object.assign(checkpoint, input, { updatedAt: new Date().toISOString() });
-    return this.checkpointRepository.save(checkpoint);
+    const saved = await this.checkpointRepository.save(checkpoint);
+    return (await this.decorate([saved]))[0];
   }
 
   async delete(id: string) {

@@ -37,8 +37,7 @@ providePoiViewContributionRegistry(poiViewContributionRegistry)
 const openIssueWorkbenchController = useOpenIssueWorkbench()
 const openIssueWorkbench = reactive(openIssueWorkbenchController)
 const showWelcome = ref(false)
-const wingSource = import.meta.env.VITE_PHOENIX_WING_SOURCE === 'LOCAL' ? 'LOCAL' : 'REGISTRY'
-const wingBrandSubtitle = `Phoenix Wing / ${wingSource} ${PNW_VERSION}`
+const wingBrandSubtitle = `Phoenix Wing / REGISTRY ${PNW_VERSION}`
 const workbenchContributions: PnwViewBlockContributions = { bottom: true }
 const WORKBENCH_BOTTOM_TABS = [
   {
@@ -48,6 +47,9 @@ const WORKBENCH_BOTTOM_TABS = [
 ] satisfies readonly PnwBottomPanelTab[]
 const activeViewId = computed(() =>
   openIssueWorkbenchController.tabs.empty.value ? null : route.fullPath,
+)
+const usesWingPageLayout = computed(() =>
+  ['dashboard', 'lists', 'settings'].includes(String(route.name || '')),
 )
 const viewBlocks = usePoiRegisteredViewContribution(
   poiViewContributionRegistry,
@@ -148,7 +150,11 @@ function logout() {
           </el-tooltip>
         </template>
 
-        <div class="open-issue-editor" data-tour="shell-main">
+        <div
+          class="open-issue-editor"
+          :class="{ 'open-issue-editor--wing-page-layout': usesWingPageLayout }"
+          data-tour="shell-main"
+        >
           <router-view v-slot="{ Component }">
             <transition name="fade" mode="out-in">
               <keep-alive :max="10">
@@ -211,6 +217,11 @@ function logout() {
   overflow: auto;
   padding: 24px;
   box-sizing: border-box;
+}
+
+.open-issue-editor--wing-page-layout {
+  overflow: hidden;
+  padding: 0;
 }
 
 .open-issue-footer-page {

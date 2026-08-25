@@ -184,9 +184,12 @@ export class OpenIssuePushService {
             ? listMap.get(record.toListId)?.name ?? record.toListId
             : null,
           toUserName: record.toUserId
-            ? names.get(record.toUserId) ?? record.toUserId
+            ? names.get(record.toUserId) ??
+              `未知用户（ID ${record.toUserId}）`
             : null,
-          pushedByName: names.get(record.pushedBy) ?? record.pushedBy,
+          pushedByName:
+            names.get(record.pushedBy) ??
+            `未知用户（ID ${record.pushedBy}）`,
           _canHandle: canHandle,
           _canWithdraw:
             record.status === "pending" && record.pushedBy === actorId,

@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useDictGroup } from '@/composables/useDictGroup'
 import { getAllUsers } from '@/api/auth'
+import { formatUserLabel } from '@open-issue/core'
 import type { UserPublic } from '@open-issue/core'
 
 const props = defineProps<{
@@ -24,7 +25,7 @@ const isEdit = computed(() => !!props.initial)
 const userOptions = computed(() =>
   users.value.map(u => ({
     value: u.id,
-    label: u.displayName ? `${u.displayName} (${u.username})` : u.username,
+    label: formatUserLabel(u),
   })),
 )
 

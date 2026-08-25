@@ -81,3 +81,9 @@ export type {
 
 // 工具
 export { generateId } from './utils/id.js'
+export {
+  formatUserLabel,
+  resolveUserLabel,
+  unknownUserLabel,
+} from './utils/user-label.js'
+export type { UserLabelIdentity } from './utils/user-label.js'

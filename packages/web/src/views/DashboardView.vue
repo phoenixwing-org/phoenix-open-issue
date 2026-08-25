@@ -4,7 +4,7 @@ import { useIssueListStore } from '@/stores/issueLists'
 import { useDictGroup } from '@/composables/useDictGroup'
 import { ElMessage } from 'element-plus'
 import { getSeedStatus, addTestData, declineTestData } from '@/api/push'
-import PnwPageHeader from 'phoenix-wing/layout/PnwPageHeader.vue'
+import PnwPageLayout from 'phoenix-wing/layout/PnwPageLayout.vue'
 import PageHelpButton from '@/components/PageHelpButton.vue'
 import ListFormDialog from '@/components/ListFormDialog.vue'
 import { useAuthStore } from '@/stores/auth'
@@ -116,9 +116,8 @@ async function onCreate(data: { name: string; listType: string; description?: st
 </script>
 
 <template>
-  <div class="page dashboard">
-    <PnwPageHeader title="仪表盘">
-      <template #actions>
+  <PnwPageLayout class="page dashboard" title="仪表盘">
+    <template #actions>
         <nav class="dashboard-header-tabs" role="tablist" aria-label="仪表盘视图">
           <button
             type="button"
@@ -154,9 +153,8 @@ async function onCreate(data: { name: string; listType: string; description?: st
             @click="selectDashboardTab('admin')"
           >管理审批 <span>{{ dashboardTaskCounts.admin }}</span></button>
         </nav>
-      </template>
-      <template #help><PageHelpButton page-id="dashboard" /></template>
-    </PnwPageHeader>
+    </template>
+    <template #help><PageHelpButton page-id="dashboard" /></template>
 
     <DashboardTaskCenter
       v-model:active-tab="activeDashboardTab"
@@ -246,16 +244,10 @@ async function onCreate(data: { name: string; listType: string; description?: st
         <el-button type="primary" :loading="seeding" @click="onAddTestData">添加演示数据</el-button>
       </template>
     </el-dialog>
-  </div>
+  </PnwPageLayout>
 </template>
 
 <style scoped>
-.dashboard :deep(.pnw-head-row) {
-  grid-template-columns: auto minmax(0, 1fr) auto;
-}
-.dashboard :deep(.pnw-head-actions) {
-  justify-self: start;
-}
 .dashboard-header-tabs {
   min-width: 0;
   display: flex;

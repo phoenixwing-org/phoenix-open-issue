@@ -3,7 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useDictStore } from '/$/phoenix-open-issue/stores/dict'
 import { useAuthStore } from '/$/phoenix-open-issue/stores/auth'
 import { useFunctionStore } from '/$/phoenix-open-issue/stores/functions'
-import { DEFAULT_ATTENTION_LEVEL, ISSUE_URGENCY_DICT } from '/$/phoenix-open-issue/core'
+import { DEFAULT_ATTENTION_LEVEL, ISSUE_URGENCY_DICT, formatUserLabel } from '/$/phoenix-open-issue/core'
 import PnwDictSelect from 'phoenix-wing/components/PnwDictSelect.vue'
 import AttentionStars from '/$/phoenix-open-issue/components/AttentionStars.vue'
 
@@ -128,14 +128,14 @@ function submit() {
         <el-col :span="12">
           <el-form-item label="提出人">
             <el-select v-model="reporterId" :teleported="false" filterable placeholder="谁发现的" clearable style="width:100%">
-              <el-option v-for="u in props.allUsers" :key="u.id" :label="u.displayName || u.username" :value="u.id" />
+              <el-option v-for="u in props.allUsers" :key="u.id" :label="formatUserLabel(u)" :value="u.id" />
             </el-select>
           </el-form-item>
         </el-col>
         <el-col :span="12">
           <el-form-item label="责任人">
             <el-select v-model="assigneeId" :teleported="false" filterable placeholder="谁负责" clearable style="width:100%">
-              <el-option v-for="u in props.allUsers" :key="u.id" :label="u.displayName || u.username" :value="u.id" />
+              <el-option v-for="u in props.allUsers" :key="u.id" :label="formatUserLabel(u)" :value="u.id" />
             </el-select>
           </el-form-item>
         </el-col>

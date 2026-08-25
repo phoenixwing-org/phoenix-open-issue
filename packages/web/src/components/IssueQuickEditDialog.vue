@@ -3,7 +3,7 @@ import { ref, computed, onMounted, watch } from 'vue'
 import { useDictStore } from '@/stores/dict'
 import { useFunctionStore } from '@/stores/functions'
 import AttentionStars from '@/components/AttentionStars.vue'
-import { ISSUE_IMPORTANCE_DICT, ISSUE_URGENCY_DICT } from '@open-issue/core'
+import { ISSUE_IMPORTANCE_DICT, ISSUE_URGENCY_DICT, formatUserLabel } from '@open-issue/core'
 
 export type IssueQuickEditField = 'severity' | 'priority' | 'status' | 'attention' | 'assignee' | 'function' | 'category' | 'detectionPhase'
 
@@ -147,7 +147,7 @@ function submit() {
           <el-option
             v-for="u in users"
             :key="u.id"
-            :label="u.displayName || u.username"
+            :label="formatUserLabel(u)"
             :value="u.id"
           />
         </el-select>

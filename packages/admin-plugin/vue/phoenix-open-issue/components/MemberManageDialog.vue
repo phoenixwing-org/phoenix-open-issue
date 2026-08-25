@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
+import { formatUserLabel, unknownUserLabel } from '/$/phoenix-open-issue/core'
 
 const props = defineProps<{
   members: Array<{ id: string; userId: string; username: string; displayName: string | null; role: string }>
@@ -26,6 +27,10 @@ const nonMemberUsers = computed(() =>
 )
 
 const ownerCount = computed(() => props.members.filter(m => m.role === 'owner').length)
+
+function memberLabel(member: { userId: string; username: string; displayName: string | null }) {
+  return formatUserLabel(member, unknownUserLabel(member.userId))
+}
 
 const allRoleOptions = [
   { label: '所有者', value: 'owner' },
@@ -91,7 +96,7 @@ function onRoleChange(m: { userId: string; role: string }, newRole: string) {
     <el-table :data="props.members" size="small" stripe empty-text="暂无成员">
       <el-table-column label="成员" min-width="120">
         <template #default="{ row }">
-          {{ row.displayName || row.username }}
+          {{ memberLabel(row) }}
         </template>
       </el-table-column>
       <el-table-column label="权限" width="130">
@@ -132,7 +137,7 @@ function onRoleChange(m: { userId: string; role: string }, newRole: string) {
       <p class="hint-sm">非成员须先添加为成员后，才能设为主负责人（Q2）。</p>
       <div class="add-member">
         <el-select v-model="selectedUserId" placeholder="选择用户" filterable style="flex:1">
-          <el-option v-for="u in nonMemberUsers" :key="u.id" :label="u.displayName || u.username" :value="u.id" />
+          <el-option v-for="u in nonMemberUsers" :key="u.id" :label="formatUserLabel(u)" :value="u.id" />
         </el-select>
         <el-select v-model="selectedRole" style="width:110px">
           <el-option v-for="o in addRoleOptions" :key="o.value" :label="o.label" :value="o.value" />

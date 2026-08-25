@@ -91,7 +91,9 @@ export class OpenIssueEightDReportService {
           issueNo: issue?.issueNo ?? null,
           issueTitle: issue?.title ?? null,
           listName: issue ? listMap.get(issue.listId)?.name ?? null : null,
-          creatorName: names.get(report.createdBy) ?? report.createdBy,
+          creatorName:
+            names.get(report.createdBy) ??
+            `未知用户（ID ${report.createdBy}）`,
           _canModify: await this.canModify(report),
         };
       })

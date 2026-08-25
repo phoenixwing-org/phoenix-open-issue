@@ -4,8 +4,6 @@ interface ImportMetaEnv {
   readonly VITE_API_BASE_URL: string
   readonly VITE_DEV_PORT: string
   readonly VITE_DEV_API_PROXY: string
-  readonly VITE_PHOENIX_WING_SOURCE?: 'LOCAL'
-  readonly VITE_PHOENIX_WING_VERSION?: string
 }
 
 interface ImportMeta {

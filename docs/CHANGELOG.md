@@ -1,5 +1,12 @@
 # 更新日志
 
+## v0.7.2（2026-08-25）
+
+- Open Issue 根工作区、core、server、web 与 Admin 插件统一升级至 `0.7.2`。
+- Phoenix Wing 根 UI 包精确升级至 Registry `0.7.1`；传递依赖按正式发布矩阵解析为 `@phoenix-wing/code-core@0.6.4` 与 `@phoenix-wing/db-node@0.6.3`。
+- 删除相邻 Wing 源码 resolver、本地构建/验证命令和 LOCAL 环境分支，独立 Web、Server 与 Admin 插件类型门禁统一只接受 Registry 制品。
+- 完成自动测试、core/server/web 生产构建、Admin manifest 校验及 Admin Vue 类型检查。
+
 ## v0.7.1（2026-08-09）
 
 - 修复 PostgreSQL 示例数据初始化时 `eightDReports` / `relatedIssueId` 未按混合大小写标识符引用导致的 `42P01`，并增加空 PostgreSQL schema 的完整 seed 回归。
@@ -69,6 +76,7 @@ pnpm admin-plugin:verify-production-package
 
 ## v0.7.0（2026-08-05）
 
+- Phoenix Wing 根 UI 包进一步升级至 Registry `0.7.1`，同步消费 `@phoenix-wing/code-core@0.6.4` 与 `@phoenix-wing/db-node@0.6.3`，并完成前后端及 Admin 插件门禁复检。
 - Open Issue 从独立站交付形态收敛为 Phoenix Admin 声明式业务插件；插件、根工作区及三个 legacy 兼容包统一使用 `0.7.0`，正式制品统一为 `phoenix-open-issue-0.7.0.phoenix.cool`。
 - 建立可重复的 runtime build → descriptor/integrity → 完整门禁 → immutable package → clean Host assembly 流程；制品记录源码 commit，拒绝脏工作树、旧 `.pah.cool` 后缀、同名覆盖和发布边界并发覆盖。
 - 已在独立 PostgreSQL 与生产模拟 Admin 中初步跑通验包、可信备份/恢复、安装、启用、停用和普通卸载；普通卸载保留 9 张 `oip_*` 表、7 类字典、migration/repair/dictionary ledger 与管理员导航 assignment。当前人工步骤仍较多，后续继续收敛为 Host 受控编排。
@@ -100,7 +108,7 @@ pnpm admin-plugin:verify-production-package
 本版将 `package.json` 从 `0.4.0` 提升至 `0.5.0`，并收录此前积压在「未发布」中的能力（含飞书登录二期）。
 
 - **登录方式设定（仅管理员）**：设置 → 登录方式可勾选「本地账号密码」「第三方登录」（可同时开，至少保留一种）；登录页与接口同步生效。存于 `systemFlags`。
-- **飞书登录二期（管理员绑定 + 待审查）**：取消用户自助绑定；未绑定飞书登录写入 `externalBindRequests`；组织页管理员可绑定已有账号或新建并绑定；设置「表结构补全」幂等校验第三方登录表。设计归档见 `doc/第三方登录/`。**真实飞书点检已通过**（2026-07-21，见 `飞书登录点检用例.md`）。
+- **飞书登录二期（管理员绑定 + 待审查）**：取消用户自助绑定；未绑定飞书登录写入 `externalBindRequests`；组织页管理员可绑定已有账号或新建并绑定；设置「表结构补全」幂等校验第三方登录表。设计归档见 `docs/第三方登录/`。**真实飞书点检已通过**（2026-07-21，见 `飞书登录点检用例.md`）。
 - 飞书首期 OAuth（可配置启用、租户白名单、解绑/管理员撤销、备份不含令牌）保留；自助绑定已被二期取代。
 - 统一仪表盘与列表管理的归档语义；列表管理搜索/筛选/分页与状态视图完善。
 - phoenix-wing 精确锁定 Registry `0.4.2`，相关校验进入 `verify:ci`。
