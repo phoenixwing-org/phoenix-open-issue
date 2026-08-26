@@ -18,10 +18,7 @@
     "!vue/phoenix-open-issue/**/*.test.ts"
   ],
   "scripts": {
-    "sync:issue-ui": "node ../../scripts/sync-admin-plugin-ui.mjs --apply",
-    "adapt:issue-imports": "node ../../scripts/adapt-admin-plugin-imports.mjs --apply",
     "verify:issue-closure": "node ../../scripts/verify-admin-plugin-module-closure.mjs",
-    "verify:issue-ui": "node ../../scripts/verify-admin-plugin-ui-fidelity.mjs",
     "build:browser-runtime": "node ../../scripts/build-admin-plugin-browser-runtime.mjs",
     "verify:browser-runtime": "node ../../scripts/verify-admin-plugin-browser-runtime.mjs",
     "verify:pack": "node ../../scripts/verify-admin-plugin-pack.mjs",

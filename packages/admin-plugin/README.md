@@ -13,9 +13,9 @@ Host 只需提供插件声明的 peer dependencies。页面导引依赖的 `driv
 
 ## 受控单元测试
 
-维护页固定展示 23 个测试文件、131 条用例，不接受命令、目录或文件路径输入。可执行清单的 config/test SHA-256 与 Vitest 版本范围只保存在源码侧 `test/phoenix-open-issue/controlled-test-suite.json`，不进入生产包。
+维护页固定展示 26 个测试文件、144 条用例，不接受命令、目录或文件路径输入。可执行清单的 config/test SHA-256 与 Vitest 版本范围只保存在源码侧 `test/phoenix-open-issue/controlled-test-suite.json`，不进入生产包。
 
-开发或受控内网运行时，Open Issue 只消费 Dev Hub 通过 `PHOENIX_DEV_HUB_CONTROLLED_TOOL_PROFILE` 注入的 schema 1 Profile，并复核 Vitest package 身份、realpath containment、pnpm lock identity/integrity、lockfile/entrypoint/package 三组 SHA，以及声明中的 config/test SHA。执行固定为 `process.execPath + Profile entrypoint + 23 个声明路径`，`shell: false`；不会搜索 PATH、调用 pnpm/npx、联网安装或读取页面输入。无 Profile、坏 Profile、外部启动和 production 均 fail-closed，但读取权限用户仍可看到固定清单与非敏感 `reasonCode`。
+开发或受控内网运行时，Open Issue 只消费 Dev Hub 通过 `PHOENIX_DEV_HUB_CONTROLLED_TOOL_PROFILE` 注入的 schema 1 Profile，并复核 Vitest package 身份、realpath containment、pnpm lock identity/integrity、lockfile/entrypoint/package 三组 SHA，以及声明中的 config/test SHA。执行固定为 `process.execPath + Profile entrypoint + 26 个声明路径`，`shell: false`；不会搜索 PATH、调用 pnpm/npx、联网安装或读取页面输入。无 Profile、坏 Profile、外部启动和 production 均 fail-closed，但读取权限用户仍可看到固定清单与非敏感 `reasonCode`。
 
 ## 工作台输出
 
@@ -31,7 +31,34 @@ pnpm admin-plugin:status-dev-host
 pnpm admin-plugin:unmount-dev-host
 ```
 
-Windows PowerShell 使用 `scripts/mount-admin-plugin-dev.ps1` 创建并校验 Vue/Node 两处 `Junction`，普通权限即可执行；不要改用需要开发者模式或提权的 `SymbolicLink`。参数化命令、`LinkType` 点检和卸载步骤统一见 [Phoenix Admin 插件部署](../../docs/PhoenixAdmin插件部署.md)。
+Windows PowerShell 使用 `scripts/mount-admin-plugin-dev.ps1` 创建 Vue/Node 两处 `Junction`，普通权限即可执行；不要改用需要开发者模式或提权的 `SymbolicLink`。在仓库根目录打开 PowerShell，用本机 Host 根目录设置变量，不要把个人绝对路径写入仓库：
+
+```powershell
+$VueHostRoot = '<path-to-phoenix-admin-vue>'
+$NodeHostRoot = '<path-to-phoenix-admin-node>'
+
+& .\scripts\mount-admin-plugin-dev.ps1 `
+  -Action Mount `
+  -VueHostRoot $VueHostRoot `
+  -NodeHostRoot $NodeHostRoot
+
+& .\scripts\mount-admin-plugin-dev.ps1 `
+  -Action Status `
+  -VueHostRoot $VueHostRoot `
+  -NodeHostRoot $NodeHostRoot
+
+Get-Item "$VueHostRoot\src\modules\phoenix-open-issue" | Select-Object FullName, LinkType, Target
+Get-Item "$NodeHostRoot\src\modules\phoenix-open-issue" | Select-Object FullName, LinkType, Target
+```
+
+两处 `LinkType` 都必须是 `Junction`，`Target` 分别指向本仓库 Vue/Node 插件源目录。挂载后在 Host 的 Vue 和 Node 终端各按一次 `Ctrl+C`，等待进程退出后重新执行 Host 原启动命令；不要假定 HMR 会重新解析链接目标。卸载只删除本脚本管理且目标匹配的 Junction：
+
+```powershell
+& .\scripts\mount-admin-plugin-dev.ps1 `
+  -Action Unmount `
+  -VueHostRoot $VueHostRoot `
+  -NodeHostRoot $NodeHostRoot
+```
 
 开发目录挂载只写入本机 Host 工作区和 `.git/info/exclude`，不能作为正式安装产物。正式环境必须使用冻结的不可变 `.phoenix.cool` Phoenix 业务插件包，通过 Phoenix Admin 的 manifest、migration dry-run、可信备份和受控生命周期安装。开发阶段不兼容旧 `.pah.cool` 后缀：
 
@@ -45,19 +72,8 @@ pnpm admin-plugin:assemble-clean-host -- \
   --output /absolute/path/new-empty-assembly
 ```
 
-发布命令强制 `browser runtime build → 完整 admin-plugin:verify → 最终不可变包`，其中完整门禁包含 descriptor/integrity、pack、确定性生产打包、UI/闭包、双端 typecheck 和全部插件测试；不能依赖发布者此前手工跑过测试。正式工作树必须 clean；包内绑定源码仓库 URL 与 40 位 commit，独立验包默认拒绝 dirty 制品；相同输入得到相同包 SHA，同名目标和并发占用目标均拒绝覆盖。包不含测试、工具、`node_modules` 或原生 Hook 入口。它不能上传到 COOL `/helper/plugins` 执行；`plugin.json` 明确 `kind=pah-business-module` 和 `coolNativeHook=false`，错误安装器必须 fail-closed。完整步骤见 [Phoenix Admin 插件部署](../../docs/PhoenixAdmin插件部署.md)。
+发布命令强制 `browser runtime build → 完整 admin-plugin:verify → 最终不可变包`，其中完整门禁包含 descriptor/integrity、pack、确定性生产打包、模块闭包、双端 typecheck 和全部插件测试；不能依赖发布者此前手工跑过测试。正式工作树必须 clean；包内绑定源码仓库 URL 与 40 位 commit，独立验包默认拒绝 dirty 制品；相同输入得到相同包 SHA，同名目标和并发占用目标均拒绝覆盖。包不含测试、工具、`node_modules` 或原生 Hook 入口。它不能上传到 COOL `/helper/plugins` 执行；`plugin.json` 明确 `kind=pah-business-module` 和 `coolNativeHook=false`，错误安装器必须 fail-closed。
 
 生产环境不依赖 TypeORM `synchronize` 建表。Pah 先校验 SQL 制品并生成只读 dry-run，再由受控发布编排在可信备份通过后执行；默认缺少备份验证器时必须安全拒绝，不允许把开发环境自动建表当成生产迁移。
 
 普通卸载只在停用后移除 contribution 和下一版装配中的代码，固定保留 9 张业务表、7 类字典、migration/repair/dictionary ledger 与管理员导航 assignment；永久清理必须是另一条显式、受权且可恢复的流程。
-
-Issue 迁移采用“UI 整体复制、接口集中修正”的方式。模板和样式以 `legacy/2cdc5ea` 为金样本；迁移阶段允许脚本、接口和类型暂时未接通，但不得为了通过编译重做页面。
-
-```bash
-pnpm admin-plugin:sync-issue-ui
-pnpm admin-plugin:adapt-issue-imports
-pnpm admin-plugin:verify-issue-closure
-pnpm admin-plugin:verify-issue-ui
-```
-
-同步命令只用于建立或重新覆盖迁移基线。开始接口适配后，不应在未审查差异的情况下重复运行。

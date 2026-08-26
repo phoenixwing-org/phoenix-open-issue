@@ -96,7 +96,10 @@ try {
   console.log(`Admin Vue ${action} 工具链：${hostRoot}`)
   const result = spawnSync(binary, args, {
     cwd: repoRoot,
-    env: process.env,
+    env: {
+      ...process.env,
+      PHOENIX_ADMIN_VUE_ROOT: hostRoot,
+    },
     stdio: 'inherit',
   })
   if (result.error) throw result.error

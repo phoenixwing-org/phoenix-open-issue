@@ -97,10 +97,24 @@ export const OPEN_ISSUE_CONTROLLED_TEST_FILES = Object.freeze([
     caseCount: 3,
   },
   {
+    id: "contract:table",
+    filePath:
+      "packages/admin-plugin/test/scripts/admin-plugin-table-contract.test.ts",
+    packageName: "contract",
+    caseCount: 3,
+  },
+  {
     id: "contract:view-layout",
     filePath: "packages/admin-plugin/test/scripts/admin-plugin-view-layout.test.ts",
     packageName: "contract",
     caseCount: 11,
+  },
+  {
+    id: "contract:windows-junction",
+    filePath:
+      "packages/admin-plugin/test/scripts/windows-junction-mount.test.ts",
+    packageName: "contract",
+    caseCount: 3,
   },
   {
     id: "core:dict-catalog",
@@ -141,6 +155,13 @@ export const OPEN_ISSUE_CONTROLLED_TEST_FILES = Object.freeze([
       "packages/admin-plugin/vue/phoenix-open-issue/core/algorithms/legacy-import.test.ts",
     packageName: "core",
     caseCount: 5,
+  },
+  {
+    id: "core:primary-section-state",
+    filePath:
+      "packages/admin-plugin/vue/phoenix-open-issue/core/algorithms/primary-section-state.test.ts",
+    packageName: "core",
+    caseCount: 4,
   },
   {
     id: "core:permission",

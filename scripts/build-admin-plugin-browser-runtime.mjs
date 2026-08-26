@@ -37,7 +37,6 @@ if (!/^\d+\.\d+\.\d+$/.test(sourceVersion ?? '')) {
 const candidates = [
   process.env.OPEN_ISSUE_DRIVER_ROOT,
   path.join(pluginRoot, 'node_modules/driver.js'),
-  path.join(repoRoot, 'packages/web/node_modules/driver.js'),
   path.join(repoRoot, 'node_modules/driver.js'),
 ].filter(Boolean)
 const sourceRoot = candidates.find(candidate =>

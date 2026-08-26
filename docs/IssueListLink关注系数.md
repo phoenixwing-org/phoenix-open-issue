@@ -71,7 +71,8 @@ Body: { "attentionLevel": 0..5 }
 
 | 层 | 文件 |
 |----|------|
-| Core | `packages/core/src/types/attention.ts` |
+| Vue 类型 | `packages/admin-plugin/vue/phoenix-open-issue/core/types/attention.ts` |
+| Node 实体 | `packages/admin-plugin/midway/phoenix-open-issue/entity/issue-list-link.ts` |
 | DB | `schema.ts`、`migrations.ts`（`migrateIssueListLinkAttention`、`dropIssueListLinkVoidedColumns`） |
 | Server | `IssueService.ts`、`IssueListService.ts`、`BackupService.ts`、`DbRepairService.ts` |
 | Web | `ListDetailView.vue`、`AttentionStars.vue`、`api/issues.ts`、`stores/issues.ts` |

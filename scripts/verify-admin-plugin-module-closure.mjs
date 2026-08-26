@@ -1,10 +1,9 @@
 import { access, readdir, readFile, stat } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { ADMIN_PLUGIN_VUE_ROOT } from './admin-plugin-ui-files.mjs'
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
-const pluginRoot = path.join(repoRoot, ADMIN_PLUGIN_VUE_ROOT)
+const pluginRoot = path.join(repoRoot, 'packages/admin-plugin/vue/phoenix-open-issue')
 const missing = new Set()
 const invalidStoreIds = new Set()
 const invalidRuntimeImports = new Set()

@@ -99,7 +99,7 @@ function legacyPackage() {
 
 function sanitizedLegacyPackage(): ReturnType<typeof legacyPackage> {
   const fixture = new URL(
-    '../../../../../../tests/fixtures/legacy-import/migration-v1-full.sanitized.json',
+    '../../../../test/phoenix-open-issue/fixtures/legacy-import/migration-v1-full.sanitized.json',
     import.meta.url,
   )
   return JSON.parse(readFileSync(fixture, 'utf8')) as ReturnType<typeof legacyPackage>
@@ -107,7 +107,7 @@ function sanitizedLegacyPackage(): ReturnType<typeof legacyPackage> {
 
 function sanitizedLegacyPackageSha256() {
   const fixture = new URL(
-    '../../../../../../tests/fixtures/legacy-import/migration-v1-full.sanitized.json',
+    '../../../../test/phoenix-open-issue/fixtures/legacy-import/migration-v1-full.sanitized.json',
     import.meta.url,
   )
   return createHash('sha256').update(readFileSync(fixture)).digest('hex')

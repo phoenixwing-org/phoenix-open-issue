@@ -1,15 +1,7 @@
 node_modules/
 dist/
-data/
-.env
-.env.local
-.env.*.local
-!.env.example
 *.log
 .DS_Store
 *.tsbuildinfo
 .obsidian
 .phoenix/
-
-# 原始旧站导出含账号、密码哈希和业务文本；仓库只保留脱敏 fixture。
-/tests/fixtures/migration-2026-08-03.json

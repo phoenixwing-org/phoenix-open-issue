@@ -141,14 +141,14 @@ pnpm admin-plugin:assemble-clean-host -- \
   --output /absolute/path/new-empty-assembly
 ```
 
-`release-package` 先重建 `driver.js@1.6.0` browser runtime 和 descriptor，再强制执行完整 `admin-plugin:verify`（包含 runtime/manifest/pack、确定性生产打包、UI/闭包、双端 typecheck 和全部插件测试），最后才生成正式不可变包；不能依赖发布者此前手工跑过测试。如生成结果使工作树变脏，正式打包立即拒绝，必须审查并提交新字节/SHA 后再试。包生成使用固定文件顺序和时间戳、逐文件 SHA-256、同目录临时文件和 hard-link no-replace 发布。同名目标或发布边界并发占用均 fail-closed，不覆盖既有字节。
+`release-package` 先重建 `driver.js@1.6.0` browser runtime 和 descriptor，再强制执行完整 `admin-plugin:verify`（包含 runtime/manifest/pack、确定性生产打包、模块闭包、双端 typecheck 和全部插件测试），最后才生成正式不可变包；不能依赖发布者此前手工跑过测试。如生成结果使工作树变脏，正式打包立即拒绝，必须审查并提交新字节/SHA 后再试。包生成使用固定文件顺序和时间戳、逐文件 SHA-256、同目录临时文件和 hard-link no-replace 发布。同名目标或发布边界并发占用均 fail-closed，不覆盖既有字节。
 
 生产包只含 Node/Vue 产品模块、manifest、descriptor、migrations、许可证与元数据；不含测试、受控测试配置、`node_modules` 或安装脚本。`plugin.json` 固定声明 `kind=pah-business-module`、`coolNativeHook=false`，并携带 Host peerDependencies、源码仓库 URL、精确 commit、dirty 标志和保留数据策略。独立验包默认拒绝 `dirty=true` 的制品，内部确定性测试才可显式接受 dirty fixture。
 
 正式交付按以下顺序执行：
 
 1. 冻结并记录插件、Admin Vue、Admin Node 和 Phoenix Wing 的 commit 与版本；工作树必须干净。
-2. 执行 `pnpm admin-plugin:verify`，校验 UI 保真、模块闭包、类型、测试、runtime/manifest/descriptor、SQL 路径及原始字节 SHA-256；pack 收入不能代替 runtime 完整性。
+2. 执行 `pnpm admin-plugin:verify`，校验模块闭包、类型、测试、runtime/manifest/descriptor、SQL 路径及原始字节 SHA-256；pack 收入不能代替 runtime 完整性。
 3. 使用 `admin-plugin:release-package` 生成 clean、不可变业务包，再在独立装配目录构建 Vue/Node production 制品并部署到约定运行目录；产品源码不能进入 Host Git。
 4. 在 `/pah/plugins` 登记与该制品同版本的 manifest v2 并执行校验；当前治理页负责清单和生命周期，不把开发 Link 当成安装包。Node 是迁移制品和 checksum 的权威校验端。
 5. 对 `migrations/*.sql` 只先生成一次性 dry-run 计划；计划必须显示版本、checksum、事务要求、到期时间和待执行项。
@@ -160,6 +160,6 @@ pnpm admin-plugin:assemble-clean-host -- \
 
 ## 3. 当前发布边界
 
-不可变 `.phoenix.cool` 的 build/verify、全文件 SHA、确定性与原子不覆盖门禁已经落地；Node clean Host production build 也已通过，并复制出 Pah descriptor 与两条 SQL。两个专用隔离 PostgreSQL 16 库已完成 `0.6.1 → 0.6.2`、真实备份/恢复、停用、普通卸载保留 9 张表/7 类字典/ledger/assignment 和重装不重放 migration 的历史闭环。`0.7.0` 又在生产模拟 Admin 中初步跑通安装、启用、停用和普通卸载，但操作步骤仍较多，同版本重装与跨版本升级继续作为独立验收项，不把本次初步验证写成全自动生产发布完成。Phoenix Wing 0.6.2 已进入公开 Registry，正式装配仍必须使用精确 Registry 版本并通过当次 clean Host production build；禁止用临时 `file:`/override 或相邻源码冒充生产通过。
+不可变 `.phoenix.cool` 的 build/verify、全文件 SHA、确定性与原子不覆盖门禁已经落地；Node clean Host production build 也已通过，并复制出 Pah descriptor 与两条 SQL。两个专用隔离 PostgreSQL 16 库已完成 `0.6.1 → 0.6.2`、真实备份/恢复、停用、普通卸载保留 9 张表/7 类字典/ledger/assignment 和重装不重放 migration 的历史闭环。`0.7.0` 又在生产模拟 Admin 中初步跑通安装、启用、停用和普通卸载，但操作步骤仍较多，同版本重装与跨版本升级继续作为独立验收项，不把本次初步验证写成全自动生产发布完成。正式装配精确使用 Registry `phoenix-wing@0.7.1`，并必须通过当次 clean Host production build；禁止用临时 `file:`/override 或相邻源码冒充生产通过。
 
-详细验收状态见 [迁移审计](admin-plugin-rectification/迁移审计.md) 和 [用户点检表](admin-plugin-rectification/用户点检表.md)。开发挂载的命名与联调背景见 [Phoenix Admin 开发联调](admin-plugin-rectification/开发联调.md)。
+详细验收状态见[用户点检表](admin-plugin-rectification/用户点检表.md)。开发挂载的命名与联调背景见 [Phoenix Admin 开发联调](admin-plugin-rectification/开发联调.md)。

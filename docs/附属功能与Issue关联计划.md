@@ -59,7 +59,7 @@ toUserId: string | null
 - `targetType=user` 且待处理：`toUserId` 必填、`toListId` 为空。
 - 用户推送被接受后写入接收人选择的 `toListId`，同时保留 `toUserId` 作为审计信息。
 - `status` 使用待处理、已接受、已拒绝、已撤回四种状态。
-- SQLite 与 PostgreSQL 迁移、约束和索引必须保持一致。
+- 插件领域规则、PostgreSQL migration、导入与维护修正必须保持一致。
 
 ### 4. API 与界面
 
@@ -80,7 +80,7 @@ toUserId: string | null
 
 ### 6. 实施顺序
 
-- [x] 补服务端目标类型、可空目标字段和 SQLite/PostgreSQL 迁移。
+- [x] 补服务端目标类型、可空目标字段和 PostgreSQL migration。
 - [x] 收敛发送、接收、拒绝、撤回权限，并用 `status=pending` 条件更新防止重复处理。
 - [x] 改造推送弹窗和个人推送历史，接受用户推送时选择目标列表。
 - [x] 补推送状态筛选、最终列表与指定接收人审计信息。
@@ -120,15 +120,14 @@ relatedIssueId?: string | null
 | 数据库 | 字段建议 | 约束 |
 |---|---|---|
 | PostgreSQL | `relatedIssueId TEXT NULL` | 普通索引；应用层校验与维护修正 |
-| SQLite | `relatedIssueId TEXT NULL` | 普通索引；应用层校验与维护修正 |
 
 补充规则：
 
 - 新建数据库直接包含 `eightDReports` 表与关联/创建人索引。
 - 已有数据库通过版本化迁移建表；旧 Issue 中非空 D3/D4/D5-D6 内容按确定 ID 一次性复制为 8D 报告，不覆盖原正文。
-- SQLite 与 PostgreSQL 的新增、修改、删除行为必须一致。
+- 插件领域测试与 PostgreSQL migration 的新增、修改、删除语义必须一致。
 - 当前 Issue 删除是“转为已取消”而非物理删除，因此关联保持。若导入或人工维护造成目标 Issue 缺失，数据库修正会把报告转为独立报告，正文不删除。
-- 当前 SQLite 兼容层关闭数据库外键，不伪造跨库不一致的 FK；由服务层写入校验、读取权限和维护任务共同保证。未来统一启用外键时再升级为 `ON DELETE SET NULL`。
+- 当前由服务层写入校验、读取权限和维护任务共同保证关联完整性；若未来增加数据库外键，使用可审计 migration 升级为 `ON DELETE SET NULL`。
 - 数据库维护/表结构补全检查字段与索引；备份/受限导出包含有权访问的 8D 报告。
 
 ### 4. API 与权限
@@ -183,7 +182,7 @@ relatedIssueId?: string | null
 
 - [x] 选择 8D 报告作为首个真实附属功能，不建设空泛框架。
 - [x] Core/API 使用 `relatedIssueId?: string | null`，一个 Issue 可有多份 8D 报告。
-- [x] SQLite/PostgreSQL 增加一致的版本化迁移与索引，旧正文安全复制。
+- [x] PostgreSQL 增加版本化 migration 与索引，legacy 正文由受控导入安全复制。
 - [x] 服务层实现存在性、读取隔离、写权限、软删除与失效关联修正。
 - [x] 独立 8D 页面支持新增、编辑、删除、关联、改绑、解绑；Issue 详情支持关联报告增删改查。
 - [x] 增加独立报告、关联报告、越权访问、旧库迁移和双数据库迁移测试。
@@ -196,7 +195,7 @@ relatedIssueId?: string | null
 - 有权限的用户可以关联、改绑和解绑一个 Issue。
 - 无目标 Issue 查看权限的用户不能新建或修改关联，也不会看到受限 Issue 信息。
 - 物理移除 Issue 后通过数据库修正将附属记录保留并把 `relatedIssueId` 置为 `NULL`；正常业务“删除”仅取消 Issue，不解除关联。
-- PostgreSQL 是正式支持数据库；迁移不修改历史记录的业务内容。SQLite 仅保留过渡期测试/旧库兼容，后续按 `TODO.md` 独立移除。
+- PostgreSQL 是唯一正式数据库；migration 和受控导入不改写历史正文。
 - Issue 核心表单和 Core `Issue` 类型不再含 8D 专用字段；旧数据库列只为回滚兼容保留且不再写入。
 
 ## 实现位置与后续边界

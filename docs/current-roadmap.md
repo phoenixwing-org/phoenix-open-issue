@@ -2,34 +2,24 @@
 
 状态：current
 
-Owner：Open Issue maintainers
+适用版本：0.7.2
 
-适用版本：0.7.x
+最后核验：2026-08-26
 
-最后核验：2026-08-09
+## 当前基线
 
-## 已完成基线
-
-- v0.1–v0.4 已覆盖基础 CRUD、多列表关联、汽车行业字段、推送/点检、数据字典、Linux 部署、数据保护与双数据库 adapter；该 adapter 现仅作历史迁移兼容。
-- **当前包版本 `0.7.2`**：Open Issue 已收敛为 Phoenix Admin 声明式业务插件，使用 `.phoenix.cool` 不可变制品；本补丁版本在既有 Windows 测试整改基础上适配 Registry `phoenix-wing@0.7.1`。Windows 整改实现、复检边界和历史制品证据见 [Windows 测试整改归档](CHANGELOG.md#windows-测试整改归档open-issue-部分)。
-- 8D 使用可空 `eightDReports.relatedIssueId` 验证附属能力，不建设通用关联表；Issue 新增 `extensions JSONB` 只承载轻量扩展属性，不保存附属关系或动态表单。只有出现多目标、关系元数据或跨模块统一查询时再升级关联模型。实现边界见[扩展能力计划](附属功能与Issue关联计划.md)。
-- 仪表盘已增加[待办中心](仪表盘待办中心.md)，按责任视角聚合待我处理、我发起的推送和管理员审批；不建设重复的通用任务表。
-- 生产包与开发门禁精确要求 Registry `phoenix-wing@0.7.1`，不把相邻源码或 Wing 本地构建收入制品；singleton、Ribbon/Tree 工作台、View contribution、依赖来源和自动测试继续由门禁验证。scoped 依赖按发布矩阵解析为 `@phoenix-wing/code-core@0.6.4` 与 `@phoenix-wing/db-node@0.6.3`。
-- `codex/single-pnw-workbench` 已完成 `PnwWorkbenchShell` 真实消费者验证；受控并列 resolver 仅用于后续 Wing 源码候选联调，不修改 Registry 依赖图，也不与 `develop/admin-plugin` 迁移线合并语义。
-- `@open-issue/core` 保持纯 TypeScript，前后端共享类型和算法但不引入 Vue、Express 或数据库驱动。
-- 飞书 OAuth 二期设计归档：`docs/第三方登录/`；表结构点检纳入设置「表结构补全」。真实飞书点检已通过（2026-07-21）。
+- 仓库只维护 Phoenix Admin 声明式业务插件，不再维护独立 Web、Express Server 或独立 Core 包。
+- Vue、Midway、领域算法、类型、PostgreSQL migration 和插件测试均归入 `packages/admin-plugin/`。
+- 正式交付使用不可变 `.phoenix.cool` 制品；开发 Link/Junction 不能作为安装包。
+- 插件精确消费 Registry `phoenix-wing@0.7.1`，不探测相邻源码，也不使用 `link:`、`file:` 或 workspace override。
+- 业务数据使用 `oip_*` PostgreSQL 表；生产禁止 TypeORM `synchronize`，迁移必须经过 manifest 校验、dry-run、可信备份和 ledger。
+- 8D 使用可空 `relatedIssueId`；Issue 的 `extensions JSONB` 只承载轻量扩展属性，不保存附属关系。
 
 ## 当前优先级
 
-1. 将权限细化、搜索/全文检索、Issue 拖拽排序和头像上传拆成可关闭 Issue，并明确 owner、里程碑和验收证据。
-2. PostgreSQL 作为唯一正式支持数据库；旧本地数据库兼容进入弃用过渡期，完整移除工作见 `admin-plugin-rectification/TODO.md`。
-3. `@open-issue/core` 是否公开发布由第二个消费者与 API 稳定性决定，不为追求包数量提前拆 `@open-issue/ui`。
+1. 在冻结的 Phoenix Admin Vue/Node Host 上持续验证插件安装、升级、停用、普通卸载保留数据与重装恢复。
+2. 保持 capability、列表角色和稳定 Host 用户 ID 的权限边界，列表与详情统一显示 Host 批量解析后的用户名称。
+3. 每次 Wing 或 Host 契约升级都运行插件完整门禁、双端类型检查和真实浏览器关键旅程。
+4. 新功能只进入插件命名空间；Host-owned 的登录、组织、全局字典、备份和全局导航不在本仓复制实现。
 
-## 文档合并关系
-
-- `计划.md` 与 `开发计划.md` 的当前架构/ADR 已由架构设计和本路线承接。
-- `功能表计划.md` 的已实现数据模型由 API、数据字典和代码测试承接。
-- `TODO.md` 与 `待办点检.md` 的未完成事项已合并到“当前优先级”；后续应迁入系统内真实 Issue。
-- 完成态 v0.4 计划和界面巡游计划只保留历史证据。
-
-大型 `AppShell`/详情页面拆分不属于 84.75 → 92.5 当前门禁；达到联合目标后另立 UI 治理任务。
+历史独立站版本、SQLite/双数据库计划和迁移讨论仍可从 Git 历史查阅，但不再作为当前实现或发布依据。

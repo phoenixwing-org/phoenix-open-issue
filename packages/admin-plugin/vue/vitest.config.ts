@@ -1,4 +1,10 @@
 import { fileURLToPath } from 'node:url'
+import path from 'node:path'
+
+const repoRoot = fileURLToPath(new URL('../../..', import.meta.url))
+const hostRoot = process.env.PHOENIX_ADMIN_VUE_ROOT
+  ? path.resolve(process.env.PHOENIX_ADMIN_VUE_ROOT)
+  : path.resolve(repoRoot, '../phoenix-admin-vue')
 
 export default {
   root: fileURLToPath(new URL('.', import.meta.url)),
@@ -26,11 +32,11 @@ export default {
       },
       {
         find: 'pinia',
-        replacement: fileURLToPath(new URL('../../../../phoenix-admin-vue/node_modules/pinia', import.meta.url)),
+        replacement: path.join(hostRoot, 'node_modules/pinia'),
       },
       {
         find: /^vue$/,
-        replacement: fileURLToPath(new URL('../../../../phoenix-admin-vue/node_modules/vue', import.meta.url)),
+        replacement: path.join(hostRoot, 'node_modules/vue'),
       },
     ],
   },

@@ -3,13 +3,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const manifestFiles = [
-  "package.json",
-  "packages/core/package.json",
-  "packages/server/package.json",
-  "packages/web/package.json",
-  "packages/admin-plugin/package.json",
-];
+const manifestFiles = ["packages/admin-plugin/package.json"];
 const dependencySections = [
   "dependencies",
   "devDependencies",
@@ -31,7 +25,7 @@ for (const relative of manifestFiles) {
       if (!/^\d+\.\d+\.\d+$/u.test(specifier)) {
         throw new Error(`${relative} ${section}.${name} must use an exact Registry version, got ${specifier}`);
       }
-      wingDependencies.set(`${relative}:${name}`, { name, specifier });
+      wingDependencies.set(`${relative}:${section}:${name}`, { name, specifier });
     }
   }
   for (const [name, target] of Object.entries(manifest.pnpm?.overrides ?? {})) {
@@ -64,7 +58,7 @@ for (const { name, specifier } of wingDependencies.values()) {
 
 const installedWingManifestPath = path.join(
   root,
-  "packages/web/node_modules/phoenix-wing/package.json",
+  "packages/admin-plugin/node_modules/phoenix-wing/package.json",
 );
 const installedWingRealPath = fs.realpathSync(installedWingManifestPath);
 const registryStoreRoot = `${path.join(root, "node_modules/.pnpm")}${path.sep}`;
@@ -90,11 +84,6 @@ for (const [name, expectedVersion] of Object.entries(expectedPublishedDependenci
   if (hasLockResolution(name, expectedWingVersion)) {
     throw new Error(`${name} must not be inferred as ${expectedWingVersion}`);
   }
-}
-
-const viteConfig = fs.readFileSync(path.join(root, "packages/web/vite.config.ts"), "utf8");
-if (/exclude\s*:\s*\[[^\]]*["']phoenix-wing["']/su.test(viteConfig)) {
-  throw new Error("packages/web/vite.config.ts must not restore the pre-0.4.2 phoenix-wing optimizeDeps workaround");
 }
 
 process.stdout.write(

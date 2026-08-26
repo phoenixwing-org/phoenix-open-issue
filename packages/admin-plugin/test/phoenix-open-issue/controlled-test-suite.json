@@ -6,10 +6,10 @@
   "toolVersionRange": ">=3.2.7 <3.3.0",
   "config": {
     "path": "packages/admin-plugin/vue/vitest.config.ts",
-    "sha256": "16c71f5c7cde5a7dabc07fe9535c86bfacfd4bce51d71c42621bcf3d3de9c333"
+    "sha256": "764a18bd613253ddb1aa7b8c9c365b198a9c49836209c017d2c4292b38c43523"
   },
-  "expectedFileCount": 23,
-  "expectedCaseCount": 134,
+  "expectedFileCount": 26,
+  "expectedCaseCount": 144,
   "tests": [
     {
       "id": "domain:function",
@@ -58,7 +58,7 @@
       "filePath": "packages/admin-plugin/test/phoenix-open-issue/domain/test-runner.test.ts",
       "packageName": "domain",
       "caseCount": 4,
-      "sha256": "83dd4ee751e30af7e4e67cf9233c06dbff4455028fa13622934fad85a6734c18"
+      "sha256": "37c167522b5bd679ec1d885a9bf4dfdaf861ef47e2663930b8070df9161eba6a"
     },
     {
       "id": "service:access",
@@ -103,11 +103,25 @@
       "sha256": "89201a66f8a1c9c0e416b290d2deb31c270ec1deca4485d0f23742e07abb2689"
     },
     {
+      "id": "contract:table",
+      "filePath": "packages/admin-plugin/test/scripts/admin-plugin-table-contract.test.ts",
+      "packageName": "contract",
+      "caseCount": 3,
+      "sha256": "a167a64d8e258026c40f0e674cda7afa7e3c691891bda9ce209e37fbe7c74dd1"
+    },
+    {
       "id": "contract:view-layout",
       "filePath": "packages/admin-plugin/test/scripts/admin-plugin-view-layout.test.ts",
       "packageName": "contract",
       "caseCount": 11,
       "sha256": "a48de6ec829c7885f02e3845beebae734ec3584ea8d77c58580f32b4d2fb2359"
+    },
+    {
+      "id": "contract:windows-junction",
+      "filePath": "packages/admin-plugin/test/scripts/windows-junction-mount.test.ts",
+      "packageName": "contract",
+      "caseCount": 3,
+      "sha256": "b7ed24813628b8dfead331f3a2d0ae52e4749eeb375ff88e9b8dd850bda33063"
     },
     {
       "id": "core:dict-catalog",
@@ -149,7 +163,14 @@
       "filePath": "packages/admin-plugin/vue/phoenix-open-issue/core/algorithms/legacy-import.test.ts",
       "packageName": "core",
       "caseCount": 5,
-      "sha256": "7382e1006fcf3712ff36fc46ee18d460d7aa55ed4c5fc1deef1cabec241a9161"
+      "sha256": "145d8084b84908fea9b93b272db394172a13bfd97e26f111a3c005c6f1bb42db"
+    },
+    {
+      "id": "core:primary-section-state",
+      "filePath": "packages/admin-plugin/vue/phoenix-open-issue/core/algorithms/primary-section-state.test.ts",
+      "packageName": "core",
+      "caseCount": 4,
+      "sha256": "e8937bf88b7aa1ece39ed7ab5eea9514b8e39c57670aaf3e5e814e0917292cb6"
     },
     {
       "id": "core:permission",
