@@ -5,10 +5,22 @@ import { useIssueStore } from '/$/phoenix-open-issue/stores/issues'
 import { useSettingsStore } from '/$/phoenix-open-issue/stores/settings'
 import { getAllUsers } from '/$/phoenix-open-issue/api/auth'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { Edit, FullScreen, Promotion } from '@element-plus/icons-vue'
+import { Edit, Promotion } from '@element-plus/icons-vue'
+import {
+  PnwViewPresentationPortal,
+  pnwCreateViewPresentationRecord,
+} from 'phoenix-wing'
 import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
+import { usePhoenixViewDialog } from '/@/pah/PahViewDialogs'
 import PageHelpButton from "/$/phoenix-open-issue/components/PageHelpButton.vue"
-import IssueFormDialog from '/$/phoenix-open-issue/components/IssueFormDialog.vue'
+import {
+  ISSUE_FORM_DIALOG_RENDERER_ID,
+  ISSUE_FORM_DIALOG_SIZE,
+  issueFormDialogInitial,
+  issueFormDialogUsers,
+  type IssueFormDialogProps,
+  type IssueFormDialogResult,
+} from '/$/phoenix-open-issue/components/issueFormDialog'
 import PushDialog from '/$/phoenix-open-issue/views/push/PushDialog.vue'
 import { useDictStore } from '/$/phoenix-open-issue/stores/dict'
 import PoiIssueDetailPrimary from '/$/phoenix-open-issue/components/workbench/PoiIssueDetailPrimary.vue'
@@ -22,26 +34,23 @@ import { useIssueCapabilities } from '/$/phoenix-open-issue/composables/useIssue
 
 const dict = useDictStore()
 
-const props = defineProps<{ issueId?: string }>()
-const emit = defineEmits<{ close: []; 'checkpoint-created': [] }>()
 const route = useRoute()
 const router = useRouter()
 const issueStore = useIssueStore()
 const settings = useSettingsStore()
 const capabilities = useIssueCapabilities()
-const issueId = props.issueId || (route.params.id as string)
+const viewDialog = usePhoenixViewDialog()
+const issueId = route.params.id as string
+const currentIssue = computed(() => issueStore.getIssueById(issueId))
 const updateTabTitle = inject<(pageId: string, title: string) => void>('updateTabTitle', () => {})
-
-// 判断是否为模态模式（有 props.issueId 说明是弹窗）
-const isModal = computed(() => !!props.issueId)
-
-function openAsPage() {
-  emit('close')
-  void router.push(`/open-issue/issue/${issueId}`)
-}
+const presentationRecord = ref(pnwCreateViewPresentationRecord({
+  rendererId: 'phoenix-open-issue.view.issue-detail',
+  viewInstanceId: `phoenix-open-issue.issue-detail:${issueId}`,
+  ownerTabId: `issueDetail:${issueId}`,
+  instanceKey: `issue:${issueId}`,
+}))
 
 const showPush = ref(false)
-const showEdit = ref(false)
 const showReportDialog = ref(false)
 const editingReport = ref<ReportView | null>(null)
 interface ReportView extends EightDReport {
@@ -50,12 +59,12 @@ interface ReportView extends EightDReport {
 }
 const reports = ref<ReportView[]>([])
 const allUsers = ref<any[]>([])
-const hasIssueWriteAccess = computed(() => Boolean((issueStore.currentIssue as any)?._canModify))
+const hasIssueWriteAccess = computed(() => Boolean((currentIssue.value as any)?._canModify))
 const canModify = computed(() =>
   hasIssueWriteAccess.value && capabilities.can('phoenix-open-issue:issue:update'),
 )
 const canPush = computed(() =>
-  Boolean((issueStore.currentIssue as any)?._canPush) &&
+  Boolean((currentIssue.value as any)?._canPush) &&
   capabilities.can('phoenix-open-issue:push:create'),
 )
 const canWriteReports = computed(() =>
@@ -88,19 +97,18 @@ const dimensionLabels = computed(() => ({
   ])) as Record<string, string>,
 }))
 const has8d = computed(() => reports.value.length > 0)
-const hasDescription = computed(() => Boolean(issueStore.currentIssue?.description))
+const hasDescription = computed(() => Boolean(currentIssue.value?.description))
 
 function scrollToIssueSection(sectionId: string): void {
   document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
 }
 
 function goBack() {
-  if (props.issueId) { emit('close'); return }
   router.back()
 }
 
 const issuePrimaryContributionProps = computed(() => {
-  const issue = issueStore.currentIssue
+  const issue = currentIssue.value
   return {
     viewKey: `phoenix-open-issue-issue-detail:${issueId}`,
     issueNo: issue?.issueNo ?? '',
@@ -114,7 +122,7 @@ const issuePrimaryContributionProps = computed(() => {
   }
 })
 usePoiViewContribution(
-  () => isModal.value ? null : route.fullPath,
+  () => route.fullPath,
   {
     primary: {
       component: PoiIssueDetailPrimary,
@@ -177,10 +185,10 @@ onMounted(async () => {
   allUsers.value = usersResponse.data
   if (reportsResponse) reports.value = reportsResponse.data
   // 更新标签标题
-  if (!isModal.value && issueStore.currentIssue) {
-    const label = issueStore.currentIssue.title.length > 16
-      ? issueStore.currentIssue.title.slice(0, 16) + '…'
-      : issueStore.currentIssue.title
+  if (currentIssue.value) {
+    const label = currentIssue.value.title.length > 16
+      ? currentIssue.value.title.slice(0, 16) + '…'
+      : currentIssue.value.title
     updateTabTitle(`issueDetail:${issueId}`, `📋 ${label}`)
   }
 })
@@ -196,18 +204,36 @@ function formatDate(d: string | null): string {
   return d.slice(0, 10)
 }
 
-async function onEditIssue(data: any) {
+async function onEditIssue(data: IssueFormDialogResult) {
   if (!canModify.value) return
   await issueStore.updateIssue(issueId, data)
-  showEdit.value = false
   ElMessage.success('Issue 已更新')
 }
 
-const reportIssueOptions = computed<EightDReportIssueOption[]>(() => issueStore.currentIssue ? [{
-  id: issueStore.currentIssue.id,
-  issueNo: issueStore.currentIssue.issueNo,
-  title: issueStore.currentIssue.title,
-  listName: issueStore.currentIssue.originListName ?? '',
+async function openEditIssue() {
+  if (!canModify.value || !currentIssue.value) return
+  const outcome = await viewDialog.open<IssueFormDialogProps, IssueFormDialogResult>({
+    rendererId: ISSUE_FORM_DIALOG_RENDERER_ID,
+    instanceKey: `edit:${issueId}`,
+    title: '编辑 Issue',
+    props: {
+      allUsers: issueFormDialogUsers(activeUsers.value),
+      initial: issueFormDialogInitial(currentIssue.value as unknown as Record<string, unknown>),
+    },
+    size: ISSUE_FORM_DIALOG_SIZE,
+  })
+  if (outcome.status === 'failed') {
+    ElMessage.error(`打开 Issue 编辑器失败：${outcome.message}`)
+    return
+  }
+  if (outcome.status === 'submitted') await onEditIssue(outcome.value)
+}
+
+const reportIssueOptions = computed<EightDReportIssueOption[]>(() => currentIssue.value ? [{
+  id: currentIssue.value.id,
+  issueNo: currentIssue.value.issueNo,
+  title: currentIssue.value.title,
+  listName: currentIssue.value.originListName ?? '',
 }] : [])
 
 async function reloadReports() {
@@ -249,16 +275,24 @@ async function removeReport(report: ReportView) {
 
 <template>
   <div class="page">
-    <PnwPageHeader :title="issueStore.currentIssue?.title || 'Issue 详情'">
+    <PnwViewPresentationPortal
+      v-model:record="presentationRecord"
+      :title="currentIssue?.title || 'Issue 详情'"
+      aria-label="Issue 详情"
+    >
+      <template #header="{ mode, detach }">
+    <PnwPageHeader
+      :title="currentIssue?.title || 'Issue 详情'"
+      :presentation-detachable="mode === 'embedded'"
+      :presentation-mode="mode"
+      @detach-view="detach"
+    >
       <template #actions>
-        <div v-if="isModal || (issueStore.currentIssue && (canModify || canPush))" class="header-actions" data-tour="issue-actions">
-          <el-button v-if="isModal" size="small" plain @click="openAsPage" title="在页面中打开，可使用帮助和巡游">
-            <el-icon><FullScreen /></el-icon> 页面模式
-          </el-button>
-          <el-button v-if="issueStore.currentIssue && canModify" size="small" type="primary" plain @click="showEdit = true">
+        <div v-if="currentIssue && (canModify || canPush)" class="header-actions" data-tour="issue-actions">
+          <el-button v-if="currentIssue && canModify" size="small" type="primary" plain @click="openEditIssue">
             <el-icon><Edit /></el-icon> 编辑
           </el-button>
-          <el-tooltip v-if="issueStore.currentIssue && canPush" content="推送到其他列表" placement="bottom">
+          <el-tooltip v-if="currentIssue && canPush" content="推送到其他列表" placement="bottom">
             <el-button
               size="small"
               type="warning"
@@ -275,7 +309,7 @@ async function removeReport(report: ReportView) {
       <template #help>
         <div class="header-right">
           <PageHelpButton page-id="issueDetail" />
-          <button class="hdr-btn-close" @click="goBack" title="关闭">
+          <button v-if="mode === 'embedded'" class="hdr-btn-close" @click="goBack" title="关闭">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M4 4L12 12M12 4L4 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
             </svg>
@@ -283,56 +317,59 @@ async function removeReport(report: ReportView) {
         </div>
       </template>
     </PnwPageHeader>
+      </template>
+
+      <template #main>
+    <div class="issue-view-main">
 
     <div
-      v-if="issueStore.currentIssue"
+      v-if="currentIssue"
       ref="issueWorkspace"
       class="issue-workspace"
-      :class="{ 'issue-workspace--modal': isModal }"
       :style="{ '--issue-timeline-width': `${settings.issueTimelineWidth}px` }"
     >
       <div class="issue-detail">
       <div class="detail-meta" data-tour="issue-meta">
-        <span class="issue-no">{{ issueStore.currentIssue.issueNo }}</span>
-        <el-tag :type="statusTag[issueStore.currentIssue.status]">
-          {{ statusLabel[issueStore.currentIssue.status] }}
+        <span class="issue-no">{{ currentIssue.issueNo }}</span>
+        <el-tag :type="statusTag[currentIssue.status]">
+          {{ statusLabel[currentIssue.status] }}
         </el-tag>
-        <el-tag v-if="issueStore.currentIssue.originListName" type="info" effect="plain">
-          归属：{{ issueStore.currentIssue.originListName }}
+        <el-tag v-if="currentIssue.originListName" type="info" effect="plain">
+          归属：{{ currentIssue.originListName }}
         </el-tag>
         <el-tooltip
-          v-if="issueStore.currentIssue.listCount >= 2"
-          :content="`当前关联 ${issueStore.currentIssue.listCount} 个点检表`"
+          v-if="currentIssue.listCount >= 2"
+          :content="`当前关联 ${currentIssue.listCount} 个点检表`"
           placement="top"
         >
-          <el-tag type="primary" effect="plain">关联点检表 {{ issueStore.currentIssue.listCount }}</el-tag>
+          <el-tag type="primary" effect="plain">关联点检表 {{ currentIssue.listCount }}</el-tag>
         </el-tooltip>
-        <span class="meta-time">创建于 {{ new Date(issueStore.currentIssue.createdAt).toLocaleString('zh-CN') }}</span>
+        <span class="meta-time">创建于 {{ new Date(currentIssue.createdAt).toLocaleString('zh-CN') }}</span>
       </div>
 
       <!-- 基本信息 -->
       <el-descriptions id="issue-basic" title="基本信息" :column="2" border size="small" class="detail-desc-block" data-tour="issue-basic">
         <el-descriptions-item label="重要度">
-          <el-tag :type="severityTag[issueStore.currentIssue.severity]" size="small" effect="dark">
-            {{ dimensionLabels.importance[issueStore.currentIssue.severity] }}
+          <el-tag :type="severityTag[currentIssue.severity]" size="small" effect="dark">
+            {{ dimensionLabels.importance[currentIssue.severity] }}
           </el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="紧急度">
-          <el-tag :type="priorityTag[issueStore.currentIssue.priority]" size="small">
-            {{ dimensionLabels.urgency[issueStore.currentIssue.priority] }}
+          <el-tag :type="priorityTag[currentIssue.priority]" size="small">
+            {{ dimensionLabels.urgency[currentIssue.priority] }}
           </el-tag>
         </el-descriptions-item>
         <el-descriptions-item label="问题分类">
-          {{ dict.getLabel('issueCategory', issueStore.currentIssue.category) || '—' }}
+          {{ dict.getLabel('issueCategory', currentIssue.category) || '—' }}
         </el-descriptions-item>
         <el-descriptions-item label="发现阶段">
-          {{ dict.getLabel('detectionPhase', issueStore.currentIssue.detectionPhase) || '—' }}
+          {{ dict.getLabel('detectionPhase', currentIssue.detectionPhase) || '—' }}
         </el-descriptions-item>
         <el-descriptions-item label="关联功能">
-          <template v-if="(issueStore.currentIssue as any)._functionName">
-            {{ (issueStore.currentIssue as any)._functionPlatform }}
-            <el-tag size="small" type="info" style="margin:0 6px">{{ (issueStore.currentIssue as any)._functionExternalId }}</el-tag>
-            {{ (issueStore.currentIssue as any)._functionName }}
+          <template v-if="(currentIssue as any)._functionName">
+            {{ (currentIssue as any)._functionPlatform }}
+            <el-tag size="small" type="info" style="margin:0 6px">{{ (currentIssue as any)._functionExternalId }}</el-tag>
+            {{ (currentIssue as any)._functionName }}
           </template>
           <template v-else>—</template>
         </el-descriptions-item>
@@ -341,31 +378,31 @@ async function removeReport(report: ReportView) {
       <!-- 人员与日期 -->
       <el-descriptions id="issue-people" title="人员与日期" :column="2" border size="small" class="detail-desc-block">
         <el-descriptions-item label="提出人">
-          <template v-if="issueStore.currentIssue.reporterId">👤{{ getUserName(issueStore.currentIssue.reporterId, issueStore.currentIssue.reporterName) }}</template>
+          <template v-if="currentIssue.reporterId">👤{{ getUserName(currentIssue.reporterId, currentIssue.reporterName) }}</template>
           <span v-else>—</span>
         </el-descriptions-item>
         <el-descriptions-item label="责任人">
-          <template v-if="issueStore.currentIssue.assigneeId">👤{{ getUserName(issueStore.currentIssue.assigneeId, issueStore.currentIssue.assigneeName) }}</template>
+          <template v-if="currentIssue.assigneeId">👤{{ getUserName(currentIssue.assigneeId, currentIssue.assigneeName) }}</template>
           <span v-else>—</span>
         </el-descriptions-item>
         <el-descriptions-item label="录入人">
-          <template v-if="issueStore.currentIssue.createdBy">👤{{ getUserName(issueStore.currentIssue.createdBy, issueStore.currentIssue.creatorName) }}</template>
+          <template v-if="currentIssue.createdBy">👤{{ getUserName(currentIssue.createdBy, currentIssue.creatorName) }}</template>
           <span v-else>—</span>
         </el-descriptions-item>
-        <el-descriptions-item label="截止日">{{ formatDate(issueStore.currentIssue.dueDate) }}</el-descriptions-item>
-        <el-descriptions-item label="实际完成日">{{ formatDate(issueStore.currentIssue.completedAt) }}</el-descriptions-item>
-        <el-descriptions-item label="更新于">{{ new Date(issueStore.currentIssue.updatedAt).toLocaleString('zh-CN') }}</el-descriptions-item>
+        <el-descriptions-item label="截止日">{{ formatDate(currentIssue.dueDate) }}</el-descriptions-item>
+        <el-descriptions-item label="实际完成日">{{ formatDate(currentIssue.completedAt) }}</el-descriptions-item>
+        <el-descriptions-item label="更新于">{{ new Date(currentIssue.updatedAt).toLocaleString('zh-CN') }}</el-descriptions-item>
       </el-descriptions>
 
       <!-- 结束信息（仅已完成/已取消时显示） -->
-      <el-descriptions v-if="issueStore.currentIssue.status === 'closed' || issueStore.currentIssue.status === 'cancelled'" title="结束信息" :column="2" border size="small" class="detail-desc-block">
+      <el-descriptions v-if="currentIssue.status === 'closed' || currentIssue.status === 'cancelled'" title="结束信息" :column="2" border size="small" class="detail-desc-block">
         <el-descriptions-item label="结束原因">
-          <el-tag v-if="issueStore.currentIssue.closeReason" size="small" type="info">
-            {{ dict.getLabel('closeReason', issueStore.currentIssue.closeReason) }}
+          <el-tag v-if="currentIssue.closeReason" size="small" type="info">
+            {{ dict.getLabel('closeReason', currentIssue.closeReason) }}
           </el-tag>
           <span v-else>—</span>
         </el-descriptions-item>
-        <el-descriptions-item label="确认人">{{ getUserName(issueStore.currentIssue.closedBy, issueStore.currentIssue.closedByName) }}</el-descriptions-item>
+        <el-descriptions-item label="确认人">{{ getUserName(currentIssue.closedBy, currentIssue.closedByName) }}</el-descriptions-item>
       </el-descriptions>
 
       <!-- 独立附属功能：关联只引用 Issue，不占用 Issue 主表字段。 -->
@@ -393,9 +430,9 @@ async function removeReport(report: ReportView) {
         </el-card>
       </section>
 
-      <div id="issue-description" class="detail-desc" v-if="issueStore.currentIssue.description">
+      <div id="issue-description" class="detail-desc" v-if="currentIssue.description">
         <h4>描述</h4>
-        <p>{{ issueStore.currentIssue.description }}</p>
+        <p>{{ currentIssue.description }}</p>
       </div>
       </div>
 
@@ -413,25 +450,17 @@ async function removeReport(report: ReportView) {
       <IssueCheckpointTimeline
         class="issue-timeline-block"
         :issue-id="issueId"
-        :issue-title="issueStore.currentIssue.title"
-        :issue-no="issueStore.currentIssue.issueNo"
+        :issue-title="currentIssue.title"
+        :issue-no="currentIssue.issueNo"
         :can-create="canCreateCheckpoint"
         :can-update="canUpdateCheckpoint"
-        @checkpoint-created="emit('checkpoint-created')"
       />
     </div>
 
-    <IssueFormDialog
-      v-if="showEdit"
-      :all-users="activeUsers"
-      :initial="issueStore.currentIssue"
-      @confirm="onEditIssue"
-      @close="showEdit = false"
-    />
     <PushDialog
-      v-if="showPush && issueStore.currentIssue"
-      :list-id="issueStore.currentIssue.listId"
-      :preselected-issue-ids="[issueStore.currentIssue.id]"
+      v-if="showPush && currentIssue"
+      :list-id="currentIssue.listId"
+      :preselected-issue-ids="[currentIssue.id]"
       @close="showPush = false"
     />
     <EightDReportDialog
@@ -443,6 +472,9 @@ async function removeReport(report: ReportView) {
       @confirm="saveReport"
       @close="showReportDialog = false"
     />
+    </div>
+      </template>
+    </PnwViewPresentationPortal>
   </div>
 </template>
 
@@ -549,5 +581,17 @@ async function removeReport(report: ReportView) {
     border-top: 1px solid var(--el-border-color-lighter, #ebeef5);
   }
 }
-.page { box-sizing: border-box; padding: 16px; color: var(--el-text-color-primary, #253047); background: var(--el-bg-color-page, #f5f7fa); }
+.page {
+  box-sizing: border-box;
+  min-height: 0;
+  color: var(--el-text-color-primary, #253047);
+  background: var(--el-bg-color-page, #f5f7fa);
+}
+.issue-view-main {
+  box-sizing: border-box;
+  min-height: 0;
+  padding: 16px;
+  color: var(--el-text-color-primary, #253047);
+  background: var(--el-bg-color-page, #f5f7fa);
+}
 </style>

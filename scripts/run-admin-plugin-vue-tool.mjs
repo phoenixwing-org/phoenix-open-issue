@@ -74,6 +74,7 @@ try {
           '/@/cool': [path.join(fixtureRoot, 'fixture-cool.ts')],
           '/@/pah/PahViewContributions': [path.join(fixtureRoot, 'fixture-pah.ts')],
           '/@/pah/PahWorkbenchOutput': [path.join(fixtureRoot, 'fixture-pah-output.ts')],
+          '/@/pah/PahViewDialogs': [path.join(fixtureRoot, 'fixture-pah-view-dialog.ts')],
           '@element-plus/icons-vue': [hostDependency('@element-plus/icons-vue')],
           axios: [hostDependency('axios')],
           'element-plus': [hostDependency('element-plus')],

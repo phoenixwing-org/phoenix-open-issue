@@ -27,6 +27,10 @@ export default {
         replacement: fileURLToPath(new URL('../test/stubs/cool-midway-core.ts', import.meta.url)),
       },
       {
+        find: 'element-plus',
+        replacement: path.join(hostRoot, 'node_modules/element-plus'),
+      },
+      {
         find: 'typeorm',
         replacement: fileURLToPath(new URL('../test/stubs/typeorm.ts', import.meta.url)),
       },

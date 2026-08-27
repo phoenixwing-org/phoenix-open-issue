@@ -4,12 +4,38 @@ import { ElMessage } from 'element-plus'
 import * as api from '/$/phoenix-open-issue/api/issues'
 import type { Issue } from '/$/phoenix-open-issue/core'
 
+export interface IssueEntityRequestState {
+  requestId: number
+  loading: boolean
+  error: string | null
+}
+
 export const useIssueStore = defineStore('phoenix-open-issue-issues', () => {
   const issues = ref<Issue[]>([])
-  const currentIssue = ref<Issue | null>(null)
+  const issueById = ref<Record<string, Issue>>({})
+  const issueRequestById = ref<Record<string, IssueEntityRequestState>>({})
   const total = ref(0)
   const loading = ref(false)
   let fetchRequestId = 0
+
+  function getIssueById(id: string): Issue | null {
+    return issueById.value[id] ?? null
+  }
+
+  function getIssueRequestState(id: string): IssueEntityRequestState {
+    return issueRequestById.value[id] ?? { requestId: 0, loading: false, error: null }
+  }
+
+  function setIssueEntity(issue: Issue): void {
+    issueById.value = { ...issueById.value, [issue.id]: issue }
+  }
+
+  function removeIssueEntity(id: string): void {
+    if (!(id in issueById.value)) return
+    const next = { ...issueById.value }
+    delete next[id]
+    issueById.value = next
+  }
 
   async function fetchIssues(listId: string, params?: Record<string, any>) {
     const requestId = ++fetchRequestId
@@ -46,9 +72,36 @@ export const useIssueStore = defineStore('phoenix-open-issue-issues', () => {
   }
 
   async function fetchIssue(id: string) {
-    const res = await api.getIssue(id)
-    currentIssue.value = res.data
-    return res.data as Issue
+    const requestId = getIssueRequestState(id).requestId + 1
+    issueRequestById.value = {
+      ...issueRequestById.value,
+      [id]: { requestId, loading: true, error: null },
+    }
+    try {
+      const res = await api.getIssue(id)
+      const issue = res.data as Issue
+      if (getIssueRequestState(id).requestId === requestId) setIssueEntity(issue)
+      return getIssueById(id) ?? issue
+    } catch (error) {
+      if (getIssueRequestState(id).requestId === requestId) {
+        issueRequestById.value = {
+          ...issueRequestById.value,
+          [id]: {
+            requestId,
+            loading: true,
+            error: error instanceof Error ? error.message : 'Issue 加载失败',
+          },
+        }
+      }
+      throw error
+    } finally {
+      if (getIssueRequestState(id).requestId === requestId) {
+        issueRequestById.value = {
+          ...issueRequestById.value,
+          [id]: { ...getIssueRequestState(id), loading: false },
+        }
+      }
+    }
   }
 
   async function createIssue(listId: string, data: {
@@ -68,7 +121,7 @@ export const useIssueStore = defineStore('phoenix-open-issue-issues', () => {
     const res = await api.updateIssue(id, data)
     const idx = issues.value.findIndex(i => i.id === id)
     if (idx >= 0) issues.value[idx] = res.data
-    if (currentIssue.value?.id === id) currentIssue.value = res.data
+    setIssueEntity(res.data)
     ElMessage.success('Issue 已更新')
     return res.data as Issue
   }
@@ -77,7 +130,7 @@ export const useIssueStore = defineStore('phoenix-open-issue-issues', () => {
     const res = await api.updateIssueStatus(id, status)
     const idx = issues.value.findIndex(i => i.id === id)
     if (idx >= 0) issues.value[idx] = res.data
-    if (currentIssue.value?.id === id) currentIssue.value = res.data
+    setIssueEntity(res.data)
     ElMessage.success('状态已更新')
     return res.data as Issue
   }
@@ -86,7 +139,7 @@ export const useIssueStore = defineStore('phoenix-open-issue-issues', () => {
     await api.deleteIssue(id)
     issues.value = issues.value.filter(i => i.id !== id)
     total.value--
-    if (currentIssue.value?.id === id) currentIssue.value = null
+    removeIssueEntity(id)
     ElMessage.success('已删除')
   }
 
@@ -100,5 +153,21 @@ export const useIssueStore = defineStore('phoenix-open-issue-issues', () => {
     return true
   }
 
-  return { issues, currentIssue, total, loading, fetchIssues, fetchIssue, createIssue, updateIssue, updateStatus, deleteIssue, reorder, setAttentionLevel }
+  return {
+    issues,
+    issueById,
+    issueRequestById,
+    total,
+    loading,
+    getIssueById,
+    getIssueRequestState,
+    fetchIssues,
+    fetchIssue,
+    createIssue,
+    updateIssue,
+    updateStatus,
+    deleteIssue,
+    reorder,
+    setAttentionLevel,
+  }
 })

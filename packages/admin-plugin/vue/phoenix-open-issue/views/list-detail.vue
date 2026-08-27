@@ -24,17 +24,20 @@ import { getIncomingPushes, handlePush } from '/$/phoenix-open-issue/api/push'
 import { ElMessage } from 'element-plus';
 import { Edit, MoreFilled, Plus, Promotion, Search, User } from '@element-plus/icons-vue'
 import { pnwPromptChoice, pnwPromptInput, pnwPropGroup, pnwPropEnum, pnwPropBool, pnwPropSheet } from 'phoenix-wing'
-import PnwAppModalOverlay from 'phoenix-wing/components/PnwAppModalOverlay.vue'
 import PnwSidebarBlock from 'phoenix-wing/layout/PnwSidebarBlock.vue'
-import IssueDetailView from '/$/phoenix-open-issue/views/issue-detail.vue'
-
-const showIssueModal = ref(false)
-const modalIssueId = ref('')
+import { usePhoenixViewDialog } from '/@/pah/PahViewDialogs'
 import PageHelpButton from "/$/phoenix-open-issue/components/PageHelpButton.vue"
 import PoiCompactEditorView from '/$/phoenix-open-issue/components/workbench/PoiCompactEditorView.vue'
 import { canPerformListAction, DEFAULT_ATTENTION_LEVEL, ISSUE_URGENCY_DICT, formatUserLabel, unknownUserLabel } from '/$/phoenix-open-issue/core'
 import type { Checkpoint } from '/$/phoenix-open-issue/core'
-import IssueFormDialog from '/$/phoenix-open-issue/components/IssueFormDialog.vue'
+import {
+  ISSUE_FORM_DIALOG_RENDERER_ID,
+  ISSUE_FORM_DIALOG_SIZE,
+  issueFormDialogInitial,
+  issueFormDialogUsers,
+  type IssueFormDialogProps,
+  type IssueFormDialogResult,
+} from '/$/phoenix-open-issue/components/issueFormDialog'
 import IssueQuickEditDialog from '/$/phoenix-open-issue/components/IssueQuickEditDialog.vue'
 import type { IssueQuickEditField } from '/$/phoenix-open-issue/components/IssueQuickEditDialog.vue'
 import IssueColumnSettingsDialog from '/$/phoenix-open-issue/components/IssueColumnSettingsDialog.vue'
@@ -55,15 +58,13 @@ const listStore = useIssueListStore()
 const issueStore = useIssueStore()
 const auth = useAuthStore()
 const capabilities = useIssueCapabilities()
+const viewDialog = usePhoenixViewDialog()
 const updateTabTitle = inject<(pageId: string, title: string) => void>('updateTabTitle', () => {})
 
 const listId = computed(() => route.params.id as string)
 const settings = useSettingsStore()
 const members = ref<any[]>([])
 const allUsers = ref<any[]>([])
-const showCreateIssue = ref(false)
-const showEditIssue = ref(false)
-const editIssueRow = ref<any | null>(null)
 const quickEdit = ref<{
   issueId: string
   issueTitle: string
@@ -434,18 +435,33 @@ usePoiViewContribution(() => route.fullPath, {
   },
 })
 
-function goIssueDetail(id: string) { modalIssueId.value = id; showIssueModal.value = true }
+function goIssueDetail(id: string) {
+  void router.push(`/open-issue/issue/${id}`)
+}
 
 function openViewIssue(row: { id: string }, e?: Event) {
   e?.stopPropagation()
   goIssueDetail(row.id)
 }
 
-function openEditIssue(row: any, e?: Event) {
+async function openEditIssue(row: any, e?: Event) {
   e?.stopPropagation()
   if (!canModifyRow(row)) return
-  editIssueRow.value = row
-  showEditIssue.value = true
+  const outcome = await viewDialog.open<IssueFormDialogProps, IssueFormDialogResult>({
+    rendererId: ISSUE_FORM_DIALOG_RENDERER_ID,
+    instanceKey: `edit:${row.id}`,
+    title: '编辑 Issue',
+    props: {
+      allUsers: issueFormDialogUsers(activeUsers.value),
+      initial: issueFormDialogInitial(row),
+    },
+    size: ISSUE_FORM_DIALOG_SIZE,
+  })
+  if (outcome.status === 'failed') {
+    ElMessage.error(`打开 Issue 编辑器失败：${outcome.message}`)
+    return
+  }
+  if (outcome.status === 'submitted') await onEditIssue(row, outcome.value)
 }
 
 function openQuickEdit(row: any, field: IssueQuickEditField, e?: Event) {
@@ -468,15 +484,12 @@ function openQuickEdit(row: any, field: IssueQuickEditField, e?: Event) {
   quickEdit.value = { issueId: row.id, issueTitle: row.title, field, value }
 }
 
-async function onEditIssue(data: any) {
-  if (!editIssueRow.value) return
+async function onEditIssue(row: any, data: IssueFormDialogResult) {
   const { attentionLevel, ...issueData } = data
-  await issueStore.updateIssue(editIssueRow.value.id, issueData)
-  if (attentionLevel !== undefined && attentionLevel !== linkAttention(editIssueRow.value)) {
-    await issueStore.setAttentionLevel(listId.value, editIssueRow.value.id, attentionLevel)
+  await issueStore.updateIssue(row.id, issueData)
+  if (attentionLevel !== undefined && attentionLevel !== linkAttention(row)) {
+    await issueStore.setAttentionLevel(listId.value, row.id, attentionLevel)
   }
-  showEditIssue.value = false
-  editIssueRow.value = null
   loadData()
 }
 
@@ -547,16 +560,29 @@ async function onUpdateCheckpointStatus(cp: Checkpoint, status: Checkpoint['stat
   await loadCheckpoints()
 }
 
-async function onCheckpointCreated() {
-  if (viewMode.value === 'timeline') await loadCheckpoints()
-}
-
 async function onCreateIssue(data: any) {
   if (!canCreateIssue.value) return
   await issueStore.createIssue(listId.value, data)
-  showCreateIssue.value = false
   ElMessage.success('Issue 创建成功')
   loadData()
+}
+
+async function openCreateIssue() {
+  if (!canCreateIssue.value) return
+  const outcome = await viewDialog.open<IssueFormDialogProps, IssueFormDialogResult>({
+    rendererId: ISSUE_FORM_DIALOG_RENDERER_ID,
+    instanceKey: `create:${listId.value}`,
+    title: '新建 Issue',
+    props: {
+      allUsers: issueFormDialogUsers(activeUsers.value),
+    },
+    size: ISSUE_FORM_DIALOG_SIZE,
+  })
+  if (outcome.status === 'failed') {
+    ElMessage.error(`打开 Issue 编辑器失败：${outcome.message}`)
+    return
+  }
+  if (outcome.status === 'submitted') await onCreateIssue(outcome.value)
 }
 
 async function onEditList(data: { name: string; listType: string; description?: string; ownerId?: string }) {
@@ -753,7 +779,7 @@ provide('issueListCellCtx', reactive({
     <template #actions>
       <el-button @click="showMembers = true" data-tour="list-members"><el-icon><User /></el-icon> 成员 ({{ members.length }})</el-button>
       <el-button v-if="canEditList" @click="showEditList = true" data-tour="list-edit"><el-icon><Edit /></el-icon> 编辑</el-button>
-      <el-button v-if="canCreateIssue" type="primary" @click="showCreateIssue = true" data-tour="list-create-issue"><el-icon><Plus /></el-icon> 新建 Issue</el-button>
+      <el-button v-if="canCreateIssue" type="primary" @click="openCreateIssue" data-tour="list-create-issue"><el-icon><Plus /></el-icon> 新建 Issue</el-button>
     </template>
     <template #help><PageHelpButton page-id="listDetail" /></template>
 
@@ -909,14 +935,6 @@ provide('issueListCellCtx', reactive({
       />
     </div>
 
-    <IssueFormDialog v-if="showCreateIssue" :all-users="activeUsers" @confirm="onCreateIssue" @close="showCreateIssue = false" />
-    <IssueFormDialog
-      v-if="showEditIssue && editIssueRow"
-      :all-users="activeUsers"
-      :initial="editIssueRow"
-      @confirm="onEditIssue"
-      @close="showEditIssue = false; editIssueRow = null"
-    />
     <IssueQuickEditDialog
       v-if="quickEdit"
       :field="quickEdit.field"
@@ -978,15 +996,6 @@ provide('issueListCellCtx', reactive({
     />
     <PushDialog v-if="showPush" :list-id="listId" :preselected-issue-ids="pushIssueId ? [pushIssueId] : []" @close="showPush = false; pushIssueId = null" />
 
-    <!-- Issue 详情遮罩 -->
-    <PnwAppModalOverlay :open="showIssueModal" aria-label="Issue 详情" panel-class="issue-detail-modal" @close="showIssueModal = false">
-      <IssueDetailView
-        v-if="showIssueModal"
-        :issue-id="modalIssueId"
-        @checkpoint-created="onCheckpointCreated"
-        @close="showIssueModal = false"
-      />
-    </PnwAppModalOverlay>
   </PoiCompactEditorView>
 </template>
 
@@ -1116,14 +1125,4 @@ provide('issueListCellCtx', reactive({
 .attention-restore-action { color: var(--el-color-success, #67c23a); }
 .attention-disable-action { color: var(--el-color-warning, #e6a23c); }
 
-</style>
-<style>
-.pnw-modal-panel.issue-detail-modal {
-  width: min(90vw, 1680px);
-  max-height: min(92vh, 980px);
-  padding: 0;
-}
-@media (max-width: 720px) {
-  .pnw-modal-panel.issue-detail-modal { width: calc(100vw - 24px); }
-}
 </style>

@@ -1,5 +1,10 @@
+import type { PhoenixViewDialogRendererContribution } from '/@/pah/PahViewDialogs'
+
 export interface ModuleConfig {
   order?: number
+  phoenix?: {
+    viewDialogRenderers?: PhoenixViewDialogRendererContribution[]
+  }
   views?: Array<{
     path: string
     redirect?: string

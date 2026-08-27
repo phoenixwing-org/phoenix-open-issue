@@ -1,4 +1,5 @@
 import type { ModuleConfig } from '/@/cool'
+import { ISSUE_FORM_DIALOG_RENDERER_ID } from '/$/phoenix-open-issue/components/issueFormDialog'
 
 /**
  * COOL 前端模块入口。
@@ -7,6 +8,16 @@ import type { ModuleConfig } from '/@/cool'
  */
 export default (): ModuleConfig => ({
   order: 80,
+  phoenix: {
+    viewDialogRenderers: [
+      {
+        rendererId: ISSUE_FORM_DIALOG_RENDERER_ID,
+        load: () => import('./components/IssueFormDialog.vue'),
+        movable: true,
+        resizable: true,
+      },
+    ],
+  },
   views: [
     {
       path: '/open-issue',

@@ -5,44 +5,40 @@ import { useAuthStore } from '/$/phoenix-open-issue/stores/auth'
 import { useFunctionStore } from '/$/phoenix-open-issue/stores/functions'
 import { DEFAULT_ATTENTION_LEVEL, ISSUE_URGENCY_DICT, formatUserLabel } from '/$/phoenix-open-issue/core'
 import PnwDictSelect from 'phoenix-wing/components/PnwDictSelect.vue'
+import type { PnwViewDialogRendererContext } from 'phoenix-wing'
 import AttentionStars from '/$/phoenix-open-issue/components/AttentionStars.vue'
+import type {
+  IssueFormDialogProps,
+  IssueFormDialogResult,
+} from '/$/phoenix-open-issue/components/issueFormDialog'
 
 const dict = useDictStore()
 const auth = useAuthStore()
 const funcStore = useFunctionStore()
 
 const props = defineProps<{
-  allUsers: Array<{ id: string; username: string; displayName: string | null }>
-  initial?: Record<string, any> | null   // 编辑模式：预填数据
-}>()
-const emit = defineEmits<{
-  confirm: [data: {
-    title: string; issueNo?: string; description?: string; priority?: string
-    severity?: string; category?: string; detectionPhase?: string
-    reporterId?: string; assigneeId?: string; dueDate?: string
-    functionId?: string
-    attentionLevel?: number
-  }]
-  close: []
+  dialog: PnwViewDialogRendererContext<IssueFormDialogProps, IssueFormDialogResult>
 }>()
 
 onMounted(() => { funcStore.load() })
 
-const isEdit = computed(() => !!props.initial)
+const initial = props.dialog.props.initial
+const allUsers = props.dialog.props.allUsers
+const isEdit = computed(() => !!initial)
 
-const title = ref(props.initial?.title || '')
-const issueNo = ref(props.initial?.issueNo || '')
-const description = ref(props.initial?.description || '')
-const priority = ref(props.initial?.priority || 'medium')
-const severity = ref(props.initial?.severity || 'minor')
-const category = ref(props.initial?.category || '')
-const detectionPhase = ref(props.initial?.detectionPhase || '')
-const reporterId = ref(props.initial?.reporterId || auth.user?.id || '')
-const assigneeId = ref(props.initial?.assigneeId || auth.user?.id || '')
-const dueDate = ref(props.initial?.dueDate || '')
-const functionId = ref(props.initial?.functionId || '')
+const title = ref(initial?.title || '')
+const issueNo = ref(initial?.issueNo || '')
+const description = ref(initial?.description || '')
+const priority = ref(initial?.priority || 'medium')
+const severity = ref(initial?.severity || 'minor')
+const category = ref(initial?.category || '')
+const detectionPhase = ref(initial?.detectionPhase || '')
+const reporterId = ref(initial?.reporterId || auth.user?.id || '')
+const assigneeId = ref(initial?.assigneeId || auth.user?.id || '')
+const dueDate = ref(initial?.dueDate || '')
+const functionId = ref(initial?.functionId || '')
 const attentionLevel = ref<number>(
-  props.initial?._attentionLevel ?? DEFAULT_ATTENTION_LEVEL,
+  initial?._attentionLevel ?? DEFAULT_ATTENTION_LEVEL,
 )
 const urgencyOptions = computed(() => {
   const configured = dict.getOptions('priority')
@@ -51,31 +47,26 @@ const urgencyOptions = computed(() => {
 
 function submit() {
   if (!title.value.trim()) return
-  emit('confirm', {
+  const result: IssueFormDialogResult = {
     title: title.value,
-    issueNo: issueNo.value || undefined,
-    description: description.value || undefined,
     priority: priority.value,
     severity: severity.value,
-    category: category.value || undefined,
-    detectionPhase: detectionPhase.value || undefined,
-    reporterId: reporterId.value || undefined,
-    assigneeId: assigneeId.value || undefined,
-    dueDate: dueDate.value || undefined,
-    functionId: functionId.value || undefined,
     ...(isEdit.value ? { attentionLevel: attentionLevel.value } : {}),
-  })
+  }
+  if (issueNo.value) result.issueNo = issueNo.value
+  if (description.value) result.description = description.value
+  if (category.value) result.category = category.value
+  if (detectionPhase.value) result.detectionPhase = detectionPhase.value
+  if (reporterId.value) result.reporterId = reporterId.value
+  if (assigneeId.value) result.assigneeId = assigneeId.value
+  if (dueDate.value) result.dueDate = dueDate.value
+  if (functionId.value) result.functionId = functionId.value
+  props.dialog.submit(result)
 }
 </script>
 
 <template>
-  <el-dialog
-    :model-value="true"
-    :title="props.initial ? '编辑 Issue' : '新建 Issue'"
-    width="640px"
-    class="issue-form-dialog"
-    @close="emit('close')"
-  >
+  <div class="issue-form-dialog">
     <el-form label-position="top" @submit.prevent="submit">
       <!-- 编号 + 标题 -->
       <el-row :gutter="16">
@@ -128,14 +119,14 @@ function submit() {
         <el-col :span="12">
           <el-form-item label="提出人">
             <el-select v-model="reporterId" :teleported="false" filterable placeholder="谁发现的" clearable style="width:100%">
-              <el-option v-for="u in props.allUsers" :key="u.id" :label="formatUserLabel(u)" :value="u.id" />
+              <el-option v-for="u in allUsers" :key="u.id" :label="formatUserLabel(u)" :value="u.id" />
             </el-select>
           </el-form-item>
         </el-col>
         <el-col :span="12">
           <el-form-item label="责任人">
             <el-select v-model="assigneeId" :teleported="false" filterable placeholder="谁负责" clearable style="width:100%">
-              <el-option v-for="u in props.allUsers" :key="u.id" :label="formatUserLabel(u)" :value="u.id" />
+              <el-option v-for="u in allUsers" :key="u.id" :label="formatUserLabel(u)" :value="u.id" />
             </el-select>
           </el-form-item>
         </el-col>
@@ -169,11 +160,23 @@ function submit() {
       <el-form-item label="描述">
         <el-input v-model="description" type="textarea" :rows="3" placeholder="可选描述" />
       </el-form-item>
-
+      <div class="issue-form-dialog__footer">
+        <el-button @click="props.dialog.cancel()">取消</el-button>
+        <el-button type="primary" @click="submit">{{ initial ? '保存' : '创建' }}</el-button>
+      </div>
     </el-form>
-    <template #footer>
-      <el-button @click="emit('close')">取消</el-button>
-      <el-button type="primary" @click="submit">{{ props.initial ? '保存' : '创建' }}</el-button>
-    </template>
-  </el-dialog>
+  </div>
 </template>
+
+<style scoped>
+.issue-form-dialog {
+  box-sizing: border-box;
+  min-width: 0;
+  padding: 16px;
+}
+.issue-form-dialog__footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+</style>

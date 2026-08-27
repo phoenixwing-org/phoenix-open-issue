@@ -6,7 +6,7 @@
   "toolVersionRange": ">=3.2.7 <3.3.0",
   "config": {
     "path": "packages/admin-plugin/vue/vitest.config.ts",
-    "sha256": "764a18bd613253ddb1aa7b8c9c365b198a9c49836209c017d2c4292b38c43523"
+    "sha256": "441359bd1eefd85e7aa2aba5af85cb2266b2bc093a7517db98e210a96550c7bd"
   },
   "expectedFileCount": 26,
   "expectedCaseCount": 144,
@@ -114,7 +114,7 @@
       "filePath": "packages/admin-plugin/test/scripts/admin-plugin-view-layout.test.ts",
       "packageName": "contract",
       "caseCount": 11,
-      "sha256": "a48de6ec829c7885f02e3845beebae734ec3584ea8d77c58580f32b4d2fb2359"
+      "sha256": "d878f02d7d813f5db996eeecf6e2b74dd312505619b676e76362a21a116ebd47"
     },
     {
       "id": "contract:windows-junction",

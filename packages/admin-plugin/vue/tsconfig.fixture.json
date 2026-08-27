@@ -11,6 +11,7 @@
       "/@/cool": ["./fixture-cool.ts"],
       "/@/pah/PahViewContributions": ["./fixture-pah.ts"],
       "/@/pah/PahWorkbenchOutput": ["./fixture-pah-output.ts"],
+      "/@/pah/PahViewDialogs": ["./fixture-pah-view-dialog.ts"],
       "@element-plus/icons-vue": ["../../../../phoenix-admin-vue/node_modules/@element-plus/icons-vue"],
       "axios": ["../../../../phoenix-admin-vue/node_modules/axios"],
       "element-plus": ["../../../../phoenix-admin-vue/node_modules/element-plus"],
