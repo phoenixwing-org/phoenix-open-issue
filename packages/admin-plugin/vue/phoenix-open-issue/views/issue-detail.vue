@@ -1,18 +1,14 @@
 <script setup lang="ts">
 import { onMounted, onBeforeUnmount, ref, computed, inject } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute } from 'vue-router'
 import { useIssueStore } from '/$/phoenix-open-issue/stores/issues'
 import { useSettingsStore } from '/$/phoenix-open-issue/stores/settings'
 import { getAllUsers } from '/$/phoenix-open-issue/api/auth'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Edit, Promotion } from '@element-plus/icons-vue'
-import {
-  PnwViewPresentationPortal,
-  pnwCreateViewPresentationRecord,
-} from 'phoenix-wing'
-import PnwPageHeader from "phoenix-wing/layout/PnwPageHeader.vue"
-import { usePhoenixViewDialog } from '/@/pah/PahViewDialogs'
-import PageHelpButton from "/$/phoenix-open-issue/components/PageHelpButton.vue"
+import { usePhoenixViewDialog } from '/@/phoenix/PahViewDialogs'
+import PageHelpButton from '/$/phoenix-open-issue/components/PageHelpButton.vue'
+import PoiCompactEditorView from '/$/phoenix-open-issue/components/workbench/PoiCompactEditorView.vue'
 import {
   ISSUE_FORM_DIALOG_RENDERER_ID,
   ISSUE_FORM_DIALOG_SIZE,
@@ -35,7 +31,6 @@ import { useIssueCapabilities } from '/$/phoenix-open-issue/composables/useIssue
 const dict = useDictStore()
 
 const route = useRoute()
-const router = useRouter()
 const issueStore = useIssueStore()
 const settings = useSettingsStore()
 const capabilities = useIssueCapabilities()
@@ -43,12 +38,6 @@ const viewDialog = usePhoenixViewDialog()
 const issueId = route.params.id as string
 const currentIssue = computed(() => issueStore.getIssueById(issueId))
 const updateTabTitle = inject<(pageId: string, title: string) => void>('updateTabTitle', () => {})
-const presentationRecord = ref(pnwCreateViewPresentationRecord({
-  rendererId: 'phoenix-open-issue.view.issue-detail',
-  viewInstanceId: `phoenix-open-issue.issue-detail:${issueId}`,
-  ownerTabId: `issueDetail:${issueId}`,
-  instanceKey: `issue:${issueId}`,
-}))
 
 const showPush = ref(false)
 const showReportDialog = ref(false)
@@ -101,10 +90,6 @@ const hasDescription = computed(() => Boolean(currentIssue.value?.description))
 
 function scrollToIssueSection(sectionId: string): void {
   document.getElementById(sectionId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-}
-
-function goBack() {
-  router.back()
 }
 
 const issuePrimaryContributionProps = computed(() => {
@@ -274,53 +259,30 @@ async function removeReport(report: ReportView) {
 </script>
 
 <template>
-  <div class="page">
-    <PnwViewPresentationPortal
-      v-model:record="presentationRecord"
-      :title="currentIssue?.title || 'Issue 详情'"
-      aria-label="Issue 详情"
-    >
-      <template #header="{ mode, detach }">
-    <PnwPageHeader
-      :title="currentIssue?.title || 'Issue 详情'"
-      :presentation-detachable="mode === 'embedded'"
-      :presentation-mode="mode"
-      @detach-view="detach"
-    >
-      <template #actions>
-        <div v-if="currentIssue && (canModify || canPush)" class="header-actions" data-tour="issue-actions">
-          <el-button v-if="currentIssue && canModify" size="small" type="primary" plain @click="openEditIssue">
-            <el-icon><Edit /></el-icon> 编辑
+  <PoiCompactEditorView
+    :title="currentIssue?.title || 'Issue 详情'"
+    content-aria-label="Open Issue 详情"
+  >
+    <template #actions>
+      <div v-if="currentIssue && (canModify || canPush)" class="header-actions" data-tour="issue-actions">
+        <el-button v-if="currentIssue && canModify" size="small" type="primary" plain @click="openEditIssue">
+          <el-icon><Edit /></el-icon> 编辑
+        </el-button>
+        <el-tooltip v-if="currentIssue && canPush" content="推送到其他列表" placement="bottom">
+          <el-button
+            size="small"
+            type="warning"
+            plain
+            circle
+            aria-label="推送到其他列表"
+            @click="showPush = true"
+          >
+            <el-icon><Promotion /></el-icon>
           </el-button>
-          <el-tooltip v-if="currentIssue && canPush" content="推送到其他列表" placement="bottom">
-            <el-button
-              size="small"
-              type="warning"
-              plain
-              circle
-              aria-label="推送到其他列表"
-              @click="showPush = true"
-            >
-              <el-icon><Promotion /></el-icon>
-            </el-button>
-          </el-tooltip>
-        </div>
-      </template>
-      <template #help>
-        <div class="header-right">
-          <PageHelpButton page-id="issueDetail" />
-          <button v-if="mode === 'embedded'" class="hdr-btn-close" @click="goBack" title="关闭">
-            <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-              <path d="M4 4L12 12M12 4L4 12" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
-            </svg>
-          </button>
-        </div>
-      </template>
-    </PnwPageHeader>
-      </template>
-
-      <template #main>
-    <div class="issue-view-main">
+        </el-tooltip>
+      </div>
+    </template>
+    <template #help><PageHelpButton page-id="issueDetail" /></template>
 
     <div
       v-if="currentIssue"
@@ -472,55 +434,12 @@ async function removeReport(report: ReportView) {
       @confirm="saveReport"
       @close="showReportDialog = false"
     />
-    </div>
-      </template>
-    </PnwViewPresentationPortal>
-  </div>
+  </PoiCompactEditorView>
 </template>
 
 <style scoped>
-.page-head {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  gap: 20px;
-  margin-bottom: 20px;
-}
 .header-actions { display: inline-flex; align-items: center; gap: 8px; }
 .header-actions :deep(.el-button + .el-button) { margin-left: 0; }
-.page-head h2 {
-  font-size: 1.15rem;
-  font-weight: 650;
-  margin: 0;
-  flex: 1;
-  min-width: 0;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.page-head-actions {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  flex-shrink: 0;
-}
-.hdr-btn-close {
-  width: 28px; height: 28px;
-  padding: 0;
-  display: grid; place-items: center;
-  background: transparent;
-  color: var(--el-text-color-secondary, #909399);
-  border: 1px solid transparent;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0;
-  transition: background 0.15s, color 0.15s;
-}
-.hdr-btn-close:hover {
-  background: var(--el-fill-color-light, #f5f7fa);
-  color: var(--el-text-color-regular, #606266);
-}
-.header-right { display: flex; align-items: center; gap: 6px; }
 .issue-workspace {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 8px minmax(360px, var(--issue-timeline-width, 440px));
@@ -580,18 +499,5 @@ async function removeReport(report: ReportView) {
     padding-top: 18px;
     border-top: 1px solid var(--el-border-color-lighter, #ebeef5);
   }
-}
-.page {
-  box-sizing: border-box;
-  min-height: 0;
-  color: var(--el-text-color-primary, #253047);
-  background: var(--el-bg-color-page, #f5f7fa);
-}
-.issue-view-main {
-  box-sizing: border-box;
-  min-height: 0;
-  padding: 16px;
-  color: var(--el-text-color-primary, #253047);
-  background: var(--el-bg-color-page, #f5f7fa);
 }
 </style>

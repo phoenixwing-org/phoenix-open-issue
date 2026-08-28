@@ -1,4 +1,4 @@
-import type { PhoenixViewDialogRendererContribution } from '/@/pah/PahViewDialogs'
+import type { PhoenixViewDialogRendererContribution } from '/@/phoenix/PahViewDialogs'
 
 export interface ModuleConfig {
   order?: number

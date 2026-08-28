@@ -74,19 +74,15 @@ try {
 const endpointMethods = new Set(['GET', 'POST', 'PUT', 'PATCH', 'DELETE'])
 const declaredEndpointTokens = new Set()
 const routeIds = new Set((manifest.routes ?? []).map(item => item.id))
-const compatibilityTestRoute = (manifest.routes ?? []).find(
-  route => route.path === `${routePrefix}/test-runner`,
-)
-const maintenanceRoute = (manifest.routes ?? []).find(
-  route => route.path === `${routePrefix}/maintenance`,
-)
-if (maintenanceRoute?.viewPath !== `modules/${moduleId}/views/maintenance.vue`) {
-  errors.push('维护与测试统一入口必须由 maintenance.vue 承载')
+for (const legacyPath of [`${routePrefix}/maintenance`, `${routePrefix}/test-runner`]) {
+  if ((manifest.routes ?? []).some(route => route.path === legacyPath)) {
+    errors.push(`插件不得物化重复 Host 维护入口：${legacyPath}`)
+  }
 }
-if (compatibilityTestRoute?.viewPath !== `modules/${moduleId}/views/maintenance.vue` ||
-    compatibilityTestRoute?.isShow !== false ||
-    compatibilityTestRoute?.capability !== `${moduleId}:test:read`) {
-  errors.push('旧 test-runner 只能作为指向 maintenance.vue 的隐藏兼容路由')
+for (const legacyCapability of [`${moduleId}:maintenance:read`, `${moduleId}:maintenance:run`, `${moduleId}:test:read`, `${moduleId}:test:run`]) {
+  if (capabilityIds.has(legacyCapability)) {
+    errors.push(`插件不得声明私有 Host 维护 capability：${legacyCapability}`)
+  }
 }
 if (manifest.navigation?.preferredGroupId !== 'pah-group-business' ||
     manifest.navigation?.preferredGroupLabel !== '业务') {
@@ -298,6 +294,39 @@ for (const entry of await readdir(entityDirectory)) {
   }
 }
 errors.push(...validatePluginTableContract({ ownedTables, entityTables, migrationTables }))
+
+const legacyPahPrefix = `/${'pah'}/`
+const textExtensions = new Set(['.json', '.md', '.mjs', '.ts', '.vue', '.yaml', '.yml'])
+const routeScanRoots = [
+  new URL('../README.md', import.meta.url),
+  new URL('../docs/', import.meta.url),
+  new URL('../scripts/', import.meta.url),
+  new URL('../packages/admin-plugin/', import.meta.url),
+]
+
+async function scanLegacyHostRoutes(target) {
+  const stat = await lstat(target)
+  if (stat.isDirectory()) {
+    for (const entry of await readdir(target, { withFileTypes: true })) {
+      if (entry.name === 'node_modules' || entry.name === 'dist') continue
+      await scanLegacyHostRoutes(new URL(`${entry.name}${entry.isDirectory() ? '/' : ''}`, target))
+    }
+    return
+  }
+  if (!textExtensions.has(pathExtension(target.pathname))) return
+  const source = await readFile(target, 'utf8')
+  if (source.includes(legacyPahPrefix)) {
+    errors.push(`面向当前用户的路径仍包含 lowercase Pah 前缀：${target.pathname}`)
+  }
+}
+
+function pathExtension(pathname) {
+  const name = pathname.slice(pathname.lastIndexOf('/') + 1)
+  const dot = name.lastIndexOf('.')
+  return dot >= 0 ? name.slice(dot) : ''
+}
+
+for (const routeScanRoot of routeScanRoots) await scanLegacyHostRoutes(routeScanRoot)
 
 if (errors.length) {
   console.error(errors.join('\n'))

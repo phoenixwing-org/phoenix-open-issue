@@ -3,10 +3,6 @@ import PnwPageLayout from 'phoenix-wing/layout/PnwPageLayout.vue'
 
 withDefaults(defineProps<{
   title: string
-  subtitle?: string
-  eyebrow?: string
-  summary?: string
-  description?: string
   toolbar?: boolean
   contentAriaLabel?: string
 }>(), {
@@ -18,10 +14,6 @@ withDefaults(defineProps<{
   <PnwPageLayout
     class="poi-compact-editor-view"
     :title="title"
-    :subtitle="subtitle"
-    :eyebrow="eyebrow"
-    :summary="summary"
-    :description="description"
     :toolbar="toolbar"
   >
     <template v-if="$slots.actions" #actions>

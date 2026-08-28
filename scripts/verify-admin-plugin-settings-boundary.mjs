@@ -41,5 +41,5 @@ if (errors.length) {
 
 console.log(
   `Host-owned 设置边界合法：${sources.size} 个插件源文件，`
-  + `maintenance=${repairTasks.join('+')}，Host 账号/组织仅通过受控 adapter 消费。`,
+  + `待接入维护适配=${repairTasks.join('+')}，未物化私有维护页面/API，Host 账号/组织仅通过受控 adapter 消费。`,
 )

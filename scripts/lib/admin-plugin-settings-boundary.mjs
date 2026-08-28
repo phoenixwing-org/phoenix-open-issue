@@ -31,6 +31,9 @@ const hostOwnedRouteSegments = new Set([
 ])
 
 const forbiddenStandaloneFile = /(?:^|\/)(?:views\/(?:login|register|oauth-callback|org|organization|settings)|api\/(?:login|register|oauth|password|users?)|core\/types\/(?:external-auth|org-unit))\.(?:ts|vue)$/i
+const forbiddenPrivateMaintenanceFile = /(?:^|\/)(?:views\/maintenance|api\/(?:maintenance|test|dictionary-maintenance)|core\/maintenanceOutput)\.(?:ts|vue)$/
+const privateMaintenanceRoute = /^\/open-issue\/(?:maintenance|test-runner)(?:\/|$)/
+const privateMaintenanceEndpoint = /^\/admin\/phoenix-open-issue\/(?:maintenance|test)(?:\/|$)/
 
 const forbiddenLegacyDeclarations = [
   ['legacy systemRole', /\bsystemRole\b/],
@@ -80,12 +83,18 @@ export function validateHostOwnedSettingsBoundary({
     if ([route.path, route.title, route.viewPath].some(containsHostOwnedRoute)) {
       errors.push(`插件不得物化 Host 账号/组织设置路由：${route.path ?? route.id}`)
     }
+    if (privateMaintenanceRoute.test(route.path ?? '')) {
+      errors.push(`插件不得物化重复 Host 维护路由：${route.path}`)
+    }
   }
 
   for (const capability of manifest?.capabilities ?? []) {
     for (const endpoint of capability.endpoints ?? []) {
       if (containsHostOwnedRoute(endpoint.path)) {
         errors.push(`插件不得声明 Host 账号/组织 endpoint：${endpoint.method} ${endpoint.path}`)
+      }
+      if (privateMaintenanceEndpoint.test(endpoint.path ?? '')) {
+        errors.push(`插件不得声明私有维护 endpoint：${endpoint.method} ${endpoint.path}`)
       }
     }
   }
@@ -99,6 +108,9 @@ export function validateHostOwnedSettingsBoundary({
     const normalizedFile = file.replaceAll('\\', '/')
     if (forbiddenStandaloneFile.test(normalizedFile)) {
       errors.push(`插件交付不得包含 legacy Host 设置文件：${normalizedFile}`)
+    }
+    if (forbiddenPrivateMaintenanceFile.test(normalizedFile)) {
+      errors.push(`插件交付不得包含重复 Host 维护页面或 API：${normalizedFile}`)
     }
     for (const [label, pattern] of forbiddenLegacyDeclarations) {
       if (pattern.test(source)) errors.push(`${normalizedFile} 仍声明 ${label}`)

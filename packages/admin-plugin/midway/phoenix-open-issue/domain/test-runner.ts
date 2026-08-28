@@ -107,7 +107,7 @@ export const OPEN_ISSUE_CONTROLLED_TEST_FILES = Object.freeze([
     id: "contract:view-layout",
     filePath: "packages/admin-plugin/test/scripts/admin-plugin-view-layout.test.ts",
     packageName: "contract",
-    caseCount: 11,
+    caseCount: 12,
   },
   {
     id: "contract:windows-junction",
@@ -134,6 +134,13 @@ export const OPEN_ISSUE_CONTROLLED_TEST_FILES = Object.freeze([
       "packages/admin-plugin/vue/phoenix-open-issue/stores/dict.test.ts",
     packageName: "core",
     caseCount: 3,
+  },
+  {
+    id: "core:issue-store",
+    filePath:
+      "packages/admin-plugin/vue/phoenix-open-issue/stores/issues.test.ts",
+    packageName: "core",
+    caseCount: 4,
   },
   {
     id: "core:host-capability",

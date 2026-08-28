@@ -25,7 +25,7 @@ import { ElMessage } from 'element-plus';
 import { Edit, MoreFilled, Plus, Promotion, Search, User } from '@element-plus/icons-vue'
 import { pnwPromptChoice, pnwPromptInput, pnwPropGroup, pnwPropEnum, pnwPropBool, pnwPropSheet } from 'phoenix-wing'
 import PnwSidebarBlock from 'phoenix-wing/layout/PnwSidebarBlock.vue'
-import { usePhoenixViewDialog } from '/@/pah/PahViewDialogs'
+import { usePhoenixViewDialog } from '/@/phoenix/PahViewDialogs'
 import PageHelpButton from "/$/phoenix-open-issue/components/PageHelpButton.vue"
 import PoiCompactEditorView from '/$/phoenix-open-issue/components/workbench/PoiCompactEditorView.vue'
 import { canPerformListAction, DEFAULT_ATTENTION_LEVEL, ISSUE_URGENCY_DICT, formatUserLabel, unknownUserLabel } from '/$/phoenix-open-issue/core'
@@ -773,7 +773,6 @@ provide('issueListCellCtx', reactive({
 <template>
   <PoiCompactEditorView
     :title="currentList?.name || '列表详情'"
-    :subtitle="headerSubtitle"
     content-aria-label="Open Issue 列表详情"
   >
     <template #actions>
@@ -782,6 +781,14 @@ provide('issueListCellCtx', reactive({
       <el-button v-if="canCreateIssue" type="primary" @click="openCreateIssue" data-tour="list-create-issue"><el-icon><Plus /></el-icon> 新建 Issue</el-button>
     </template>
     <template #help><PageHelpButton page-id="listDetail" /></template>
+
+    <el-alert
+      v-if="headerSubtitle"
+      :title="headerSubtitle"
+      type="info"
+      :closable="false"
+      class="list-context-note"
+    />
 
     <el-alert
       v-if="!capabilities.can('phoenix-open-issue:issue:read')"
@@ -1000,6 +1007,7 @@ provide('issueListCellCtx', reactive({
 </template>
 
 <style scoped>
+.list-context-note,
 .permission-note { margin-bottom: 12px; }
 .pagination-bar {
   display: flex;

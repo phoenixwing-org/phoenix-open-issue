@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
@@ -17,6 +17,24 @@ function readVue(relativePath: string) {
 }
 
 describe('Open Issue compact Editor layout', () => {
+  it('uses only the current Phoenix Host imports and plugin APIs', () => {
+    const listDetailSource = readVue('views/list-detail.vue')
+    const issueDetailSource = readVue('views/issue-detail.vue')
+    const contributionSource = readVue('layout/workbench/poiViewContributions.ts')
+
+    expect(listDetailSource).toContain("from '/@/phoenix/PahViewDialogs'")
+    expect(issueDetailSource).toContain("from '/@/phoenix/PahViewDialogs'")
+    expect(contributionSource).toContain("from '/@/phoenix/PahViewContributions'")
+
+    for (const source of [
+      listDetailSource,
+      issueDetailSource,
+      contributionSource,
+    ]) {
+      expect(source).toContain('/@/phoenix/')
+    }
+  })
+
   it('uses the current Wing Editor and Primary layout primitives', async () => {
     const source = readVue('components/workbench/PoiCompactEditorView.vue')
 
@@ -26,6 +44,10 @@ describe('Open Issue compact Editor layout', () => {
     expect(source).not.toContain('padding: 0 16px;')
     expect(source).not.toContain('<style')
     expect(source).not.toContain('<PnwPageHeader')
+    expect(source).not.toContain('subtitle?: string')
+    expect(source).not.toContain('eyebrow?: string')
+    expect(source).not.toContain('summary?: string')
+    expect(source).not.toContain('description?: string')
 
     const primaryComponents = [
       'PoiDashboardPrimary.vue',
@@ -34,7 +56,6 @@ describe('Open Issue compact Editor layout', () => {
       'PoiIssueDetailPrimary.vue',
       'PoiIssueListPrimary.vue',
       'PoiIssueTablePrimary.vue',
-      'PoiMaintenancePrimary.vue',
       'PoiPushHistoryPrimary.vue',
     ]
     for (const fileName of primaryComponents) {
@@ -67,7 +88,6 @@ describe('Open Issue compact Editor layout', () => {
       ['views/eight-d-reports.vue', "viewKey: 'phoenix-open-issue-eight-d-reports'"],
       ['views/functions.vue', "viewKey: 'phoenix-open-issue-functions'"],
       ['views/lists.vue', "viewKey: 'phoenix-open-issue-lists'"],
-      ['views/maintenance.vue', "viewKey: 'phoenix-open-issue-maintenance'"],
       ['views/push-history.vue', "viewKey: 'phoenix-open-issue-push-history'"],
       ['views/list-detail.vue', 'viewKey: `phoenix-open-issue-list-detail:${listId.value}`'],
       ['views/issue-detail.vue', 'viewKey: `phoenix-open-issue-issue-detail:${issueId}`'],
@@ -109,13 +129,20 @@ describe('Open Issue compact Editor layout', () => {
 
   function expectSharedLayout(relativePath: string, ariaLabel: string) {
     const source = readVue(relativePath)
+    const openingTag = source.match(/<PoiCompactEditorView[\s\S]*?>/u)?.[0] ?? ''
 
     expect(source).toContain("components/workbench/PoiCompactEditorView.vue")
-    expect(source).toContain(`<PoiCompactEditorView`)
+    expect(openingTag).toContain(`<PoiCompactEditorView`)
     expect(source).toContain(`content-aria-label="${ariaLabel}"`)
     expect(source).not.toContain("phoenix-wing/layout/PnwPageHeader.vue")
     expect(source).not.toContain('class="page"')
     expect(source).not.toContain('padding: 0 16px;')
+    expect(openingTag).not.toContain(':subtitle=')
+    expect(openingTag).not.toContain(':eyebrow=')
+    expect(openingTag).not.toContain(':summary=')
+    expect(openingTag).not.toContain(':description=')
+    expect(source).not.toContain('PnwViewPresentationPortal')
+    expect(source).not.toContain('pnw-floating-panel__header')
   }
 
   it('lets the dashboard consume the shared compact Editor shell', () => {
@@ -130,10 +157,6 @@ describe('Open Issue compact Editor layout', () => {
     expectSharedLayout('views/functions.vue', 'Open Issue 功能表')
   })
 
-  it('lets maintenance consume the shared compact Editor shell', () => {
-    expectSharedLayout('views/maintenance.vue', 'Open Issue 维护内容')
-  })
-
   it('lets list management consume the shared compact Editor shell', () => {
     expectSharedLayout('views/lists.vue', 'Open Issue 列表管理')
   })
@@ -146,27 +169,24 @@ describe('Open Issue compact Editor layout', () => {
     expectSharedLayout('views/push-history.vue', 'Open Issue 推送历史')
   })
 
-  it('lets the full Issue detail View move through the Wing presentation portal', () => {
+  it('uses the shared single-line View layout for full Issue detail', () => {
     const source = readVue('views/issue-detail.vue')
     const listSource = readVue('views/list-detail.vue')
     const configSource = readVue('config.ts')
     const formSource = readVue('components/IssueFormDialog.vue')
 
-    expect(source).toContain('class="page"')
-    expect(source).toContain('PnwViewPresentationPortal')
-    expect(source).toContain('pnwCreateViewPresentationRecord')
-    expect(source).toContain("rendererId: 'phoenix-open-issue.view.issue-detail'")
-    expect(source).toContain('viewInstanceId: `phoenix-open-issue.issue-detail:${issueId}`')
-    expect(source).toContain('ownerTabId: `issueDetail:${issueId}`')
-    expect(source).toContain('instanceKey: `issue:${issueId}`')
-    expect(source).toContain('v-model:record="presentationRecord"')
-    expect(source).toContain(':presentation-detachable="mode === \'embedded\'"')
-    expect(source).toContain('@detach-view="detach"')
-    expect(source).toContain('v-if="mode === \'embedded\'" class="hdr-btn-close"')
-    expect(source).toContain('.issue-view-main {')
+    expectSharedLayout('views/issue-detail.vue', 'Open Issue 详情')
+    expect(source).toContain("components/workbench/PoiCompactEditorView.vue")
+    expect(source).not.toContain('const ownerRoutePath = route.path')
+    expect(source).not.toContain('class="hdr-btn-close"')
+    expect(source).not.toContain('function goBack()')
+    expect(source).not.toContain('PnwViewPresentationPortal')
+    expect(source).not.toContain('pnwCreateViewPresentationRecord')
+    expect(source).not.toContain('presentation-detachable')
+    expect(source).not.toContain('@detach-view')
+    expect(source).not.toContain('.issue-view-main {')
     expect(source).not.toContain('PnwAppModalOverlay')
     expect(source).not.toContain('show-close-action')
-    expect(source).not.toContain('components/workbench/PoiCompactEditorView.vue')
     expect(listSource).toContain('void router.push(`/open-issue/issue/${id}`)')
     expect(listSource).not.toContain('PnwAppModalOverlay')
     expect(listSource).not.toContain('IssueDetailView')
@@ -192,72 +212,73 @@ describe('Open Issue compact Editor layout', () => {
     }
   })
 
-  it('keeps unit tests inside the maintenance View and hides the compatibility route', () => {
+  it('keeps every View Header single-line and moves long list context into main', () => {
+    const viewPaths = [
+      'views/dashboard.vue',
+      'views/eight-d-reports.vue',
+      'views/functions.vue',
+      'views/lists.vue',
+      'views/list-detail.vue',
+      'views/issue-detail.vue',
+      'views/push-history.vue',
+    ]
+
+    for (const viewPath of viewPaths) {
+      const source = readVue(viewPath)
+      const openingTag = source.match(/<PoiCompactEditorView[\s\S]*?>/u)?.[0] ?? ''
+      expect(openingTag).toContain('<PoiCompactEditorView')
+      expect(openingTag).not.toContain(':subtitle=')
+      expect(openingTag).not.toContain(':eyebrow=')
+      expect(openingTag).not.toContain(':summary=')
+      expect(openingTag).not.toContain(':description=')
+      expect(source).not.toContain('PnwViewPresentationPortal')
+      expect(source).not.toContain('pnw-floating-panel__header')
+    }
+
+    const listDetailSource = readVue('views/list-detail.vue')
+    expect(listDetailSource).toContain('v-if="headerSubtitle"')
+    expect(listDetailSource).toContain(':title="headerSubtitle"')
+    expect(listDetailSource).toContain('class="list-context-note"')
+  })
+
+  it('leaves the Host maintenance center as the only maintenance UI', () => {
     const manifest = JSON.parse(readFileSync(path.join(repoRoot, 'packages/admin-plugin/manifest.json'), 'utf8'))
-    const maintenance = manifest.routes.find((route: any) => route.id === 'phoenix-open-issue-maintenance')
-    const legacyTest = manifest.routes.find((route: any) => route.id === 'phoenix-open-issue-test-runner')
+    const controllerSource = readFileSync(
+      path.join(repoRoot, 'packages/admin-plugin/midway/phoenix-open-issue/controller/admin/index.ts'),
+      'utf8',
+    )
     const management = manifest.navigation.modules.find(
       (module: any) => module.id === 'phoenix-open-issue-management',
     )
-    const visibleManagementRoutes = management.routeIds.filter((routeId: string) =>
-      manifest.routes.find((route: any) => route.id === routeId)?.isShow !== false,
-    )
-    const source = readVue('views/maintenance.vue')
 
-    expect(maintenance.viewPath).toBe('modules/phoenix-open-issue/views/maintenance.vue')
-    expect(legacyTest).toMatchObject({
-      viewPath: 'modules/phoenix-open-issue/views/maintenance.vue',
-      isShow: false,
-    })
-    expect(visibleManagementRoutes).toContain('phoenix-open-issue-maintenance')
-    expect(visibleManagementRoutes).not.toContain('phoenix-open-issue-test-runner')
-    expect(source).toContain("activeSection === 'tests'")
-    expect(source).toContain("path.endsWith('/test-runner')")
-    expect(source).toContain("path.endsWith('/maintenance')")
-    expect(source).toContain('component: PoiMaintenancePrimary')
-    expect(source).not.toContain('PoiTestRunnerPrimary')
+    expect(manifest.routes.map((route: any) => route.path)).not.toContain('/open-issue/maintenance')
+    expect(manifest.routes.map((route: any) => route.path)).not.toContain('/open-issue/test-runner')
+    expect(manifest.capabilities.map((item: any) => item.id)).not.toEqual(expect.arrayContaining([
+      'phoenix-open-issue:maintenance:read',
+      'phoenix-open-issue:maintenance:run',
+      'phoenix-open-issue:test:read',
+      'phoenix-open-issue:test:run',
+    ]))
+    expect(management.routeIds).toEqual(['phoenix-open-issue-functions'])
+    expect(existsSync(path.join(vueRoot, 'views/maintenance.vue'))).toBe(false)
+    expect(controllerSource).not.toMatch(/@(Get|Post)\(["']\/(?:maintenance|test)\//u)
   })
 
-  it('separates read-only repair dry-run from confirmed repair execution', () => {
-    const manifest = JSON.parse(readFileSync(path.join(repoRoot, 'packages/admin-plugin/manifest.json'), 'utf8'))
-    const source = readVue('views/maintenance.vue')
-    const readCapability = manifest.capabilities.find(
-      (item: any) => item.id === 'phoenix-open-issue:maintenance:read',
+  it('keeps legacy repair logic quarantined until the Host adapter schema is frozen', () => {
+    const domainSource = readFileSync(
+      path.join(repoRoot, 'packages/admin-plugin/midway/phoenix-open-issue/domain/maintenance.ts'),
+      'utf8',
     )
-    const runCapability = manifest.capabilities.find(
-      (item: any) => item.id === 'phoenix-open-issue:maintenance:run',
+    const controllerSource = readFileSync(
+      path.join(repoRoot, 'packages/admin-plugin/midway/phoenix-open-issue/controller/admin/index.ts'),
+      'utf8',
     )
 
-    expect(readCapability.endpoints).toContainEqual({
-      method: 'GET',
-      path: '/admin/phoenix-open-issue/maintenance/repair-plan',
-    })
-    expect(runCapability.endpoints).toContainEqual({
-      method: 'POST',
-      path: '/admin/phoenix-open-issue/maintenance/repair',
-    })
-    expect(runCapability.endpoints).toContainEqual({
-      method: 'POST',
-      path: '/admin/phoenix-open-issue/maintenance/legacy-import/plan',
-    })
-    expect(runCapability.endpoints).toContainEqual({
-      method: 'POST',
-      path: '/admin/phoenix-open-issue/maintenance/legacy-import/execute',
-    })
-    expect(source).toContain('await planLegacyImport(legacyImportSubmission.value')
-    expect(source).toContain('await executeLegacyImport(plan.planId')
-    expect(source).toContain('v-model="legacyImportBackupConfirmed"')
-    expect(source).toContain("'确认执行一次性旧站导入'")
-    expect(source).toContain('服务端只读计划完成')
-    expect(source).toContain('不执行写入')
-    expect(source).toContain('8D 采用独立可选事务')
-    expect(source).toContain('mappedLegacyUserCount.value === legacyImportPreview.value.userReferences.length')
-    expect(source).toContain('async function onPreviewTask')
-    expect(source).toContain('if (!canReadMaintenance.value) return')
-    expect(source).toContain('@click="onPreviewTask(row.id)"')
-    expect(source).toContain('>预览 dry-run</el-button>')
-    expect(source).toContain('v-if="canRunMaintenance"')
-    expect(source).toContain('if (!canRunMaintenance.value) return')
-    expect(source).toContain('@click="onRepairTask(row.id)"')
+    expect(domainSource).toContain("'checkpoints'")
+    expect(domainSource).toContain("'links'")
+    expect(domainSource).toContain("'list-org-references'")
+    expect(controllerSource).not.toContain('OpenIssueMaintenanceService')
+    expect(controllerSource).not.toContain('OpenIssueLegacyImportService')
+    expect(controllerSource).not.toContain('OpenIssueTestRunnerService')
   })
 })

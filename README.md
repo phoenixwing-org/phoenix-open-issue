@@ -1,6 +1,6 @@
 # Open Issue
 
-Open Issue 是 Phoenix Admin 的声明式业务插件，提供问题列表、点检、推送、8D 报告、组织与维护能力。本仓库只维护插件模式，不再包含独立 Web、独立 Server 或可单独发布的 Core 应用。
+Open Issue 是 Phoenix Admin 的声明式业务插件，提供问题列表、点检、推送、8D 报告和功能表能力。本仓库只维护插件模式，不再包含独立 Web、独立 Server 或可单独发布的 Core 应用。
 
 ## 仓库结构
 

@@ -2,7 +2,7 @@ import type { MaybeRefOrGetter } from 'vue'
 import {
   usePahViewContributions,
   type PahViewBlockComponentContributions,
-} from '/@/pah/PahViewContributions'
+} from '/@/phoenix/PahViewContributions'
 
 /**
  * Legacy View 的窄兼容层。

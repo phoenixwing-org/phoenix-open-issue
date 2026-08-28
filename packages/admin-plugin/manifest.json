@@ -78,25 +78,6 @@
       "moduleId": "phoenix-open-issue-management",
       "capability": "phoenix-open-issue:function:read",
       "viewPath": "modules/phoenix-open-issue/views/functions.vue"
-    },
-    {
-      "id": "phoenix-open-issue-test-runner",
-      "path": "/open-issue/test-runner",
-      "title": "维护 · 单元测试",
-      "icon": "pnw:report",
-      "moduleId": "phoenix-open-issue-management",
-      "capability": "phoenix-open-issue:test:read",
-      "viewPath": "modules/phoenix-open-issue/views/maintenance.vue",
-      "isShow": false
-    },
-    {
-      "id": "phoenix-open-issue-maintenance",
-      "path": "/open-issue/maintenance",
-      "title": "维护",
-      "icon": "pnw:report",
-      "moduleId": "phoenix-open-issue-management",
-      "capability": "phoenix-open-issue:maintenance:read",
-      "viewPath": "modules/phoenix-open-issue/views/maintenance.vue"
     }
   ],
   "navigation": {
@@ -121,9 +102,7 @@
         "label": "Open Issue 管理",
         "icon": "pnw:folder",
         "routeIds": [
-          "phoenix-open-issue-functions",
-          "phoenix-open-issue-test-runner",
-          "phoenix-open-issue-maintenance"
+          "phoenix-open-issue-functions"
         ]
       }
     ]
@@ -336,43 +315,6 @@
         { "method": "PATCH", "path": "/admin/phoenix-open-issue/function/:id/enabled" }
       ]
     },
-    {
-      "id": "phoenix-open-issue:test:read",
-      "description": "查看 Issue 插件测试清单与结果",
-      "risk": "read",
-      "endpoints": [
-        { "method": "GET", "path": "/admin/phoenix-open-issue/test/files" },
-        { "method": "GET", "path": "/admin/phoenix-open-issue/test/status" }
-      ]
-    },
-    {
-      "id": "phoenix-open-issue:test:run",
-      "description": "在受控开发环境运行 Issue 插件测试",
-      "risk": "admin",
-      "endpoints": [
-        { "method": "POST", "path": "/admin/phoenix-open-issue/test/run" }
-      ]
-    },
-    {
-      "id": "phoenix-open-issue:maintenance:read",
-      "description": "查看 Issue 插件数据检查与修正计划",
-      "risk": "read",
-      "endpoints": [
-        { "method": "GET", "path": "/admin/phoenix-open-issue/maintenance/repair-tasks" },
-        { "method": "GET", "path": "/admin/phoenix-open-issue/maintenance/repair-plan" },
-        { "method": "GET", "path": "/admin/phoenix-open-issue/maintenance/repair-ledger" }
-      ]
-    },
-    {
-      "id": "phoenix-open-issue:maintenance:run",
-      "description": "执行 Issue 插件声明的幂等数据修正",
-      "risk": "admin",
-      "endpoints": [
-        { "method": "POST", "path": "/admin/phoenix-open-issue/maintenance/repair" },
-        { "method": "POST", "path": "/admin/phoenix-open-issue/maintenance/legacy-import/plan" },
-        { "method": "POST", "path": "/admin/phoenix-open-issue/maintenance/legacy-import/execute" }
-      ]
-    },
     { "id": "phoenix-open-issue:data:purge", "description": "永久清除插件业务数据", "risk": "admin" }
   ],
   "resourcePolicies": [
@@ -385,7 +327,6 @@
     { "id": "phoenix-open-issue.checkpoint", "description": "点检变更" },
     { "id": "phoenix-open-issue.function", "description": "功能简表变更" },
     { "id": "phoenix-open-issue.push", "description": "推送与处理" },
-    { "id": "phoenix-open-issue.maintenance", "description": "数据修正 dry-run 与执行" },
     { "id": "phoenix-open-issue.dictionary", "description": "产品字典安装与 reconcile" }
   ],
   "dictionaryContributions": [

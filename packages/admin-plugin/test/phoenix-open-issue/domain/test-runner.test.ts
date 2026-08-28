@@ -137,8 +137,8 @@ function createRunnerFixture(): RunnerFixture {
       "  Object.keys(process.env).some(key => key.startsWith('VITEST_'));",
       "if (forbidden) process.exit(41);",
       "if (process.argv[2] !== 'run' || process.argv[3] !== '--config' ||",
-      "    process.argv[5] !== '--reporter=basic' || process.argv.slice(6).length !== 26) process.exit(42);",
-      "process.stdout.write(' Test Files  26 passed (26)\\n Tests  144 passed (144)\\n');",
+      "    process.argv[5] !== '--reporter=basic' || process.argv.slice(6).length !== 27) process.exit(42);",
+      "process.stdout.write(' Test Files  27 passed (27)\\n Tests  149 passed (149)\\n');",
       "",
     ].join("\n"),
     "utf8"
@@ -241,7 +241,7 @@ function resolveFixture(
 }
 
 describe("Open Issue 受控测试运行器算法", () => {
-  it("只统计固定 26 文件 / 144 用例且无 Profile 与 production 均 fail-closed", () => {
+  it("只统计固定 27 文件 / 149 用例且无 Profile 与 production 均 fail-closed", () => {
     const source =
       "describe('x', () => { " +
       "it" +
@@ -249,12 +249,12 @@ describe("Open Issue 受控测试运行器算法", () => {
       "test" +
       "('b', () => {}) })";
     expect(countDeclaredTestCases(source)).toBe(2);
-    expect(OPEN_ISSUE_CONTROLLED_TEST_FILE_COUNT).toBe(26);
-    expect(OPEN_ISSUE_CONTROLLED_TEST_CASE_COUNT).toBe(144);
+    expect(OPEN_ISSUE_CONTROLLED_TEST_FILE_COUNT).toBe(27);
+    expect(OPEN_ISSUE_CONTROLLED_TEST_CASE_COUNT).toBe(149);
     expect(OPEN_ISSUE_TEST_RUNNER_MAX_CONCURRENCY).toBe(1);
     expect(OPEN_ISSUE_TEST_RUNNER_TIMEOUT_MS).toBe(180_000);
     expect(OPEN_ISSUE_TEST_RUNNER_MAX_OUTPUT_BYTES).toBe(2 * 1024 * 1024);
-    expect(new Set(OPEN_ISSUE_CONTROLLED_TEST_FILES.map((item) => item.id)).size).toBe(26);
+    expect(new Set(OPEN_ISSUE_CONTROLLED_TEST_FILES.map((item) => item.id)).size).toBe(27);
     expect(
       OPEN_ISSUE_CONTROLLED_TEST_FILES.every(
         (item) =>
@@ -272,8 +272,8 @@ describe("Open Issue 受控测试运行器算法", () => {
     expect(missing).toMatchObject({
       available: false,
       reasonCode: "PROFILE_MISSING",
-      fileCount: 26,
-      caseCount: 144,
+      fileCount: 27,
+      caseCount: 149,
     });
     const production = resolveOpenIssueTestRunnerContext({
       productRoot: REPO_ROOT,
@@ -283,8 +283,8 @@ describe("Open Issue 受控测试运行器算法", () => {
     expect(production).toMatchObject({
       available: false,
       reasonCode: "PRODUCTION_DISABLED",
-      fileCount: 26,
-      caseCount: 144,
+      fileCount: 27,
+      caseCount: 149,
     });
   });
 
@@ -294,8 +294,8 @@ describe("Open Issue 受控测试运行器算法", () => {
       expect(context).toMatchObject({
         available: true,
         reasonCode: null,
-        fileCount: 26,
-        caseCount: 144,
+        fileCount: 27,
+        caseCount: 149,
       });
       if (!context.available) throw new Error(context.reasonCode);
       const plan = buildOpenIssueTestExecutionPlan(context, {
@@ -331,10 +331,10 @@ describe("Open Issue 受控测试运行器算法", () => {
           execution.durationMs
         )
       ).toMatchObject({
-        filesTotal: 26,
-        filesPassed: 26,
-        total: 144,
-        passed: 144,
+        filesTotal: 27,
+        filesPassed: 27,
+        total: 149,
+        passed: 149,
         success: true,
       });
     });

@@ -36,13 +36,19 @@ if (!hostRoot) {
 }
 
 const binary = path.join(hostRoot, 'node_modules/.bin', binaryName)
-const wingRoot = path.join(repoRoot, 'packages/admin-plugin/node_modules/phoenix-wing')
+const configuredWingRoot = resolveCandidate(process.env.PHOENIX_WING_ROOT)
+const wingRoot = configuredWingRoot
+  || path.join(repoRoot, 'packages/admin-plugin/node_modules/phoenix-wing')
 const wingManifestPath = path.join(wingRoot, 'package.json')
 if (!existsSync(wingManifestPath)) {
-  throw new Error('未安装 Open Issue 锁定的 Registry phoenix-wing；请先在仓库根目录执行 pnpm install')
+  throw new Error(
+    configuredWingRoot
+      ? `未找到本地 Wing 候选：${configuredWingRoot}`
+      : '未安装 Open Issue 锁定的 Registry phoenix-wing；请先在仓库根目录执行 pnpm install',
+  )
 }
 const wingManifest = JSON.parse(readFileSync(wingManifestPath, 'utf8'))
-if (wingManifest.version !== '0.7.1') {
+if (!configuredWingRoot && wingManifest.version !== '0.7.1') {
   throw new Error(`Admin Vue typecheck 只接受 Registry phoenix-wing@0.7.1，实际为 ${wingManifest.version}`)
 }
 let temporaryRoot = null
@@ -63,7 +69,9 @@ try {
     if (!existsSync(path.join(wingDist, 'index.d.ts'))) {
       throw new Error(`Registry phoenix-wing@0.7.1 缺少类型制品：${wingDist}`)
     }
-    console.log(`Admin Vue typecheck Wing：Registry ${wingManifest.version}`)
+    console.log(
+      `Admin Vue typecheck Wing：${configuredWingRoot ? '本地候选' : 'Registry'} ${wingManifest.version}`,
+    )
     const runtimeConfig = {
       extends: path.join(fixtureRoot, 'tsconfig.fixture.json'),
       compilerOptions: {
@@ -72,9 +80,9 @@ try {
           '/$/phoenix-open-issue/*': [path.join(fixtureRoot, 'phoenix-open-issue/*')],
           '/$/base': [path.join(fixtureRoot, 'fixture-base.ts')],
           '/@/cool': [path.join(fixtureRoot, 'fixture-cool.ts')],
-          '/@/pah/PahViewContributions': [path.join(fixtureRoot, 'fixture-pah.ts')],
-          '/@/pah/PahWorkbenchOutput': [path.join(fixtureRoot, 'fixture-pah-output.ts')],
-          '/@/pah/PahViewDialogs': [path.join(fixtureRoot, 'fixture-pah-view-dialog.ts')],
+          '/@/phoenix/PahViewContributions': [path.join(fixtureRoot, 'fixture-pah.ts')],
+          '/@/phoenix/PahWorkbenchOutput': [path.join(fixtureRoot, 'fixture-pah-output.ts')],
+          '/@/phoenix/PahViewDialogs': [path.join(fixtureRoot, 'fixture-pah-view-dialog.ts')],
           '@element-plus/icons-vue': [hostDependency('@element-plus/icons-vue')],
           axios: [hostDependency('axios')],
           'element-plus': [hostDependency('element-plus')],

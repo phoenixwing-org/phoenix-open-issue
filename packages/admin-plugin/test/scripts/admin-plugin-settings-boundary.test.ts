@@ -5,15 +5,15 @@ import {
 
 const baseManifest = {
   hostReuse: ['identity', 'users', 'departments', 'roles'],
-  routes: [{ path: '/open-issue/maintenance', title: '维护', viewPath: 'modules/phoenix-open-issue/views/maintenance.vue' }],
+  routes: [{ path: '/open-issue/lists', title: '列表', viewPath: 'modules/phoenix-open-issue/views/lists.vue' }],
   capabilities: [{
-    id: 'phoenix-open-issue:maintenance:read',
-    endpoints: [{ method: 'GET', path: '/admin/phoenix-open-issue/maintenance/repair-tasks' }],
+    id: 'phoenix-open-issue:list:read',
+    endpoints: [{ method: 'GET', path: '/admin/phoenix-open-issue/lists' }],
   }],
 }
 
 describe('Admin plugin Host-owned settings boundary', () => {
-  it('accepts read-only Host user adapters and declared idempotent Issue repairs', () => {
+  it('accepts read-only Host user adapters and quarantined idempotent Issue repair rules', () => {
     expect(validateHostOwnedSettingsBoundary({
       manifest: baseManifest,
       repairTasks: ['checkpoints', 'links', 'list-org-references'],
@@ -30,8 +30,14 @@ describe('Admin plugin Host-owned settings boundary', () => {
     const errors = validateHostOwnedSettingsBoundary({
       manifest: {
         hostReuse: ['identity'],
-        routes: [{ path: '/open-issue/password', title: '修改密码', viewPath: 'modules/phoenix-open-issue/views/settings.vue' }],
-        capabilities: [{ endpoints: [{ method: 'POST', path: '/admin/phoenix-open-issue/users/reset-password' }] }],
+        routes: [
+          { path: '/open-issue/password', title: '修改密码', viewPath: 'modules/phoenix-open-issue/views/settings.vue' },
+          { path: '/open-issue/maintenance', title: '维护', viewPath: 'modules/phoenix-open-issue/views/maintenance.vue' },
+        ],
+        capabilities: [{ endpoints: [
+          { method: 'POST', path: '/admin/phoenix-open-issue/users/reset-password' },
+          { method: 'POST', path: '/admin/phoenix-open-issue/maintenance/repair' },
+        ] }],
       },
       repairTasks: ['checkpoints', 'users'],
       sources: {
@@ -40,6 +46,7 @@ describe('Admin plugin Host-owned settings boundary', () => {
         'vue/phoenix-open-issue/views/Bypass.vue': 'service.base.sys.user.list({})',
         'midway/phoenix-open-issue/service/host-user.ts': 'UPDATE base_sys_user SET status = 0',
         'midway/phoenix-open-issue/service/other.ts': 'SELECT * FROM base_sys_user',
+        'vue/phoenix-open-issue/views/maintenance.vue': '<template>重复维护页</template>',
       },
     })
 
@@ -47,6 +54,9 @@ describe('Admin plugin Host-owned settings boundary', () => {
       expect.stringContaining('hostReuse'),
       expect.stringContaining('路由'),
       expect.stringContaining('endpoint'),
+      expect.stringContaining('重复 Host 维护路由'),
+      expect.stringContaining('私有维护 endpoint'),
+      expect.stringContaining('重复 Host 维护页面或 API'),
       expect.stringContaining('maintenance task'),
       expect.stringContaining('legacy Host 设置文件'),
       expect.stringContaining('legacy login input'),

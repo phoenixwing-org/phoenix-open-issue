@@ -17,10 +17,7 @@ import { OpenIssueEightDReportService } from "../../service/eight-d-report";
 import { OpenIssueFunctionService } from "../../service/function";
 import { OpenIssueService } from "../../service/issue";
 import { OpenIssueListService } from "../../service/issue-list";
-import { OpenIssueLegacyImportService } from "../../service/legacy-import";
-import { OpenIssueMaintenanceService } from "../../service/maintenance";
 import { OpenIssuePushService } from "../../service/push";
-import { OpenIssueTestRunnerService } from "../../service/test-runner";
 
 @Provide()
 @CoolController("/admin/phoenix-open-issue")
@@ -41,16 +38,7 @@ export class OpenIssueAdminController extends BaseController {
   openIssueFunctionService: OpenIssueFunctionService;
 
   @Inject()
-  openIssueMaintenanceService: OpenIssueMaintenanceService;
-
-  @Inject()
-  openIssueLegacyImportService: OpenIssueLegacyImportService;
-
-  @Inject()
   openIssuePushService: OpenIssuePushService;
-
-  @Inject()
-  openIssueTestRunnerService: OpenIssueTestRunnerService;
 
   @Get("/lists", { summary: "查询我可访问的问题列表" })
   async lists(@Query("includeArchived") includeArchived: unknown) {
@@ -413,89 +401,4 @@ export class OpenIssueAdminController extends BaseController {
     return this.ok(await this.openIssuePushService.dashboard(tab, limit));
   }
 
-  @Get("/maintenance/repair-tasks", {
-    summary: "查询 Open Issue 可执行的数据修正任务",
-  })
-  async repairTasks() {
-    return this.ok(this.openIssueMaintenanceService.tasks());
-  }
-
-  @Get("/maintenance/repair-plan", {
-    summary: "只读生成 Open Issue 数据修正计划",
-  })
-  async repairPlan(@Query("task") task: unknown) {
-    return this.ok(await this.openIssueMaintenanceService.plan(task));
-  }
-
-  @Get("/maintenance/repair-ledger", {
-    summary: "查询 Open Issue 数据修正审计记录",
-  })
-  async repairLedger(
-    @Query("page") page: unknown,
-    @Query("size") size: unknown
-  ) {
-    return this.ok(await this.openIssueMaintenanceService.ledger(page, size));
-  }
-
-  @Post("/maintenance/repair", {
-    summary: "按已确认 dry-run 执行 Open Issue 幂等数据修正",
-  })
-  async repair(
-    @Body("task") task: unknown,
-    @Body("fingerprint") fingerprint: unknown,
-    @Body("generatedAt") generatedAt: unknown,
-    @Body("confirmed") confirmed: unknown
-  ) {
-    return this.ok(
-      await this.openIssueMaintenanceService.run(task, {
-        fingerprint,
-        generatedAt,
-        confirmed,
-      })
-    );
-  }
-
-  @Post("/maintenance/legacy-import/plan", {
-    summary: "只读规划旧站 Open Issue 业务数据迁移",
-  })
-  async legacyImportPlan(@Body(ALL) input: unknown) {
-    const value = input && typeof input === "object" ? input : {};
-    return this.ok(
-      await this.openIssueLegacyImportService.plan({
-        package: (value as Record<string, unknown>).package,
-        mappings: (value as Record<string, unknown>).mappings,
-      })
-    );
-  }
-
-  @Post("/maintenance/legacy-import/execute", {
-    summary: "按已确认计划导入核心业务并独立尝试可选 8D",
-  })
-  async legacyImportExecute(
-    @Body("planId") planId: unknown,
-    @Body("confirmed") confirmed: unknown,
-    @Body("backupConfirmed") backupConfirmed: unknown
-  ) {
-    return this.ok(
-      await this.openIssueLegacyImportService.execute(planId, {
-        confirmed,
-        backupConfirmed,
-      })
-    );
-  }
-
-  @Get("/test/files", { summary: "查询 Open Issue 单元测试文件" })
-  async testFiles() {
-    return this.ok(await this.openIssueTestRunnerService.catalog());
-  }
-
-  @Get("/test/status", { summary: "查询 Open Issue 单元测试状态" })
-  async testStatus() {
-    return this.ok(await this.openIssueTestRunnerService.status());
-  }
-
-  @Post("/test/run", { summary: "运行 Open Issue 声明的单元测试" })
-  async runTests() {
-    return this.ok(await this.openIssueTestRunnerService.runAll());
-  }
 }

@@ -26,10 +26,6 @@ export const ISSUE_HOST_CAPABILITIES = [
   'phoenix-open-issue:report:write',
   'phoenix-open-issue:function:read',
   'phoenix-open-issue:function:write',
-  'phoenix-open-issue:test:read',
-  'phoenix-open-issue:test:run',
-  'phoenix-open-issue:maintenance:read',
-  'phoenix-open-issue:maintenance:run',
   'phoenix-open-issue:data:purge',
 ] as const
 

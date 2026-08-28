@@ -84,7 +84,7 @@ phoenix-admin-node/src/modules/phoenix-open-issue
 - 插件仓仍是唯一源码真源；
 - 真实目录、其他来源的链接不会被脚本覆盖或删除。
 
-挂载后重启 Admin Vue 和 Node。在 `/pah/plugins` 使用 [`packages/admin-plugin/manifest.json`](../packages/admin-plugin/manifest.json) 校验并登记插件，再按 Pah 显示的受控生命周期操作。当前 manifest 包含 DDL，普通“安装”不能绕过迁移门禁；应先查看只读 migration dry-run，不能为了本机方便启用 TypeORM `synchronize`。
+挂载后重启 Admin Vue 和 Node。在 `/phoenix/plugins` 使用 [`packages/admin-plugin/manifest.json`](../packages/admin-plugin/manifest.json) 校验并登记插件，再按 Pah 显示的受控生命周期操作。当前 manifest 包含 DDL，普通“安装”不能绕过迁移门禁；应先查看只读 migration dry-run，不能为了本机方便启用 TypeORM `synchronize`。
 
 已安装实例新增或修改路由贡献后，需要按 Pah 生命周期停用再启用，使菜单重新物化；不要直接修改菜单数据库。开发入口为：
 
@@ -104,7 +104,7 @@ Windows PowerShell 执行：
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\scripts\mount-admin-plugin-dev.ps1 -Action Unmount
 ```
 
-该命令只移除仍指向本插件的链接及其 `.git/info/exclude` 标记，不卸载 Pah 记录，也不删除业务数据。需要先在 `/pah/plugins` 停用插件，避免 Host 保留无法加载的菜单。
+该命令只移除仍指向本插件的链接及其 `.git/info/exclude` 标记，不卸载 Pah 记录，也不删除业务数据。需要先在 `/phoenix/plugins` 停用插件，避免 Host 保留无法加载的菜单。
 
 ### 1.3 开发挂载与 manifest 登记点检
 
@@ -118,7 +118,7 @@ git -C ../phoenix-admin-node check-ignore -v src/modules/phoenix-open-issue
 
 两个 `git status` 都不应因挂载出现产品文件；`check-ignore` 必须指向各仓本机 `.git/info/exclude`。
 
-仓内先执行 `pnpm admin-plugin:verify-manifest`。随后重启 Vue/Node Host，在 `/pah/plugins` 使用已登录的管理员会话选择 Open Issue 仓内的 `packages/admin-plugin/manifest.json` 完成校验与登记；不要在文档、命令历史或复检证据中粘贴 Cookie、令牌或真实连接串。登记后记录 Host 返回的脱敏 module/version/status，并继续按 migration dry-run、可信备份和受控生命周期操作。
+仓内先执行 `pnpm admin-plugin:verify-manifest`。随后重启 Vue/Node Host，在 `/phoenix/plugins` 使用已登录的管理员会话选择 Open Issue 仓内的 `packages/admin-plugin/manifest.json` 完成校验与登记；不要在文档、命令历史或复检证据中粘贴 Cookie、令牌或真实连接串。登记后记录 Host 返回的脱敏 module/version/status，并继续按 migration dry-run、可信备份和受控生命周期操作。
 
 ## 2. 正式安装模式：不可变制品 + Pah
 
@@ -150,7 +150,7 @@ pnpm admin-plugin:assemble-clean-host -- \
 1. 冻结并记录插件、Admin Vue、Admin Node 和 Phoenix Wing 的 commit 与版本；工作树必须干净。
 2. 执行 `pnpm admin-plugin:verify`，校验模块闭包、类型、测试、runtime/manifest/descriptor、SQL 路径及原始字节 SHA-256；pack 收入不能代替 runtime 完整性。
 3. 使用 `admin-plugin:release-package` 生成 clean、不可变业务包，再在独立装配目录构建 Vue/Node production 制品并部署到约定运行目录；产品源码不能进入 Host Git。
-4. 在 `/pah/plugins` 登记与该制品同版本的 manifest v2 并执行校验；当前治理页负责清单和生命周期，不把开发 Link 当成安装包。Node 是迁移制品和 checksum 的权威校验端。
+4. 在 `/phoenix/plugins` 登记与该制品同版本的 manifest v2 并执行校验；当前治理页负责清单和生命周期，不把开发 Link 当成安装包。Node 是迁移制品和 checksum 的权威校验端。
 5. 对 `migrations/*.sql` 只先生成一次性 dry-run 计划；计划必须显示版本、checksum、事务要求、到期时间和待执行项。
 6. 取得可信备份证明并完成恢复演练后，才允许受控执行迁移；执行结果写入 migration ledger。普通安装入口不得执行 DDL。
 7. 安装并启用插件，分配 capability，验证菜单、冷启动深链、真实 404、API 权限及宽窄屏页面。

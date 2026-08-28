@@ -8,8 +8,8 @@
     "path": "packages/admin-plugin/vue/vitest.config.ts",
     "sha256": "441359bd1eefd85e7aa2aba5af85cb2266b2bc093a7517db98e210a96550c7bd"
   },
-  "expectedFileCount": 26,
-  "expectedCaseCount": 144,
+  "expectedFileCount": 27,
+  "expectedCaseCount": 149,
   "tests": [
     {
       "id": "domain:function",
@@ -58,7 +58,7 @@
       "filePath": "packages/admin-plugin/test/phoenix-open-issue/domain/test-runner.test.ts",
       "packageName": "domain",
       "caseCount": 4,
-      "sha256": "37c167522b5bd679ec1d885a9bf4dfdaf861ef47e2663930b8070df9161eba6a"
+      "sha256": "5f8f4df15ec57f5e9f7bec7c269adb20de75a5bbc7ef34be1aa8f04ff706db36"
     },
     {
       "id": "service:access",
@@ -100,7 +100,7 @@
       "filePath": "packages/admin-plugin/test/scripts/admin-plugin-settings-boundary.test.ts",
       "packageName": "contract",
       "caseCount": 3,
-      "sha256": "89201a66f8a1c9c0e416b290d2deb31c270ec1deca4485d0f23742e07abb2689"
+      "sha256": "a3fa780c38e05a6cdeafeb5c5338150973c2dd446f5c8c874de58741422f77d2"
     },
     {
       "id": "contract:table",
@@ -113,8 +113,8 @@
       "id": "contract:view-layout",
       "filePath": "packages/admin-plugin/test/scripts/admin-plugin-view-layout.test.ts",
       "packageName": "contract",
-      "caseCount": 11,
-      "sha256": "d878f02d7d813f5db996eeecf6e2b74dd312505619b676e76362a21a116ebd47"
+      "caseCount": 12,
+      "sha256": "ec66c11db1c1603d009951a1f2cc6d8fd5404e07b41491b6c0c8cee264245291"
     },
     {
       "id": "contract:windows-junction",
@@ -143,6 +143,13 @@
       "packageName": "core",
       "caseCount": 3,
       "sha256": "4f577892176fb65c8c376ab5a0a85378aa807d7d2caf8d84527289a3528448b9"
+    },
+    {
+      "id": "core:issue-store",
+      "filePath": "packages/admin-plugin/vue/phoenix-open-issue/stores/issues.test.ts",
+      "packageName": "core",
+      "caseCount": 4,
+      "sha256": "d0f38bd9ebb9a8c0e4cd6cc7a99d0cf8244e85ff9c59a329231509216dd0754c"
     },
     {
       "id": "core:host-capability",

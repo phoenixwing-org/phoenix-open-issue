@@ -183,5 +183,5 @@ for (const mount of mounts) {
 
 if (action === 'mount') {
   console.log('挂载只影响本机工作区；重启 Phoenix Admin Vue/Node 后生效。')
-  console.log('下一步在 /pah/plugins 登记、安装并启用 packages/admin-plugin/manifest.json。')
+  console.log('下一步在 /phoenix/plugins 登记、安装并启用 packages/admin-plugin/manifest.json。')
 }
