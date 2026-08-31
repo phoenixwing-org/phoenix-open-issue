@@ -178,7 +178,7 @@ function createRunnerFixture(): RunnerFixture {
   const contentHash = packageHash(packageRoot);
   const profile = {
     schemaVersion: 1,
-    profileId: "pdh.controlled.vitest",
+    profileId: "pnh.controlled.vitest",
     toolId: "vitest",
     toolVersion: "3.2.7",
     availability: "available",
@@ -191,7 +191,7 @@ function createRunnerFixture(): RunnerFixture {
     lockfileSha256: sha256(readFileSync(lockfile)),
     entrypointSha256: sha256(readFileSync(entrypoint)),
     packageSha256: contentHash.sha256,
-    packageHashFormat: "pdh-package-sha256-v1",
+    packageHashFormat: "pnh-package-sha256-v1",
     packageFileCount: contentHash.fileCount,
   };
   return {
@@ -288,7 +288,7 @@ describe("Open Issue 受控测试运行器算法", () => {
     });
   });
 
-  it("消费合法 DevHub Profile 并用 Node 固定 argv 执行精确白名单", async () => {
+  it("消费合法 Hub Profile 并用 Node 固定 argv 执行精确白名单", async () => {
     await withFixtureAsync(async (fixture) => {
       const context = resolveFixture(fixture);
       expect(context).toMatchObject({
@@ -374,7 +374,7 @@ describe("Open Issue 受控测试运行器算法", () => {
       reasonFor((fixture) =>
         JSON.stringify({
           schemaVersion: 1,
-          profileId: "pdh.controlled.vitest",
+          profileId: "pnh.controlled.vitest",
           toolId: "vitest",
           toolVersion: "3.2.7",
           availability: "unavailable",

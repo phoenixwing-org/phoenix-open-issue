@@ -24,14 +24,14 @@ import {
 } from "../domain/test-runner";
 
 export const OPEN_ISSUE_CONTROLLED_TOOL_PROFILE_ENV =
-  "PHOENIX_DEV_HUB_CONTROLLED_TOOL_PROFILE";
+  "PHOENIX_HUB_CONTROLLED_TOOL_PROFILE";
 export const OPEN_ISSUE_CONTROLLED_TOOL_PROFILE_MAX_BYTES = 16_384;
 export const OPEN_ISSUE_CONTROLLED_TOOL_PROFILE_ID =
-  "pdh.controlled.vitest";
+  "pnh.controlled.vitest";
 export const OPEN_ISSUE_CONTROLLED_TOOL_ID = "vitest";
 export const OPEN_ISSUE_CONTROLLED_TOOL_VERSION = "3.2.7";
 export const OPEN_ISSUE_CONTROLLED_TOOL_PACKAGE_HASH_FORMAT =
-  "pdh-package-sha256-v1";
+  "pnh-package-sha256-v1";
 
 export const OPEN_ISSUE_TEST_RUNNER_MAX_CONCURRENCY = 1;
 export const OPEN_ISSUE_TEST_RUNNER_MAX_OUTPUT_BYTES = 2 * 1024 * 1024;
