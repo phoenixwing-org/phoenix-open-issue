@@ -10,7 +10,7 @@ const dependencySections = [
   "optionalDependencies",
   "peerDependencies",
 ];
-const expectedWingVersion = "0.7.1";
+const expectedWingVersion = "0.7.2";
 const expectedPublishedDependencies = {
   "@phoenix-wing/code-core": "0.6.4",
   "@phoenix-wing/db-node": "0.6.3",

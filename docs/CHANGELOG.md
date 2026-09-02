@@ -3,7 +3,7 @@
 ## v0.7.2（2026-08-25）
 
 - Open Issue 根工作区、core、server、web 与 Admin 插件统一升级至 `0.7.2`。
-- Phoenix Wing 根 UI 包精确升级至 Registry `0.7.1`；传递依赖按正式发布矩阵解析为 `@phoenix-wing/code-core@0.6.4` 与 `@phoenix-wing/db-node@0.6.3`。
+- Phoenix Wing 根 UI 包精确升级至 Registry `0.7.2`；传递依赖按正式发布矩阵解析为 `@phoenix-wing/code-core@0.6.4` 与 `@phoenix-wing/db-node@0.6.3`。
 - 删除相邻 Wing 源码 resolver、本地构建/验证命令和 LOCAL 环境分支，独立 Web、Server 与 Admin 插件类型门禁统一只接受 Registry 制品。
 - 完成自动测试、core/server/web 生产构建、Admin manifest 校验及 Admin Vue 类型检查。
 

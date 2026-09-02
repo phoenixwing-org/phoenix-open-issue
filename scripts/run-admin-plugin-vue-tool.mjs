@@ -48,8 +48,8 @@ if (!existsSync(wingManifestPath)) {
   )
 }
 const wingManifest = JSON.parse(readFileSync(wingManifestPath, 'utf8'))
-if (!configuredWingRoot && wingManifest.version !== '0.7.1') {
-  throw new Error(`Admin Vue typecheck 只接受 Registry phoenix-wing@0.7.1，实际为 ${wingManifest.version}`)
+if (!configuredWingRoot && wingManifest.version !== '0.7.2') {
+  throw new Error(`Admin Vue typecheck 只接受 Registry phoenix-wing@0.7.2，实际为 ${wingManifest.version}`)
 }
 let temporaryRoot = null
 
@@ -67,7 +67,7 @@ try {
     const hostDependency = name => path.join(hostRoot, 'node_modules', name)
     const wingDist = path.join(wingRoot, 'dist')
     if (!existsSync(path.join(wingDist, 'index.d.ts'))) {
-      throw new Error(`Registry phoenix-wing@0.7.1 缺少类型制品：${wingDist}`)
+      throw new Error(`Registry phoenix-wing@0.7.2 缺少类型制品：${wingDist}`)
     }
     console.log(
       `Admin Vue typecheck Wing：${configuredWingRoot ? '本地候选' : 'Registry'} ${wingManifest.version}`,

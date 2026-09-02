@@ -11,7 +11,7 @@
 - 仓库只维护 Phoenix Admin 声明式业务插件，不再维护独立 Web、Express Server 或独立 Core 包。
 - Vue、Midway、领域算法、类型、PostgreSQL migration 和插件测试均归入 `packages/admin-plugin/`。
 - 正式交付使用不可变 `.phoenix.cool` 制品；开发 Link/Junction 不能作为安装包。
-- 插件精确消费 Registry `phoenix-wing@0.7.1`，不探测相邻源码，也不使用 `link:`、`file:` 或 workspace override。
+- 插件精确消费 Registry `phoenix-wing@0.7.2`，不探测相邻源码，也不使用 `link:`、`file:` 或 workspace override。
 - 业务数据使用 `oip_*` PostgreSQL 表；生产禁止 TypeORM `synchronize`，迁移必须经过 manifest 校验、dry-run、可信备份和 ledger。
 - 8D 使用可空 `relatedIssueId`；Issue 的 `extensions JSONB` 只承载轻量扩展属性，不保存附属关系。
 

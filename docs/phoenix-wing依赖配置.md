@@ -2,7 +2,7 @@
 
 ## 依赖原则
 
-Open Issue 插件的 `packages/admin-plugin/package.json` 将开发依赖和 peer dependency 都精确锁定为 Registry `phoenix-wing@0.7.1`。
+Open Issue 插件的 `packages/admin-plugin/package.json` 将开发依赖和 peer dependency 都精确锁定为 Registry `phoenix-wing@0.7.2`。
 
 - 不探测相邻 `phoenix-wing` 源码。
 - 不使用 `pnpm link`、`file:`、`workspace:` 或本地 resolver。
@@ -18,7 +18,7 @@ pnpm verify:wing-dependencies
 pnpm admin-plugin:verify
 ```
 
-当前预期 `packages/admin-plugin/node_modules/phoenix-wing/package.json` 的版本为 `0.7.1`，其 realpath 位于本仓 `node_modules/.pnpm/` Registry store，而不是相邻源码目录。
+当前预期 `packages/admin-plugin/node_modules/phoenix-wing/package.json` 的版本为 `0.7.2`，其 realpath 位于本仓 `node_modules/.pnpm/` Registry store，而不是相邻源码目录。
 
 ## 升级规则
 

@@ -160,6 +160,6 @@ pnpm admin-plugin:assemble-clean-host -- \
 
 ## 3. 当前发布边界
 
-不可变 `.phoenix.cool` 的 build/verify、全文件 SHA、确定性与原子不覆盖门禁已经落地；Node clean Host production build 也已通过，并复制出 Pah descriptor 与两条 SQL。两个专用隔离 PostgreSQL 16 库已完成 `0.6.1 → 0.6.2`、真实备份/恢复、停用、普通卸载保留 9 张表/7 类字典/ledger/assignment 和重装不重放 migration 的历史闭环。`0.7.0` 又在生产模拟 Admin 中初步跑通安装、启用、停用和普通卸载，但操作步骤仍较多，同版本重装与跨版本升级继续作为独立验收项，不把本次初步验证写成全自动生产发布完成。正式装配精确使用 Registry `phoenix-wing@0.7.1`，并必须通过当次 clean Host production build；禁止用临时 `file:`/override 或相邻源码冒充生产通过。
+不可变 `.phoenix.cool` 的 build/verify、全文件 SHA、确定性与原子不覆盖门禁已经落地；Node clean Host production build 也已通过，并复制出 Pah descriptor 与两条 SQL。两个专用隔离 PostgreSQL 16 库已完成 `0.6.1 → 0.6.2`、真实备份/恢复、停用、普通卸载保留 9 张表/7 类字典/ledger/assignment 和重装不重放 migration 的历史闭环。`0.7.0` 又在生产模拟 Admin 中初步跑通安装、启用、停用和普通卸载，但操作步骤仍较多，同版本重装与跨版本升级继续作为独立验收项，不把本次初步验证写成全自动生产发布完成。正式装配精确使用 Registry `phoenix-wing@0.7.2`，并必须通过当次 clean Host production build；禁止用临时 `file:`/override 或相邻源码冒充生产通过。
 
 详细验收状态见[用户点检表](admin-plugin-rectification/用户点检表.md)。开发挂载的命名与联调背景见 [Phoenix Admin 开发联调](admin-plugin-rectification/开发联调.md)。

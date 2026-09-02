@@ -14,8 +14,8 @@ importers:
         specifier: 1.6.0
         version: 1.6.0
       phoenix-wing:
-        specifier: 0.7.1
-        version: 0.7.1
+        specifier: 0.7.2
+        version: 0.7.2
 
 packages:
 
@@ -104,8 +104,8 @@ packages:
   normalize-wheel-es@1.2.0:
     resolution: {integrity: sha512-Wj7+EJQ8mSuXr2iWfnujrimU35R2W4FAErEyTmJoJ7ucwTn2hOUSsRehMb5RSYkxXGTM7Y9QpvPmp++w5ftoJw==}
 
-  phoenix-wing@0.7.1:
-    resolution: {integrity: sha512-1SHBYhhqRn7nrFMIe//5aZ5jpN26E6+NBF3o9INyIGcOCTi8EIJ5sJkbA0U+F2Ob1pH9onXW5uOHTH/3g+jxiA==}
+  phoenix-wing@0.7.2:
+    resolution: {integrity: sha512-/o89wI0Rj6xUXh6JQBnJDOvRnf/SlA1+Uwv/BnhNVUuRWB5SZhXVp/JhcIYNeNluMLA/ozTDA2pIBnwBiS7rSA==}
     peerDependencies:
       pinia: ^2.0.0 || ^3.0.0
       vue: ^3.0.0
@@ -201,7 +201,7 @@ snapshots:
 
   normalize-wheel-es@1.2.0: {}
 
-  phoenix-wing@0.7.1:
+  phoenix-wing@0.7.2:
     dependencies:
       '@phoenix-wing/code-core': 0.6.4
       '@phoenix-wing/db-node': 0.6.3
