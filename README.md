@@ -26,6 +26,8 @@ pnpm admin-plugin:verify
 常用命令：
 
 ```bash
+pnpm dev                                   # 挂载插件并以 Registry Wing 启动 Admin Host
+pnpm wing                                  # 挂载插件并以并列本地 Wing 启动 Admin Host
 pnpm build                                 # 插件 Node/Vue 类型检查
 pnpm test                                  # 插件测试
 pnpm admin-plugin:mount-dev-host           # macOS/Linux 开发挂载
@@ -34,6 +36,11 @@ pnpm admin-plugin:unmount-dev-host         # 卸载开发挂载
 pnpm admin-plugin:release-package          # 生成不可变 .phoenix.cool 包
 pnpm admin-plugin:verify-production-package
 ```
+
+`pnpm wing` 要求 Open Issue、Phoenix Admin Node、Phoenix Admin Vue 与 `phoenix-wing` 使用标准
+并列目录；本地 Wing 仅通过 Admin Vue 的进程级 resolver 消费，不修改本仓或 Host 的 manifest、
+lockfile、workspace 与 `node_modules`。旧的根级 `pnpm dev:registry` 不再提供，Registry 开发直接
+使用 `pnpm dev`。
 
 Windows PowerShell 的 Junction 挂载、正式打包和卸载数据边界见 [插件说明](packages/admin-plugin/README.md)。
 

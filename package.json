@@ -6,6 +6,8 @@
   "private": true,
   "description": "Phoenix Admin 的 Open Issue 声明式业务插件",
   "scripts": {
+    "dev": "node scripts/develop-admin-plugin.mjs registry",
+    "wing": "node scripts/develop-admin-plugin.mjs local",
     "build": "pnpm admin-plugin:typecheck-midway && pnpm admin-plugin:typecheck-vue",
     "test": "pnpm admin-plugin:test-core",
     "verify:wing-dependencies": "node scripts/verify-wing-dependencies.mjs",
