@@ -1,8 +1,11 @@
 import { spawn } from 'node:child_process'
-import { existsSync } from 'node:fs'
 import path from 'node:path'
 import process from 'node:process'
 import { fileURLToPath } from 'node:url'
+import {
+  cleanOpenIssueWingEnvironment,
+  resolveOpenIssueDevelopmentPlan,
+} from './admin-plugin-development-mode.mjs'
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const mode = process.argv[2]
@@ -11,11 +14,16 @@ if (mode !== 'registry' && mode !== 'local') {
   throw new Error('用法：node scripts/develop-admin-plugin.mjs <registry|local>')
 }
 
-const nodeRoot = path.resolve(process.env.PHOENIX_ADMIN_NODE_ROOT || path.join(repositoryRoot, '../phoenix-admin-node'))
-const vueRoot = path.resolve(process.env.PHOENIX_ADMIN_VUE_ROOT || path.join(repositoryRoot, '../phoenix-admin-vue'))
-for (const [label, root] of [['Node Host', nodeRoot], ['Vue Host', vueRoot]]) {
-  if (!existsSync(path.join(root, 'package.json'))) throw new Error(`${label} 不存在：${root}`)
+const plan = resolveOpenIssueDevelopmentPlan(repositoryRoot, mode)
+const { nodeRoot, vueRoot } = plan
+const hostEnvironment = {
+  ...cleanOpenIssueWingEnvironment(process.env),
+  PHOENIX_ADMIN_NODE_ROOT: nodeRoot,
+  PHOENIX_ADMIN_VUE_ROOT: vueRoot,
 }
+const vueEnvironment = mode === 'local'
+  ? { ...hostEnvironment, PHOENIX_WING_ROOT: plan.wingRoot }
+  : hostEnvironment
 
 const pnpmCommand = process.env.npm_execpath
   ? process.execPath
@@ -34,7 +42,7 @@ function run(args, options = {}) {
   return new Promise((resolve, reject) => {
     const child = spawnPnpm(args, {
       cwd: options.cwd || repositoryRoot,
-      env: options.env || process.env,
+      env: options.env || hostEnvironment,
       stdio: 'inherit',
       shell: false,
     })
@@ -48,17 +56,36 @@ function run(args, options = {}) {
 }
 
 if (checkOnly) {
-  await run([mode === 'local' ? 'wing:local:check' : 'wing:registry:check'], { cwd: vueRoot })
+  await run([mode === 'local' ? 'wing:local:check' : 'wing:registry:check'], {
+    cwd: vueRoot,
+    env: vueEnvironment,
+  })
   console.log(`[Open Issue][Wing][${mode === 'local' ? 'LOCAL' : 'REGISTRY'}] Host 启动入口检查通过`)
   process.exit(0)
 }
 
-await run(['admin-plugin:mount-dev-host'])
+if (process.platform === 'win32') {
+  await new Promise((resolve, reject) => {
+    const child = spawn('powershell.exe', [
+      '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File',
+      path.join(repositoryRoot, 'scripts/mount-admin-plugin-dev.ps1'),
+      '-Action', 'Mount', '-VueHostRoot', vueRoot, '-NodeHostRoot', nodeRoot,
+    ], { cwd: repositoryRoot, env: hostEnvironment, stdio: 'inherit', shell: false })
+    child.once('error', reject)
+    child.once('exit', (code, signal) => {
+      if (signal) reject(new Error(`开发挂载被 ${signal} 终止`))
+      else if (code === 0) resolve()
+      else reject(new Error(`开发挂载退出码 ${code}`))
+    })
+  })
+} else {
+  await run(['admin-plugin:mount-dev-host'])
+}
 console.log(`[Open Issue][Wing][${mode === 'local' ? 'LOCAL' : 'REGISTRY'}] 启动 Phoenix Admin Host`)
 
 const children = [
-  spawnPnpm(['dev'], { cwd: nodeRoot, env: process.env, stdio: 'inherit', shell: false }),
-  spawnPnpm([mode === 'local' ? 'wing' : 'dev'], { cwd: vueRoot, env: process.env, stdio: 'inherit', shell: false }),
+  spawnPnpm(['dev'], { cwd: nodeRoot, env: hostEnvironment, stdio: 'inherit', shell: false }),
+  spawnPnpm([mode === 'local' ? 'wing' : 'dev'], { cwd: vueRoot, env: vueEnvironment, stdio: 'inherit', shell: false }),
 ]
 let stopping = false
 function stop(signal = 'SIGTERM') {

@@ -9,7 +9,7 @@
     "dev": "node scripts/develop-admin-plugin.mjs registry",
     "wing": "node scripts/develop-admin-plugin.mjs local",
     "build": "pnpm admin-plugin:typecheck-midway && pnpm admin-plugin:typecheck-vue",
-    "test": "pnpm admin-plugin:test-core",
+    "test": "pnpm admin-plugin:test-core && node --test scripts/admin-plugin-development-mode.test.mjs",
     "verify:wing-dependencies": "node scripts/verify-wing-dependencies.mjs",
     "admin-plugin:link-dev-host": "node scripts/link-admin-plugin-dev.mjs mount",
     "admin-plugin:mount-dev-host": "node scripts/link-admin-plugin-dev.mjs mount",
@@ -32,5 +32,5 @@
     "admin-plugin:verify": "pnpm verify:wing-dependencies && pnpm admin-plugin:verify-manifest && pnpm admin-plugin:verify-settings-boundary && pnpm admin-plugin:verify-browser-runtime && pnpm admin-plugin:verify-pack && pnpm admin-plugin:verify-production-packaging && pnpm admin-plugin:verify-issue-closure && pnpm admin-plugin:typecheck-midway && pnpm admin-plugin:typecheck-vue && pnpm admin-plugin:test-core",
     "verify:ci": "pnpm admin-plugin:verify"
   },
-  "packageManager": "pnpm@9.15.9"
+  "packageManager": "pnpm@10.15.1"
 }
